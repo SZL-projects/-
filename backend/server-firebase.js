@@ -64,10 +64,15 @@ app.get('/', (req, res) => {
 // Error handler (חייב להיות אחרון)
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+// Export for Vercel
+module.exports = app;
 
-const server = app.listen(PORT, () => {
-  console.log(`
+// רק אם לא רצים ב-Vercel (local development)
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+
+  const server = app.listen(PORT, () => {
+    console.log(`
 ╔═══════════════════════════════════════════════════╗
 ║   🏍️  מערכת CRM - יחידת האופנועים  🏍️           ║
 ║                                                   ║
@@ -76,13 +81,12 @@ const server = app.listen(PORT, () => {
 ║   Port: ${PORT}                                      ║
 ║   Time: ${new Date().toLocaleString('he-IL')}      ║
 ╚═══════════════════════════════════════════════════╝
-  `);
-});
+    `);
+  });
 
-// טיפול בסגירה נאותה
-process.on('unhandledRejection', (err) => {
-  console.error(`Error: ${err.message}`);
-  server.close(() => process.exit(1));
-});
-
-module.exports = app;
+  // טיפול בסגירה נאותה
+  process.on('unhandledRejection', (err) => {
+    console.error(`Error: ${err.message}`);
+    server.close(() => process.exit(1));
+  });
+}
