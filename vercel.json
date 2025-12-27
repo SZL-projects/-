@@ -2,14 +2,25 @@
   "version": 2,
   "builds": [
     {
-      "src": "backend/server.js",
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "frontend/dist"
+      }
+    },
+    {
+      "src": "backend/server-firebase.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "backend/server-firebase.js"
+    },
+    {
       "src": "/(.*)",
-      "dest": "backend/server.js"
+      "dest": "frontend/dist/$1"
     }
   ],
   "env": {
