@@ -6,7 +6,8 @@
   "scripts": {
     "install-all": "cd backend && npm install && cd ../frontend && npm install",
     "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm start\"",
-    "build": "cd frontend && npm run build",
+    "build": "echo \"Backend only - no build needed\"",
+    "start": "cd backend && npm start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": ["crm", "motorcycle", "management"],
