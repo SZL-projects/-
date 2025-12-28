@@ -23,6 +23,14 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  Card,
+  CardContent,
+  CardActions,
+  Stack,
+  Divider,
+  useMediaQuery,
+  useTheme,
+  Grid,
 } from '@mui/material';
 import {
   Search,
@@ -31,12 +39,17 @@ import {
   Delete,
   Visibility,
   TwoWheeler,
+  DirectionsCar as CarIcon,
+  CalendarToday as CalendarIcon,
+  Speed as SpeedIcon,
 } from '@mui/icons-material';
 import { vehiclesAPI } from '../services/api';
 import VehicleDialog from '../components/VehicleDialog';
 
 export default function Vehicles() {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -140,15 +153,23 @@ export default function Vehicles() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" fontWeight="bold">
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', sm: 'center' },
+        mb: 3,
+        gap: 2
+      }}>
+        <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold">
           ניהול כלים
         </Typography>
         <Button
           variant="contained"
           startIcon={<Add />}
-          size="large"
+          size={isMobile ? 'medium' : 'large'}
           onClick={() => handleOpenDialog()}
+          fullWidth={isMobile}
         >
           כלי חדש
         </Button>
@@ -162,7 +183,7 @@ export default function Vehicles() {
 
       {/* חיפוש */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
           <TextField
             fullWidth
             placeholder="חפש לפי מספר רישוי, מספר פנימי או דגם..."
@@ -177,53 +198,134 @@ export default function Vehicles() {
               ),
             }}
             dir="rtl"
+            size={isMobile ? 'small' : 'medium'}
           />
           <Button
             variant="contained"
             onClick={handleSearch}
-            sx={{ minWidth: 120 }}
+            sx={{ minWidth: { xs: '100%', sm: 120 } }}
+            fullWidth={isMobile}
           >
             חיפוש
           </Button>
         </Box>
       </Paper>
 
-      {/* טבלת כלים */}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>מס' רישוי</TableCell>
-              <TableCell>מס' פנימי</TableCell>
-              <TableCell>סוג</TableCell>
-              <TableCell>יצרן</TableCell>
-              <TableCell>דגם</TableCell>
-              <TableCell>שנה</TableCell>
-              <TableCell>ק"מ נוכחי</TableCell>
-              <TableCell>סטטוס</TableCell>
-              <TableCell align="center">פעולות</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={9} align="center">
-                  <CircularProgress />
-                </TableCell>
-              </TableRow>
-            ) : vehicles.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} align="center">
-                  <Box sx={{ py: 4 }}>
-                    <TwoWheeler sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
-                    <Typography color="textSecondary">
-                      לא נמצאו כלים
+      {/* תוכן כלים - טבלה למסכים גדולים, כרטיסים למובייל */}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress />
+        </Box>
+      ) : vehicles.length === 0 ? (
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <TwoWheeler sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+          <Typography color="textSecondary">
+            לא נמצאו כלים
+          </Typography>
+        </Paper>
+      ) : isMobile ? (
+        // Mobile View - Cards
+        <Stack spacing={2}>
+          {vehicles.map((vehicle) => (
+            <Card key={vehicle.id} sx={{ dir: 'rtl' }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
+                  <Box>
+                    <Typography variant="h6" fontWeight="bold">
+                      {vehicle.licensePlate}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {vehicle.internalNumber ? `מס' פנימי: ${vehicle.internalNumber}` : ''}
                     </Typography>
                   </Box>
-                </TableCell>
+                  {getStatusChip(vehicle.status)}
+                </Box>
+
+                <Grid container spacing={1.5} sx={{ mb: 2 }}>
+                  <Grid item xs={6}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <CarIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                      <Typography variant="body2" color="text.secondary">
+                        {getTypeLabel(vehicle.type)}
+                      </Typography>
+                    </Box>
+                  </Grid>
+
+                  <Grid item xs={6}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <CalendarIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                      <Typography variant="body2" color="text.secondary">
+                        {vehicle.year}
+                      </Typography>
+                    </Box>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Typography variant="body2" fontWeight="500">
+                      {vehicle.manufacturer} {vehicle.model}
+                    </Typography>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <SpeedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                      <Typography variant="body2" color="text.secondary">
+                        {vehicle.currentKilometers?.toLocaleString('he-IL') || '0'} ק"מ
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </CardContent>
+
+              <Divider />
+
+              <CardActions sx={{ justifyContent: 'space-between', px: 2 }}>
+                <Button
+                  size="small"
+                  startIcon={<Visibility />}
+                  onClick={() => navigate(`/vehicles/${vehicle.id}`)}
+                >
+                  צפייה
+                </Button>
+                <Box>
+                  <IconButton
+                    size="small"
+                    color="secondary"
+                    onClick={() => handleOpenDialog(vehicle)}
+                  >
+                    <Edit />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    color="error"
+                    onClick={() => handleDeleteClick(vehicle)}
+                  >
+                    <Delete />
+                  </IconButton>
+                </Box>
+              </CardActions>
+            </Card>
+          ))}
+        </Stack>
+      ) : (
+        // Desktop View - Table
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>מס' רישוי</TableCell>
+                <TableCell>מס' פנימי</TableCell>
+                <TableCell>סוג</TableCell>
+                <TableCell>יצרן</TableCell>
+                <TableCell>דגם</TableCell>
+                <TableCell>שנה</TableCell>
+                <TableCell>ק"מ נוכחי</TableCell>
+                <TableCell>סטטוס</TableCell>
+                <TableCell align="center">פעולות</TableCell>
               </TableRow>
-            ) : (
-              vehicles.map((vehicle) => (
+            </TableHead>
+            <TableBody>
+              {vehicles.map((vehicle) => (
                 <TableRow key={vehicle.id} hover>
                   <TableCell>
                     <Typography variant="body1" fontWeight="500">
@@ -263,11 +365,11 @@ export default function Vehicles() {
                     </IconButton>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {/* סטטיסטיקה */}
       {!loading && vehicles.length > 0 && (

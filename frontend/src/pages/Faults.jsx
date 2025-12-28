@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -36,41 +35,38 @@ import {
   Add,
   Edit,
   Delete,
-  Visibility,
-  Person,
-  Phone as PhoneIcon,
-  Badge as BadgeIcon,
-  LocationOn as LocationIcon,
+  Warning as WarningIcon,
+  Build as BuildIcon,
+  CheckCircle as CheckIcon,
 } from '@mui/icons-material';
-import { ridersAPI } from '../services/api';
-import RiderDialog from '../components/RiderDialog';
+import { faultsAPI } from '../services/api';
+import FaultDialog from '../components/FaultDialog';
 
-export default function Riders() {
-  const navigate = useNavigate();
+export default function Faults() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const [riders, setRiders] = useState([]);
+  const [faults, setFaults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingRider, setEditingRider] = useState(null);
+  const [editingFault, setEditingFault] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [riderToDelete, setRiderToDelete] = useState(null);
+  const [faultToDelete, setFaultToDelete] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
-    loadRiders();
+    loadFaults();
   }, []);
 
-  const loadRiders = async () => {
+  const loadFaults = async () => {
     try {
       setLoading(true);
-      const response = await ridersAPI.getAll({ search: searchTerm });
-      setRiders(response.data.riders || []);
+      const response = await faultsAPI.getAll({ search: searchTerm });
+      setFaults(response.data.faults || []);
       setError('');
     } catch (err) {
-      setError('שגיאה בטעינת רוכבים');
+      setError('שגיאה בטעינת תקלות');
       console.error(err);
     } finally {
       setLoading(false);
@@ -78,53 +74,53 @@ export default function Riders() {
   };
 
   const handleSearch = () => {
-    loadRiders();
+    loadFaults();
   };
 
-  const handleOpenDialog = (rider = null) => {
-    setEditingRider(rider);
+  const handleOpenDialog = (fault = null) => {
+    setEditingFault(fault);
     setDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
     setDialogOpen(false);
-    setEditingRider(null);
+    setEditingFault(null);
   };
 
-  const handleSaveRider = async (riderData) => {
+  const handleSaveFault = async (faultData) => {
     try {
-      if (editingRider) {
-        await ridersAPI.update(editingRider.id, riderData);
-        showSnackbar('הרוכב עודכן בהצלחה', 'success');
+      if (editingFault) {
+        await faultsAPI.update(editingFault.id, faultData);
+        showSnackbar('התקלה עודכנה בהצלחה', 'success');
       } else {
-        await ridersAPI.create(riderData);
-        showSnackbar('הרוכב נוסף בהצלחה', 'success');
+        await faultsAPI.create(faultData);
+        showSnackbar('התקלה נוספה בהצלחה', 'success');
       }
       handleCloseDialog();
-      loadRiders();
+      loadFaults();
     } catch (err) {
-      console.error('Error saving rider:', err);
-      showSnackbar('שגיאה בשמירת הרוכב', 'error');
+      console.error('Error saving fault:', err);
+      showSnackbar(err.response?.data?.message || 'שגיאה בשמירת התקלה', 'error');
     }
   };
 
-  const handleDeleteClick = (rider) => {
-    setRiderToDelete(rider);
+  const handleDeleteClick = (fault) => {
+    setFaultToDelete(fault);
     setDeleteDialogOpen(true);
   };
 
   const handleDeleteConfirm = async () => {
-    if (!riderToDelete) return;
+    if (!faultToDelete) return;
 
     try {
-      await ridersAPI.delete(riderToDelete.id);
-      showSnackbar('הרוכב נמחק בהצלחה', 'success');
+      await faultsAPI.delete(faultToDelete.id);
+      showSnackbar('התקלה נמחקה בהצלחה', 'success');
       setDeleteDialogOpen(false);
-      setRiderToDelete(null);
-      loadRiders();
+      setFaultToDelete(null);
+      loadFaults();
     } catch (err) {
-      console.error('Error deleting rider:', err);
-      showSnackbar('שגיאה במחיקת הרוכב', 'error');
+      console.error('Error deleting fault:', err);
+      showSnackbar('שגיאה במחיקת התקלה', 'error');
     }
   };
 
@@ -134,23 +130,25 @@ export default function Riders() {
 
   const getStatusChip = (status) => {
     const statusMap = {
-      active: { label: 'פעיל', color: 'success' },
-      inactive: { label: 'לא פעיל', color: 'default' },
-      frozen: { label: 'מוקפא', color: 'warning' },
+      open: { label: 'פתוחה', color: 'error', icon: <WarningIcon sx={{ fontSize: 16 }} /> },
+      in_progress: { label: 'בטיפול', color: 'warning', icon: <BuildIcon sx={{ fontSize: 16 }} /> },
+      resolved: { label: 'נפתרה', color: 'success', icon: <CheckIcon sx={{ fontSize: 16 }} /> },
     };
 
-    const { label, color } = statusMap[status] || { label: status, color: 'default' };
-    return <Chip label={label} color={color} size="small" />;
+    const { label, color, icon } = statusMap[status] || { label: status, color: 'default', icon: null };
+    return <Chip label={label} color={color} size="small" icon={icon} />;
   };
 
-  const getAssignmentChip = (status) => {
-    const statusMap = {
-      assigned: { label: 'משויך', color: 'primary' },
-      unassigned: { label: 'לא משויך', color: 'default' },
+  const getSeverityChip = (severity) => {
+    const severityMap = {
+      critical: { label: 'קריטית', color: 'error' },
+      high: { label: 'גבוהה', color: 'warning' },
+      medium: { label: 'בינונית', color: 'info' },
+      low: { label: 'נמוכה', color: 'default' },
     };
 
-    const { label, color } = statusMap[status] || { label: status, color: 'default' };
-    return <Chip label={label} color={color} size="small" />;
+    const { label, color } = severityMap[severity] || { label: severity, color: 'default' };
+    return <Chip label={label} color={color} size="small" variant="outlined" />;
   };
 
   return (
@@ -164,7 +162,7 @@ export default function Riders() {
         gap: 2
       }}>
         <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold">
-          ניהול רוכבים
+          ניהול תקלות
         </Typography>
         <Button
           variant="contained"
@@ -173,7 +171,7 @@ export default function Riders() {
           onClick={() => handleOpenDialog()}
           fullWidth={isMobile}
         >
-          רוכב חדש
+          תקלה חדשה
         </Button>
       </Box>
 
@@ -188,7 +186,7 @@ export default function Riders() {
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
           <TextField
             fullWidth
-            placeholder="חפש לפי שם, ת''ז או טלפון..."
+            placeholder="חפש לפי כלי, רוכב או תיאור..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -213,86 +211,74 @@ export default function Riders() {
         </Box>
       </Paper>
 
-      {/* תוכן רוכבים - טבלה למסכים גדולים, כרטיסים למובייל */}
+      {/* תוכן תקלות - טבלה למסכים גדולים, כרטיסים למובייל */}
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
           <CircularProgress />
         </Box>
-      ) : riders.length === 0 ? (
+      ) : faults.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Person sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+          <WarningIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
           <Typography color="textSecondary">
-            לא נמצאו רוכבים
+            לא נמצאו תקלות
           </Typography>
         </Paper>
       ) : isMobile ? (
         // Mobile View - Cards
         <Stack spacing={2}>
-          {riders.map((rider) => (
-            <Card key={rider.id} sx={{ dir: 'rtl' }}>
+          {faults.map((fault) => (
+            <Card key={fault.id} sx={{ dir: 'rtl' }}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
                   <Typography variant="h6" fontWeight="bold">
-                    {rider.firstName} {rider.lastName}
+                    {fault.vehicle?.licensePlate || 'כלי לא ידוע'}
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 0.5, flexDirection: 'column' }}>
-                    {getStatusChip(rider.riderStatus)}
-                    {getAssignmentChip(rider.assignmentStatus)}
+                    {getStatusChip(fault.status)}
+                    {getSeverityChip(fault.severity)}
                   </Box>
                 </Box>
 
                 <Stack spacing={1.5} sx={{ mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <BadgeIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                  <Typography variant="body2" fontWeight="500">
+                    {fault.description}
+                  </Typography>
+
+                  {fault.rider && (
                     <Typography variant="body2" color="text.secondary">
-                      ת"ז: {rider.idNumber}
+                      רוכב: {fault.rider.firstName} {fault.rider.lastName}
                     </Typography>
-                  </Box>
+                  )}
 
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <PhoneIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                    <Typography variant="body2" color="text.secondary" dir="ltr" sx={{ textAlign: 'right', width: '100%' }}>
-                      {rider.phone}
+                  <Typography variant="caption" color="text.secondary">
+                    דווח: {fault.reportedDate ? new Date(fault.reportedDate).toLocaleDateString('he-IL') : '-'}
+                  </Typography>
+
+                  {fault.resolvedDate && (
+                    <Typography variant="caption" color="success.main">
+                      נפתר: {new Date(fault.resolvedDate).toLocaleDateString('he-IL')}
                     </Typography>
-                  </Box>
-
-                  {rider.region?.district && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <LocationIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                      <Typography variant="body2" color="text.secondary">
-                        מחוז: {rider.region.district}
-                      </Typography>
-                    </Box>
                   )}
                 </Stack>
               </CardContent>
 
               <Divider />
 
-              <CardActions sx={{ justifyContent: 'space-between', px: 2 }}>
-                <Button
+              <CardActions sx={{ justifyContent: 'flex-end', px: 2 }}>
+                <IconButton
                   size="small"
-                  startIcon={<Visibility />}
-                  onClick={() => navigate(`/riders/${rider.id}`)}
+                  color="secondary"
+                  onClick={() => handleOpenDialog(fault)}
                 >
-                  צפייה
-                </Button>
-                <Box>
-                  <IconButton
-                    size="small"
-                    color="secondary"
-                    onClick={() => handleOpenDialog(rider)}
-                  >
-                    <Edit />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    color="error"
-                    onClick={() => handleDeleteClick(rider)}
-                  >
-                    <Delete />
-                  </IconButton>
-                </Box>
+                  <Edit />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  color="error"
+                  onClick={() => handleDeleteClick(fault)}
+                >
+                  <Delete />
+                </IconButton>
               </CardActions>
             </Card>
           ))}
@@ -303,49 +289,48 @@ export default function Riders() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>שם מלא</TableCell>
-                <TableCell>ת"ז</TableCell>
-                <TableCell>טלפון</TableCell>
-                <TableCell>מחוז</TableCell>
-                <TableCell>סטטוס רוכב</TableCell>
-                <TableCell>סטטוס שיוך</TableCell>
+                <TableCell>כלי</TableCell>
+                <TableCell>רוכב</TableCell>
+                <TableCell>תיאור</TableCell>
+                <TableCell>חומרה</TableCell>
+                <TableCell>סטטוס</TableCell>
+                <TableCell>תאריך דיווח</TableCell>
+                <TableCell>תאריך פתרון</TableCell>
                 <TableCell align="center">פעולות</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {riders.map((rider) => (
-                <TableRow key={rider.id} hover>
+              {faults.map((fault) => (
+                <TableRow key={fault.id} hover>
                   <TableCell>
                     <Typography variant="body1" fontWeight="500">
-                      {rider.firstName} {rider.lastName}
+                      {fault.vehicle?.licensePlate || '-'}
                     </Typography>
                   </TableCell>
-                  <TableCell>{rider.idNumber}</TableCell>
-                  <TableCell dir="ltr" sx={{ textAlign: 'right' }}>
-                    {rider.phone}
+                  <TableCell>
+                    {fault.rider ? `${fault.rider.firstName} ${fault.rider.lastName}` : '-'}
                   </TableCell>
-                  <TableCell>{rider.region?.district || '-'}</TableCell>
-                  <TableCell>{getStatusChip(rider.riderStatus)}</TableCell>
-                  <TableCell>{getAssignmentChip(rider.assignmentStatus)}</TableCell>
+                  <TableCell>{fault.description}</TableCell>
+                  <TableCell>{getSeverityChip(fault.severity)}</TableCell>
+                  <TableCell>{getStatusChip(fault.status)}</TableCell>
+                  <TableCell>
+                    {fault.reportedDate ? new Date(fault.reportedDate).toLocaleDateString('he-IL') : '-'}
+                  </TableCell>
+                  <TableCell>
+                    {fault.resolvedDate ? new Date(fault.resolvedDate).toLocaleDateString('he-IL') : '-'}
+                  </TableCell>
                   <TableCell align="center">
-                    <IconButton
-                      color="primary"
-                      size="small"
-                      onClick={() => navigate(`/riders/${rider.id}`)}
-                    >
-                      <Visibility />
-                    </IconButton>
                     <IconButton
                       color="secondary"
                       size="small"
-                      onClick={() => handleOpenDialog(rider)}
+                      onClick={() => handleOpenDialog(fault)}
                     >
                       <Edit />
                     </IconButton>
                     <IconButton
                       color="error"
                       size="small"
-                      onClick={() => handleDeleteClick(rider)}
+                      onClick={() => handleDeleteClick(fault)}
                     >
                       <Delete />
                     </IconButton>
@@ -358,20 +343,20 @@ export default function Riders() {
       )}
 
       {/* סטטיסטיקה */}
-      {!loading && riders.length > 0 && (
+      {!loading && faults.length > 0 && (
         <Box sx={{ mt: 2, textAlign: 'center' }}>
           <Typography variant="body2" color="textSecondary">
-            נמצאו {riders.length} רוכבים
+            נמצאו {faults.length} תקלות
           </Typography>
         </Box>
       )}
 
-      {/* Rider Dialog */}
-      <RiderDialog
+      {/* Fault Dialog */}
+      <FaultDialog
         open={dialogOpen}
         onClose={handleCloseDialog}
-        onSave={handleSaveRider}
-        rider={editingRider}
+        onSave={handleSaveFault}
+        fault={editingFault}
       />
 
       {/* Delete Confirmation Dialog */}
@@ -383,8 +368,7 @@ export default function Riders() {
         <DialogTitle>אישור מחיקה</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            האם אתה בטוח שברצונך למחוק את הרוכב{' '}
-            <strong>{riderToDelete?.firstName} {riderToDelete?.lastName}</strong>?
+            האם אתה בטוח שברצונך למחוק תקלה זו?
             <br />
             פעולה זו אינה הפיכה.
           </DialogContentText>

@@ -10,6 +10,8 @@ import VehicleDetails from './pages/VehicleDetails';
 import Tasks from './pages/Tasks';
 import MonthlyChecks from './pages/MonthlyChecks';
 import Users from './pages/Users';
+import Faults from './pages/Faults';
+import FormBuilder from './pages/FormBuilder';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Theme עם תמיכה בעברית (RTL)
@@ -62,9 +64,9 @@ function AppRoutes() {
         <Route path="vehicles/:id" element={<VehicleDetails />} />
         <Route path="tasks" element={<Tasks />} />
         <Route path="monthly-checks" element={<MonthlyChecks />} />
-        <Route path="faults" element={<div>תקלות - בפיתוח</div>} />
+        <Route path="faults" element={<Faults />} />
         <Route path="reports" element={<div>דוחות - בפיתוח</div>} />
-        <Route path="form-builder" element={<div>יוצר טפסים - בפיתוח</div>} />
+        <Route path="form-builder" element={<FormBuilder />} />
         <Route path="users" element={<Users />} />
       </Route>
     </Routes>
