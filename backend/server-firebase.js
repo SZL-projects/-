@@ -12,7 +12,10 @@ try {
   console.log('✅ Firebase initialized');
 } catch (error) {
   console.error('❌ Firebase initialization failed:', error.message);
-  process.exit(1);
+  // Don't exit in production (Vercel) - let the app start anyway
+  if (process.env.NODE_ENV !== 'production') {
+    process.exit(1);
+  }
 }
 
 const app = express();
