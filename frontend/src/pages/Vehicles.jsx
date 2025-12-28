@@ -17,6 +17,12 @@ import {
   IconButton,
   CircularProgress,
   Alert,
+  Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import {
   Search,
@@ -27,6 +33,7 @@ import {
   TwoWheeler,
 } from '@mui/icons-material';
 import { vehiclesAPI } from '../services/api';
+import VehicleDialog from '../components/VehicleDialog';
 
 export default function Vehicles() {
   const navigate = useNavigate();
@@ -34,6 +41,11 @@ export default function Vehicles() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [vehicleToDelete, setVehicleToDelete] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
     loadVehicles();
@@ -44,6 +56,7 @@ export default function Vehicles() {
       setLoading(true);
       const response = await vehiclesAPI.getAll({ search: searchTerm });
       setVehicles(response.data.vehicles || []);
+      setError('');
     } catch (err) {
       setError('שגיאה בטעינת כלים');
       console.error(err);
@@ -54,6 +67,57 @@ export default function Vehicles() {
 
   const handleSearch = () => {
     loadVehicles();
+  };
+
+  const handleOpenDialog = (vehicle = null) => {
+    setEditingVehicle(vehicle);
+    setDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setEditingVehicle(null);
+  };
+
+  const handleSaveVehicle = async (vehicleData) => {
+    try {
+      if (editingVehicle) {
+        await vehiclesAPI.update(editingVehicle.id, vehicleData);
+        showSnackbar('הכלי עודכן בהצלחה', 'success');
+      } else {
+        await vehiclesAPI.create(vehicleData);
+        showSnackbar('הכלי נוסף בהצלחה', 'success');
+      }
+      handleCloseDialog();
+      loadVehicles();
+    } catch (err) {
+      console.error('Error saving vehicle:', err);
+      showSnackbar('שגיאה בשמירת הכלי', 'error');
+    }
+  };
+
+  const handleDeleteClick = (vehicle) => {
+    setVehicleToDelete(vehicle);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!vehicleToDelete) return;
+
+    try {
+      await vehiclesAPI.delete(vehicleToDelete.id);
+      showSnackbar('הכלי נמחק בהצלחה', 'success');
+      setDeleteDialogOpen(false);
+      setVehicleToDelete(null);
+      loadVehicles();
+    } catch (err) {
+      console.error('Error deleting vehicle:', err);
+      showSnackbar('שגיאה במחיקת הכלי', 'error');
+    }
+  };
+
+  const showSnackbar = (message, severity) => {
+    setSnackbar({ open: true, message, severity });
   };
 
   const getStatusChip = (status) => {
@@ -84,6 +148,7 @@ export default function Vehicles() {
           variant="contained"
           startIcon={<Add />}
           size="large"
+          onClick={() => handleOpenDialog()}
         >
           כלי חדש
         </Button>
@@ -182,10 +247,18 @@ export default function Vehicles() {
                     >
                       <Visibility />
                     </IconButton>
-                    <IconButton color="secondary" size="small">
+                    <IconButton
+                      color="secondary"
+                      size="small"
+                      onClick={() => handleOpenDialog(vehicle)}
+                    >
                       <Edit />
                     </IconButton>
-                    <IconButton color="error" size="small">
+                    <IconButton
+                      color="error"
+                      size="small"
+                      onClick={() => handleDeleteClick(vehicle)}
+                    >
                       <Delete />
                     </IconButton>
                   </TableCell>
@@ -204,6 +277,52 @@ export default function Vehicles() {
           </Typography>
         </Box>
       )}
+
+      {/* Vehicle Dialog */}
+      <VehicleDialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        onSave={handleSaveVehicle}
+        vehicle={editingVehicle}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        dir="rtl"
+      >
+        <DialogTitle>אישור מחיקה</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            האם אתה בטוח שברצונך למחוק את הכלי{' '}
+            <strong>{vehicleToDelete?.licensePlate}</strong>?
+            <br />
+            פעולה זו אינה הפיכה.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>ביטול</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
+            מחק
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
