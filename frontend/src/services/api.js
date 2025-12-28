@@ -41,6 +41,10 @@ export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
   getMe: () => api.get('/auth/me'),
+  getAllUsers: (params) => api.get('/auth/users', { params }),
+  createUser: (userData) => api.post('/auth/users', userData),
+  updateUser: (id, userData) => api.put(`/auth/users/${id}`, userData),
+  deleteUser: (id) => api.delete(`/auth/users/${id}`),
 };
 
 // Riders API
