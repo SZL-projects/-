@@ -85,19 +85,14 @@ export default function Layout() {
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Toolbar sx={{
+        display: 'flex',
         justifyContent: 'space-between',
+        alignItems: 'center',
         py: 2,
         px: drawerOpen ? 2 : 1,
         minHeight: 64
       }}>
-        <IconButton
-          onClick={() => setDrawerOpen(!drawerOpen)}
-          size="small"
-          sx={{ display: { xs: 'none', sm: 'flex' }, flexShrink: 0 }}
-        >
-          {drawerOpen ? <ChevronRight /> : <ChevronLeft />}
-        </IconButton>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflow: 'hidden' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflow: 'hidden', flex: 1 }}>
           <TwoWheeler sx={{ fontSize: 40, color: 'primary.main', flexShrink: 0 }} />
           {drawerOpen && (
             <Box sx={{ minWidth: 0 }}>
@@ -110,6 +105,17 @@ export default function Layout() {
             </Box>
           )}
         </Box>
+        <IconButton
+          onClick={() => setDrawerOpen(!drawerOpen)}
+          size="small"
+          sx={{
+            display: { xs: 'none', sm: 'inline-flex' },
+            flexShrink: 0,
+            ml: 'auto'
+          }}
+        >
+          {drawerOpen ? <ChevronRight /> : <ChevronLeft />}
+        </IconButton>
       </Toolbar>
       <Divider />
       <List sx={{ flexGrow: 1 }}>
