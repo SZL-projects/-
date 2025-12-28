@@ -73,4 +73,31 @@ export const vehiclesAPI = {
   deleteFile: (fileId) => api.delete(`/vehicles/delete-file?fileId=${fileId}`),
 };
 
+// Tasks API
+export const tasksAPI = {
+  getAll: (params) => api.get('/tasks', { params }),
+  getById: (id) => api.get(`/tasks/${id}`),
+  create: (data) => api.post('/tasks', data),
+  update: (id, data) => api.put(`/tasks/${id}`, data),
+  delete: (id) => api.delete(`/tasks/${id}`),
+};
+
+// Monthly Checks API
+export const monthlyChecksAPI = {
+  getAll: (params) => api.get('/monthly-checks', { params }),
+  getById: (id) => api.get(`/monthly-checks/${id}`),
+  create: (data) => api.post('/monthly-checks', data),
+  update: (id, data) => api.put(`/monthly-checks/${id}`, data),
+  delete: (id) => api.delete(`/monthly-checks/${id}`),
+};
+
+// Faults API
+export const faultsAPI = {
+  getAll: (params) => api.get('/faults', { params }),
+  getById: (id) => api.get(`/faults/${id}`),
+  create: (data) => api.post('/faults', data),
+  update: (id, data) => api.put(`/faults/${id}`, data),
+  delete: (id) => api.delete(`/faults/${id}`),
+};
+
 export default api;
