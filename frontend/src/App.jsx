@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Riders from './pages/Riders';
 import Vehicles from './pages/Vehicles';
+import VehicleDetails from './pages/VehicleDetails';
 
 // Theme עם תמיכה בעברית (RTL)
 const theme = createTheme({
@@ -54,6 +55,7 @@ function AppRoutes() {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="riders" element={<Riders />} />
         <Route path="vehicles" element={<Vehicles />} />
+        <Route path="vehicles/:id" element={<VehicleDetails />} />
         <Route path="tasks" element={<div>משימות - בקרוב</div>} />
         <Route path="monthly-checks" element={<div>בקרה חודשית - בקרוב</div>} />
         <Route path="faults" element={<div>תקלות - בקרוב</div>} />

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -28,6 +29,7 @@ import {
 import { vehiclesAPI } from '../services/api';
 
 export default function Vehicles() {
+  const navigate = useNavigate();
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -173,7 +175,11 @@ export default function Vehicles() {
                   </TableCell>
                   <TableCell>{getStatusChip(vehicle.status)}</TableCell>
                   <TableCell align="center">
-                    <IconButton color="primary" size="small">
+                    <IconButton
+                      color="primary"
+                      size="small"
+                      onClick={() => navigate(`/vehicles/${vehicle.id}`)}
+                    >
                       <Visibility />
                     </IconButton>
                     <IconButton color="secondary" size="small">

@@ -60,6 +60,17 @@ export const vehiclesAPI = {
   update: (id, data) => api.put(`/vehicles/${id}`, data),
   delete: (id) => api.delete(`/vehicles/${id}`),
   updateKilometers: (id, data) => api.patch(`/vehicles/${id}/kilometers`, data),
+  createFolder: (vehicleNumber) => api.post('/vehicles/create-folder', { vehicleNumber }),
+  uploadFile: (formData, folderId) => {
+    return axios.post(`${API_URL}/vehicles/upload-file`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+    });
+  },
+  listFiles: (folderId) => api.get(`/vehicles/list-files?folderId=${folderId}`),
+  deleteFile: (fileId) => api.delete(`/vehicles/delete-file?fileId=${fileId}`),
 };
 
 export default api;
