@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/*.js": {
+    "api/**/*.js": {
       "maxDuration": 10
     }
   },
@@ -9,8 +9,8 @@
   "installCommand": "npm install --prefix backend && npm install --prefix frontend && npm install --prefix api",
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/index"
+      "source": "/api/auth/login",
+      "destination": "/api/auth/login"
     },
     {
       "source": "/(.*)",

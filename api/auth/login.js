@@ -1,8 +1,37 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { db } = require('../../backend/config/firebase');
+const admin = require('firebase-admin');
+
+// Initialize Firebase Admin if not already initialized
+if (!admin.apps.length) {
+  try {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+    } else {
+      admin.initializeApp({
+        credential: admin.credential.applicationDefault()
+      });
+    }
+  } catch (error) {
+    console.error('Firebase initialization error:', error);
+  }
+}
+
+const db = admin.firestore();
 
 module.exports = async (req, res) => {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
@@ -31,7 +60,7 @@ module.exports = async (req, res) => {
       }
     }
 
-    const userDoc = snapshot.empty ? snapshot.docs[0] : snapshot.docs[0];
+    const userDoc = snapshot.empty ? emailSnapshot.docs[0] : snapshot.docs[0];
     const user = { id: userDoc.id, ...userDoc.data() };
 
     // בדיקת חסימה
