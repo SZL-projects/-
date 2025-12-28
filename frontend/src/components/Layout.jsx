@@ -28,6 +28,8 @@ import {
   Assessment,
   Logout,
   AccountCircle,
+  ChevronRight,
+  ChevronLeft,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -75,37 +77,45 @@ export default function Layout() {
   };
 
   const drawer = (
-    <Box>
-      <Toolbar sx={{ justifyContent: 'center', py: 2 }}>
-        <Box sx={{ textAlign: 'center' }}>
-          <TwoWheeler sx={{ fontSize: 50, color: 'primary.main' }} />
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Toolbar sx={{ justifyContent: 'space-between', py: 2, px: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <TwoWheeler sx={{ fontSize: 40, color: 'primary.main' }} />
           {drawerOpen && (
-            <>
-              <Typography variant="h6" sx={{ fontWeight: 'bold', mt: 1 }}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>
                 CRM אופנועים
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                גרסה 3.13.0
+                גרסה 3.14.0
               </Typography>
-            </>
+            </Box>
           )}
         </Box>
+        <IconButton
+          onClick={() => setDrawerOpen(!drawerOpen)}
+          size="small"
+          sx={{ display: { xs: 'none', sm: 'flex' } }}
+        >
+          {drawerOpen ? <ChevronRight /> : <ChevronLeft />}
+        </IconButton>
       </Toolbar>
       <Divider />
-      <List>
+      <List sx={{ flexGrow: 1 }}>
         {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
+          <ListItem key={item.text} disablePadding sx={{ display: 'block' }}>
             <ListItemButton
               selected={location.pathname === item.path}
               onClick={() => handleMenuClick(item.path)}
               sx={{
+                minHeight: 48,
                 justifyContent: drawerOpen ? 'initial' : 'center',
                 px: 2.5,
               }}
             >
               <ListItemIcon
                 sx={{
-                  minWidth: 40,
+                  minWidth: 0,
                   mr: drawerOpen ? 2 : 'auto',
                   justifyContent: 'center'
                 }}
@@ -116,29 +126,6 @@ export default function Layout() {
             </ListItemButton>
           </ListItem>
         ))}
-      </List>
-      <Divider />
-      <List>
-        <ListItem disablePadding>
-          <ListItemButton
-            onClick={() => setDrawerOpen(!drawerOpen)}
-            sx={{
-              justifyContent: drawerOpen ? 'initial' : 'center',
-              px: 2.5,
-            }}
-          >
-            <ListItemIcon
-              sx={{
-                minWidth: 40,
-                mr: drawerOpen ? 2 : 'auto',
-                justifyContent: 'center'
-              }}
-            >
-              <MenuIcon />
-            </ListItemIcon>
-            {drawerOpen && <ListItemText primary="סגור תפריט" />}
-          </ListItemButton>
-        </ListItem>
       </List>
     </Box>
   );
