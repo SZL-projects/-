@@ -32,6 +32,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 
 const drawerWidth = 260;
+const drawerWidthClosed = 65;
 
 const menuItems = [
   { text: 'דשבורד', icon: <Dashboard />, path: '/dashboard' },
@@ -48,6 +49,7 @@ export default function Layout() {
   const location = useLocation();
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState(null);
 
   const handleDrawerToggle = () => {
@@ -77,12 +79,16 @@ export default function Layout() {
       <Toolbar sx={{ justifyContent: 'center', py: 2 }}>
         <Box sx={{ textAlign: 'center' }}>
           <TwoWheeler sx={{ fontSize: 50, color: 'primary.main' }} />
-          <Typography variant="h6" sx={{ fontWeight: 'bold', mt: 1 }}>
-            CRM אופנועים
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            גרסה 3.13.0
-          </Typography>
+          {drawerOpen && (
+            <>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', mt: 1 }}>
+                CRM אופנועים
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                גרסה 3.13.0
+              </Typography>
+            </>
+          )}
         </Box>
       </Toolbar>
       <Divider />
@@ -92,14 +98,47 @@ export default function Layout() {
             <ListItemButton
               selected={location.pathname === item.path}
               onClick={() => handleMenuClick(item.path)}
+              sx={{
+                justifyContent: drawerOpen ? 'initial' : 'center',
+                px: 2.5,
+              }}
             >
-              <ListItemIcon sx={{ minWidth: 40 }}>
+              <ListItemIcon
+                sx={{
+                  minWidth: 40,
+                  mr: drawerOpen ? 2 : 'auto',
+                  justifyContent: 'center'
+                }}
+              >
                 {item.icon}
               </ListItemIcon>
-              <ListItemText primary={item.text} />
+              {drawerOpen && <ListItemText primary={item.text} />}
             </ListItemButton>
           </ListItem>
         ))}
+      </List>
+      <Divider />
+      <List>
+        <ListItem disablePadding>
+          <ListItemButton
+            onClick={() => setDrawerOpen(!drawerOpen)}
+            sx={{
+              justifyContent: drawerOpen ? 'initial' : 'center',
+              px: 2.5,
+            }}
+          >
+            <ListItemIcon
+              sx={{
+                minWidth: 40,
+                mr: drawerOpen ? 2 : 'auto',
+                justifyContent: 'center'
+              }}
+            >
+              <MenuIcon />
+            </ListItemIcon>
+            {drawerOpen && <ListItemText primary="סגור תפריט" />}
+          </ListItemButton>
+        </ListItem>
       </List>
     </Box>
   );
@@ -110,8 +149,9 @@ export default function Layout() {
       <AppBar
         position="fixed"
         sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
+          width: { sm: `calc(100% - ${drawerOpen ? drawerWidth : drawerWidthClosed}px)` },
+          ml: { sm: `${drawerOpen ? drawerWidth : drawerWidthClosed}px` },
+          transition: 'width 0.3s, margin 0.3s',
         }}
       >
         <Toolbar>
@@ -166,7 +206,11 @@ export default function Layout() {
       {/* Drawer */}
       <Box
         component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+        sx={{
+          width: { sm: drawerOpen ? drawerWidth : drawerWidthClosed },
+          flexShrink: { sm: 0 },
+          transition: 'width 0.3s',
+        }}
       >
         {/* Mobile drawer */}
         <Drawer
@@ -189,7 +233,12 @@ export default function Layout() {
           variant="permanent"
           sx={{
             display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
+              width: drawerOpen ? drawerWidth : drawerWidthClosed,
+              transition: 'width 0.3s',
+              overflowX: 'hidden',
+            },
           }}
           open
         >
@@ -203,7 +252,8 @@ export default function Layout() {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          width: { sm: `calc(100% - ${drawerOpen ? drawerWidth : drawerWidthClosed}px)` },
+          transition: 'width 0.3s',
         }}
       >
         <Toolbar />
