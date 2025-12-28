@@ -88,6 +88,7 @@ router.get('/:id', async (req, res) => {
 // @access  Private (מנהלים בלבד)
 router.post('/', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
   try {
+    console.log('Creating rider with data:', req.body);
     const rider = await RiderModel.create(req.body, req.user.id);
 
     res.status(201).json({
@@ -95,6 +96,7 @@ router.post('/', authorize('super_admin', 'manager', 'secretary'), async (req, r
       rider
     });
   } catch (error) {
+    console.error('Error creating rider:', error.message);
     res.status(500).json({
       success: false,
       message: error.message

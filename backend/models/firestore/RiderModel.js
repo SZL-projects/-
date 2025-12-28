@@ -196,19 +196,10 @@ class RiderModel {
     }
   }
 
-  // ולידציה של ת"ז
+  // ולידציה של ת"ז (פשוטה - רק 9 ספרות)
   validateIdNumber(idNumber) {
-    if (!/^\d{9}$/.test(idNumber)) {
-      return false;
-    }
-
-    let sum = 0;
-    for (let i = 0; i < 9; i++) {
-      let num = Number(idNumber[i]) * ((i % 2) + 1);
-      sum += num > 9 ? num - 9 : num;
-    }
-
-    return sum % 10 === 0;
+    // בודק רק שיש 9 ספרות
+    return /^\d{9}$/.test(idNumber);
   }
 
   // עדכון סטטוס שיוך

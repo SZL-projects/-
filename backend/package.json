@@ -1,6 +1,6 @@
 {
   "name": "motorcycle-crm-backend",
-  "version": "3.21.0",
+  "version": "3.22.0",
   "description": "Backend for Motorcycle CRM System",
   "main": "server-firebase.js",
   "scripts": {

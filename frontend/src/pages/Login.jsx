@@ -183,7 +183,7 @@ export default function Login() {
             align="center"
             sx={{ mt: 3 }}
           >
-            גרסה 3.21.0 - Firebase
+            גרסה 3.22.0 - Firebase
           </Typography>
         </Paper>
       </Container>
