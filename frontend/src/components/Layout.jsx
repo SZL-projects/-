@@ -18,6 +18,9 @@ import {
   MenuItem,
   TextField,
   InputAdornment,
+  Dialog,
+  DialogTitle,
+  DialogContent,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -55,6 +58,7 @@ export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -159,10 +163,41 @@ export default function Layout() {
           }}
           sx={{
             display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
+              width: drawerWidth,
+            },
           }}
         >
-          {drawer}
+          <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Toolbar sx={{ justifyContent: 'space-between', py: 2, px: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <TwoWheeler sx={{ fontSize: 40, color: 'primary.main' }} />
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>
+                    CRM אופנועים
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    גרסה 3.17.0
+                  </Typography>
+                </Box>
+              </Box>
+            </Toolbar>
+            <Divider />
+            <List sx={{ flexGrow: 1 }}>
+              {menuItems.map((item) => (
+                <ListItem key={item.text} disablePadding>
+                  <ListItemButton
+                    selected={location.pathname === item.path}
+                    onClick={() => handleMenuClick(item.path)}
+                  >
+                    <ListItemIcon>{item.icon}</ListItemIcon>
+                    <ListItemText primary={item.text} />
+                  </ListItemButton>
+                </ListItem>
+              ))}
+            </List>
+          </Box>
         </Drawer>
 
         {/* Desktop drawer */}
@@ -218,7 +253,7 @@ export default function Layout() {
               מערכת CRM - יחידת האופנועים
             </Typography>
 
-            {/* Global Search */}
+            {/* Global Search - Desktop */}
             <Box sx={{ flexGrow: 1, maxWidth: 400, display: { xs: 'none', sm: 'block' } }}>
               <TextField
                 size="small"
@@ -253,8 +288,18 @@ export default function Layout() {
               />
             </Box>
 
+            {/* Search Icon - Mobile */}
+            <Box sx={{ flexGrow: 1, display: { xs: 'block', sm: 'none' } }} />
+            <IconButton
+              color="inherit"
+              onClick={() => setSearchOpen(true)}
+              sx={{ display: { xs: 'flex', sm: 'none' }, mr: 1 }}
+            >
+              <Search />
+            </IconButton>
+
             {/* User Menu */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' } }}>
                 {user?.firstName} {user?.lastName}
               </Typography>
@@ -291,6 +336,33 @@ export default function Layout() {
         <Toolbar />
         <Outlet />
       </Box>
+
+      {/* Mobile Search Dialog */}
+      <Dialog
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        dir="rtl"
+      >
+        <DialogTitle>חיפוש</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            placeholder="חפש רוכבים, כלים, משימות..."
+            variant="outlined"
+            sx={{ mt: 1 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search />
+                </InputAdornment>
+              ),
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }
