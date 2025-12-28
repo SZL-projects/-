@@ -131,65 +131,7 @@ export default function Layout() {
   );
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      {/* AppBar */}
-      <AppBar
-        position="fixed"
-        sx={{
-          width: { sm: `calc(100% - ${drawerOpen ? drawerWidth : drawerWidthClosed}px)` },
-          ml: { sm: `${drawerOpen ? drawerWidth : drawerWidthClosed}px` },
-          transition: 'width 0.3s, margin 0.3s',
-        }}
-      >
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: 'none' } }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            מערכת CRM - יחידת האופנועים
-          </Typography>
-
-          {/* User Menu */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="body2">
-              {user?.firstName} {user?.lastName}
-            </Typography>
-            <IconButton
-              size="large"
-              onClick={handleProfileMenuOpen}
-              color="inherit"
-            >
-              <AccountCircle />
-            </IconButton>
-          </Box>
-
-          <Menu
-            anchorEl={anchorEl}
-            open={Boolean(anchorEl)}
-            onClose={handleProfileMenuClose}
-            dir="rtl"
-          >
-            <MenuItem disabled>
-              <Typography variant="body2">
-                {user?.role === 'super_admin' ? 'מנהל על' : user?.role}
-              </Typography>
-            </MenuItem>
-            <Divider />
-            <MenuItem onClick={handleLogout}>
-              <ListItemIcon>
-                <Logout fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>התנתק</ListItemText>
-            </MenuItem>
-          </Menu>
-        </Toolbar>
-      </AppBar>
-
+    <Box sx={{ display: 'flex', direction: 'rtl' }}>
       {/* Drawer */}
       <Box
         component="nav"
@@ -204,6 +146,7 @@ export default function Layout() {
           variant="temporary"
           open={mobileOpen}
           onClose={handleDrawerToggle}
+          anchor="right"
           ModalProps={{
             keepMounted: true,
           }}
@@ -218,6 +161,7 @@ export default function Layout() {
         {/* Desktop drawer */}
         <Drawer
           variant="permanent"
+          anchor="right"
           sx={{
             display: { xs: 'none', sm: 'block' },
             '& .MuiDrawer-paper': {
@@ -240,9 +184,68 @@ export default function Layout() {
           flexGrow: 1,
           p: 3,
           width: { sm: `calc(100% - ${drawerOpen ? drawerWidth : drawerWidthClosed}px)` },
-          transition: 'width 0.3s',
+          transition: 'width 0.3s, margin 0.3s',
+          marginRight: { sm: 0 },
         }}
       >
+        {/* AppBar */}
+        <AppBar
+          position="fixed"
+          sx={{
+            width: { sm: `calc(100% - ${drawerOpen ? drawerWidth : drawerWidthClosed}px)` },
+            right: { sm: `${drawerOpen ? drawerWidth : drawerWidthClosed}px` },
+            left: 'auto',
+            transition: 'width 0.3s, right 0.3s',
+          }}
+        >
+          <Toolbar>
+            <IconButton
+              color="inherit"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ ml: 2, display: { sm: 'none' } }}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+              מערכת CRM - יחידת האופנועים
+            </Typography>
+
+            {/* User Menu */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2">
+                {user?.firstName} {user?.lastName}
+              </Typography>
+              <IconButton
+                size="large"
+                onClick={handleProfileMenuOpen}
+                color="inherit"
+              >
+                <AccountCircle />
+              </IconButton>
+            </Box>
+
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleProfileMenuClose}
+              dir="rtl"
+            >
+              <MenuItem disabled>
+                <Typography variant="body2">
+                  {user?.role === 'super_admin' ? 'מנהל על' : user?.role}
+                </Typography>
+              </MenuItem>
+              <Divider />
+              <MenuItem onClick={handleLogout}>
+                <ListItemIcon>
+                  <Logout fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>התנתק</ListItemText>
+              </MenuItem>
+            </Menu>
+          </Toolbar>
+        </AppBar>
         <Toolbar />
         <Outlet />
       </Box>
