@@ -1,16 +1,10 @@
 {
-  "functions": {
-    "api/**/*.js": {
-      "maxDuration": 10
-    }
-  },
   "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/dist",
-  "installCommand": "npm install --prefix backend && npm install --prefix frontend && npm install --prefix api",
   "rewrites": [
     {
-      "source": "/api/auth/login",
-      "destination": "/api/auth/login"
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
     },
     {
       "source": "/(.*)",
