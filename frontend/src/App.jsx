@@ -7,6 +7,9 @@ import Dashboard from './pages/Dashboard';
 import Riders from './pages/Riders';
 import Vehicles from './pages/Vehicles';
 import VehicleDetails from './pages/VehicleDetails';
+import Tasks from './pages/Tasks';
+import MonthlyChecks from './pages/MonthlyChecks';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Theme עם תמיכה בעברית (RTL)
 const theme = createTheme({
@@ -56,10 +59,10 @@ function AppRoutes() {
         <Route path="riders" element={<Riders />} />
         <Route path="vehicles" element={<Vehicles />} />
         <Route path="vehicles/:id" element={<VehicleDetails />} />
-        <Route path="tasks" element={<div>משימות - בקרוב</div>} />
-        <Route path="monthly-checks" element={<div>בקרה חודשית - בקרוב</div>} />
-        <Route path="faults" element={<div>תקלות - בקרוב</div>} />
-        <Route path="reports" element={<div>דוחות - בקרוב</div>} />
+        <Route path="tasks" element={<Tasks />} />
+        <Route path="monthly-checks" element={<MonthlyChecks />} />
+        <Route path="faults" element={<div>תקלות - בפיתוח</div>} />
+        <Route path="reports" element={<div>דוחות - בפיתוח</div>} />
       </Route>
     </Routes>
   );
@@ -67,14 +70,16 @@ function AppRoutes() {
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </BrowserRouter>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <BrowserRouter>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </BrowserRouter>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 
