@@ -23,6 +23,13 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  Card,
+  CardContent,
+  CardActions,
+  Stack,
+  Divider,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Search,
@@ -31,12 +38,16 @@ import {
   Delete,
   Visibility,
   Assignment as AssignmentIcon,
+  CalendarToday,
+  Flag,
 } from '@mui/icons-material';
 import { tasksAPI } from '../services/api';
 import TaskDialog from '../components/TaskDialog';
 
 export default function Tasks() {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -155,15 +166,23 @@ export default function Tasks() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" fontWeight="bold">
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', sm: 'center' },
+        mb: 3,
+        gap: 2
+      }}>
+        <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold">
           ניהול משימות
         </Typography>
         <Button
           variant="contained"
           startIcon={<Add />}
-          size="large"
+          size={isMobile ? 'medium' : 'large'}
           onClick={() => handleOpenDialog()}
+          fullWidth={isMobile}
         >
           משימה חדשה
         </Button>
@@ -177,7 +196,7 @@ export default function Tasks() {
 
       {/* חיפוש */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
           <TextField
             fullWidth
             placeholder="חפש לפי כותרת או תיאור..."
@@ -192,51 +211,122 @@ export default function Tasks() {
               ),
             }}
             dir="rtl"
+            size={isMobile ? 'small' : 'medium'}
           />
           <Button
             variant="contained"
             onClick={handleSearch}
-            sx={{ minWidth: 120 }}
+            sx={{ minWidth: { xs: '100%', sm: 120 } }}
+            fullWidth={isMobile}
           >
             חיפוש
           </Button>
         </Box>
       </Paper>
 
-      {/* טבלת משימות */}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>כותרת</TableCell>
-              <TableCell>רוכב</TableCell>
-              <TableCell>כלי</TableCell>
-              <TableCell>עדיפות</TableCell>
-              <TableCell>סטטוס</TableCell>
-              <TableCell>תאריך יעד</TableCell>
-              <TableCell align="center">פעולות</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  <CircularProgress />
-                </TableCell>
-              </TableRow>
-            ) : tasks.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  <Box sx={{ py: 4 }}>
-                    <AssignmentIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
-                    <Typography color="textSecondary">
-                      לא נמצאו משימות
+      {/* תוכן משימות - טבלה למסכים גדולים, כרטיסים למובייל */}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress />
+        </Box>
+      ) : tasks.length === 0 ? (
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <AssignmentIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+          <Typography color="textSecondary">
+            לא נמצאו משימות
+          </Typography>
+        </Paper>
+      ) : isMobile ? (
+        // Mobile View - Cards
+        <Stack spacing={2}>
+          {tasks.map((task) => (
+            <Card key={task.id} sx={{ dir: 'rtl' }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
+                  <Typography variant="h6" fontWeight="bold">
+                    {task.title}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 0.5, flexDirection: 'column' }}>
+                    {getStatusChip(task.status)}
+                    {getPriorityChip(task.priority)}
+                  </Box>
+                </Box>
+
+                <Stack spacing={1.5} sx={{ mb: 2 }}>
+                  {task.description && (
+                    <Typography variant="body2" color="text.secondary">
+                      {task.description}
+                    </Typography>
+                  )}
+
+                  {task.riderName && (
+                    <Typography variant="body2">
+                      רוכב: <strong>{task.riderName}</strong>
+                    </Typography>
+                  )}
+
+                  {task.vehiclePlate && (
+                    <Typography variant="body2">
+                      כלי: <strong>{task.vehiclePlate}</strong>
+                    </Typography>
+                  )}
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CalendarToday sx={{ fontSize: 16, color: 'text.secondary' }} />
+                    <Typography variant="caption" color="text.secondary">
+                      תאריך יעד: {formatDate(task.dueDate)}
                     </Typography>
                   </Box>
-                </TableCell>
+                </Stack>
+              </CardContent>
+
+              <Divider />
+
+              <CardActions sx={{ justifyContent: 'space-between', px: 2 }}>
+                <Button
+                  size="small"
+                  startIcon={<Visibility />}
+                  onClick={() => navigate(`/tasks/${task.id}`)}
+                >
+                  צפייה
+                </Button>
+                <Box>
+                  <IconButton
+                    size="small"
+                    color="secondary"
+                    onClick={() => handleOpenDialog(task)}
+                  >
+                    <Edit />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    color="error"
+                    onClick={() => handleDeleteClick(task)}
+                  >
+                    <Delete />
+                  </IconButton>
+                </Box>
+              </CardActions>
+            </Card>
+          ))}
+        </Stack>
+      ) : (
+        // Desktop View - Table
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>כותרת</TableCell>
+                <TableCell>רוכב</TableCell>
+                <TableCell>כלי</TableCell>
+                <TableCell>עדיפות</TableCell>
+                <TableCell>סטטוס</TableCell>
+                <TableCell>תאריך יעד</TableCell>
+                <TableCell align="center">פעולות</TableCell>
               </TableRow>
-            ) : (
-              tasks.map((task) => (
+            </TableHead>
+            <TableBody>
+              {tasks.map((task) => (
                 <TableRow key={task.id} hover>
                   <TableCell>
                     <Typography variant="body1" fontWeight="500">
@@ -272,11 +362,11 @@ export default function Tasks() {
                     </IconButton>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {/* סטטיסטיקה */}
       {!loading && tasks.length > 0 && (

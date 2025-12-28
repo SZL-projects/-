@@ -22,6 +22,13 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  Card,
+  CardContent,
+  CardActions,
+  Stack,
+  Divider,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Search,
@@ -29,11 +36,15 @@ import {
   Edit,
   Delete,
   People as PeopleIcon,
+  Email,
+  AdminPanelSettings,
 } from '@mui/icons-material';
 import { authAPI } from '../services/api';
 import UserDialog from '../components/UserDialog';
 
 export default function Users() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
