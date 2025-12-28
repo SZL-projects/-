@@ -29,9 +29,21 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true };
     } catch (error) {
+      console.error('Login error:', error);
+
+      let message = 'שגיאה בהתחברות';
+
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        message = 'שגיאת רשת - השרת לא זמין';
+      } else if (error.code === 'ERR_CONNECTION_REFUSED') {
+        message = 'לא ניתן להתחבר לשרת';
+      } else if (error.response) {
+        message = error.response.data?.message || `שגיאה: ${error.response.status}`;
+      }
+
       return {
         success: false,
-        message: error.response?.data?.message || 'שגיאה בהתחברות'
+        message
       };
     }
   };
