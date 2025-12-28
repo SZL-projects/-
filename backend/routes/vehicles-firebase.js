@@ -125,7 +125,7 @@ router.patch('/:id/kilometers', async (req, res) => {
     if (!kilometers || !source) {
       return res.status(400).json({
         success: false,
-        message: 'קילומטראז' ומקור הם שדות חובה'
+        message: 'קילומטראז ומקור הם שדות חובה'
       });
     }
 

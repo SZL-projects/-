@@ -79,6 +79,25 @@ class UserModel {
     }
   }
 
+  // חיפוש לפי אימייל
+  async findByEmail(email) {
+    try {
+      const snapshot = await this.collection
+        .where('email', '==', email.toLowerCase())
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) {
+        return null;
+      }
+
+      const doc = snapshot.docs[0];
+      return { id: doc.id, ...doc.data() };
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // חיפוש לפי שם משתמש או אימייל
   async findByUsernameOrEmail(username, email) {
     try {
@@ -215,6 +234,29 @@ class UserModel {
       });
 
       return users;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // חיפוש משתמשים
+  async search(searchTerm, filters = {}, limit = 50) {
+    try {
+      // Firestore doesn't support full-text search, so we need to get all and filter
+      const allUsers = await this.getAll(filters, 1000);
+
+      const searchLower = searchTerm.toLowerCase();
+      const results = allUsers.filter(user => {
+        return (
+          user.username?.toLowerCase().includes(searchLower) ||
+          user.email?.toLowerCase().includes(searchLower) ||
+          user.firstName?.toLowerCase().includes(searchLower) ||
+          user.lastName?.toLowerCase().includes(searchLower) ||
+          `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchLower)
+        );
+      });
+
+      return results.slice(0, limit);
     } catch (error) {
       throw error;
     }
