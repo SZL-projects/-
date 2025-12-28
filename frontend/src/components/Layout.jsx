@@ -36,6 +36,8 @@ import {
   ChevronRight,
   ChevronLeft,
   Search,
+  People,
+  Description,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -50,6 +52,8 @@ const menuItems = [
   { text: 'בקרה חודשית', icon: <Build />, path: '/monthly-checks' },
   { text: 'תקלות', icon: <Warning />, path: '/faults' },
   { text: 'דוחות', icon: <Assessment />, path: '/reports' },
+  { text: 'יוצר טפסים', icon: <Description />, path: '/form-builder' },
+  { text: 'משתמשים', icon: <People />, path: '/users' },
 ];
 
 export default function Layout() {

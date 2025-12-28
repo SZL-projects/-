@@ -12,6 +12,11 @@ import {
   InputLabel,
   Select,
   Typography,
+  FormControlLabel,
+  Checkbox,
+  FormGroup,
+  Divider,
+  Box,
 } from '@mui/material';
 
 const checkStatuses = [
@@ -190,13 +195,116 @@ export default function MonthlyCheckDialog({ open, onClose, onSave, check }) {
           </Grid>
 
           <Grid item xs={12}>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="subtitle1" fontWeight="bold" color="primary" gutterBottom>
+              פריטי בדיקה
+            </Typography>
+          </Grid>
+
+          <Grid item xs={12}>
+            <FormGroup>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={formData.checkedItems.brakes}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          checkedItems: { ...formData.checkedItems, brakes: e.target.checked }
+                        })}
+                      />
+                    }
+                    label="בלמים"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={formData.checkedItems.lights}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          checkedItems: { ...formData.checkedItems, lights: e.target.checked }
+                        })}
+                      />
+                    }
+                    label="תאורה"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={formData.checkedItems.tires}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          checkedItems: { ...formData.checkedItems, tires: e.target.checked }
+                        })}
+                      />
+                    }
+                    label="צמיגים"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={formData.checkedItems.engine}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          checkedItems: { ...formData.checkedItems, engine: e.target.checked }
+                        })}
+                      />
+                    }
+                    label="מנוע"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={formData.checkedItems.oil}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          checkedItems: { ...formData.checkedItems, oil: e.target.checked }
+                        })}
+                      />
+                    }
+                    label="שמן"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={formData.checkedItems.battery}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          checkedItems: { ...formData.checkedItems, battery: e.target.checked }
+                        })}
+                      />
+                    }
+                    label="מצבר"
+                  />
+                </Grid>
+              </Grid>
+            </FormGroup>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Divider sx={{ my: 2 }} />
+          </Grid>
+
+          <Grid item xs={12}>
             <TextField
               fullWidth
               label="הערות"
               multiline
-              rows={3}
+              rows={4}
               value={formData.notes}
               onChange={handleChange('notes')}
+              placeholder="הוסף הערות נוספות על הבדיקה..."
             />
           </Grid>
         </Grid>
