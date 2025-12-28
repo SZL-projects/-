@@ -8,9 +8,9 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // בדיקה אם יש משתמש מחובר
-    const token = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('user');
+    // בדיקה אם יש משתמש מחובר (גם ב-localStorage וגם ב-sessionStorage)
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const savedUser = localStorage.getItem('user') || sessionStorage.getItem('user');
 
     if (token && savedUser) {
       setUser(JSON.parse(savedUser));
@@ -18,13 +18,23 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (credentials) => {
+  const login = async (credentials, rememberMe = false) => {
     try {
       const response = await authAPI.login(credentials);
       const { token, user: userData } = response.data;
 
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userData));
+      // אם "זכור אותי" מסומן - שמור ב-localStorage (קבוע)
+      // אחרת - שמור ב-sessionStorage (עד סגירת הדפדפן)
+      const storage = rememberMe ? localStorage : sessionStorage;
+
+      storage.setItem('token', token);
+      storage.setItem('user', JSON.stringify(userData));
+
+      // ניקוי מהאחסון השני (במקרה שיש)
+      const otherStorage = rememberMe ? sessionStorage : localStorage;
+      otherStorage.removeItem('token');
+      otherStorage.removeItem('user');
+
       setUser(userData);
 
       return { success: true };
@@ -69,6 +79,8 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     setUser(null);
   };
 

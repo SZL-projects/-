@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -10,6 +10,8 @@ import {
   Alert,
   InputAdornment,
   IconButton,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import {
   Visibility,
@@ -26,6 +28,7 @@ export default function Login() {
     password: '',
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -42,7 +45,7 @@ export default function Login() {
     setLoading(true);
     setError('');
 
-    const result = await login(formData);
+    const result = await login(formData, rememberMe);
 
     if (result.success) {
       navigate('/dashboard');
@@ -119,7 +122,7 @@ export default function Login() {
               margin="normal"
               dir="rtl"
               InputProps={{
-                endInputAdornment: (
+                endAdornment: (
                   <InputAdornment position="end">
                     <IconButton
                       onClick={() => setShowPassword(!showPassword)}
@@ -132,6 +135,30 @@ export default function Login() {
               }}
             />
 
+            {/* Remember Me & Forgot Password */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, mb: 1 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    color="primary"
+                  />
+                }
+                label="זכור אותי"
+              />
+              <Link
+                to="/forgot-password"
+                style={{
+                  color: '#1976d2',
+                  textDecoration: 'none',
+                  fontSize: '0.9rem',
+                }}
+              >
+                שכחתי סיסמה
+              </Link>
+            </Box>
+
             <Button
               type="submit"
               fullWidth
@@ -139,7 +166,7 @@ export default function Login() {
               size="large"
               disabled={loading}
               sx={{
-                mt: 3,
+                mt: 2,
                 mb: 2,
                 py: 1.5,
                 fontSize: '1.1rem',
