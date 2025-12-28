@@ -16,6 +16,8 @@ import {
   Avatar,
   Menu,
   MenuItem,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -78,27 +80,32 @@ export default function Layout() {
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Toolbar sx={{ justifyContent: 'space-between', py: 2, px: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <TwoWheeler sx={{ fontSize: 40, color: 'primary.main' }} />
+      <Toolbar sx={{
+        justifyContent: 'space-between',
+        py: 2,
+        px: drawerOpen ? 2 : 1,
+        minHeight: 64
+      }}>
+        <IconButton
+          onClick={() => setDrawerOpen(!drawerOpen)}
+          size="small"
+          sx={{ display: { xs: 'none', sm: 'flex' }, flexShrink: 0 }}
+        >
+          {drawerOpen ? <ChevronRight /> : <ChevronLeft />}
+        </IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, overflow: 'hidden' }}>
+          <TwoWheeler sx={{ fontSize: 40, color: 'primary.main', flexShrink: 0 }} />
           {drawerOpen && (
-            <Box>
+            <Box sx={{ minWidth: 0 }}>
               <Typography variant="h6" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>
                 CRM אופנועים
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                גרסה 3.14.0
+                גרסה 3.17.0
               </Typography>
             </Box>
           )}
         </Box>
-        <IconButton
-          onClick={() => setDrawerOpen(!drawerOpen)}
-          size="small"
-          sx={{ display: { xs: 'none', sm: 'flex' } }}
-        >
-          {drawerOpen ? <ChevronRight /> : <ChevronLeft />}
-        </IconButton>
       </Toolbar>
       <Divider />
       <List sx={{ flexGrow: 1 }}>
@@ -207,13 +214,48 @@ export default function Layout() {
             >
               <MenuIcon />
             </IconButton>
-            <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+            <Typography variant="h6" noWrap component="div" sx={{ display: { xs: 'none', md: 'block' }, mr: 2 }}>
               מערכת CRM - יחידת האופנועים
             </Typography>
 
+            {/* Global Search */}
+            <Box sx={{ flexGrow: 1, maxWidth: 400, display: { xs: 'none', sm: 'block' } }}>
+              <TextField
+                size="small"
+                placeholder="חיפוש כללי..."
+                variant="outlined"
+                fullWidth
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search sx={{ color: 'white' }} />
+                    </InputAdornment>
+                  ),
+                  sx: {
+                    color: 'white',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(255, 255, 255, 0.5)',
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'white',
+                    },
+                  },
+                }}
+                sx={{
+                  '& input::placeholder': {
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    opacity: 1,
+                  },
+                }}
+              />
+            </Box>
+
             {/* User Menu */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="body2">
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
+              <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' } }}>
                 {user?.firstName} {user?.lastName}
               </Typography>
               <IconButton

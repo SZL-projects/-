@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -16,6 +17,12 @@ import {
   IconButton,
   CircularProgress,
   Alert,
+  Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import {
   Search,
@@ -23,14 +30,22 @@ import {
   Edit,
   Delete,
   Visibility,
+  Person,
 } from '@mui/icons-material';
 import { ridersAPI } from '../services/api';
+import RiderDialog from '../components/RiderDialog';
 
 export default function Riders() {
+  const navigate = useNavigate();
   const [riders, setRiders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingRider, setEditingRider] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [riderToDelete, setRiderToDelete] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
     loadRiders();
@@ -41,6 +56,7 @@ export default function Riders() {
       setLoading(true);
       const response = await ridersAPI.getAll({ search: searchTerm });
       setRiders(response.data.riders || []);
+      setError('');
     } catch (err) {
       setError('שגיאה בטעינת רוכבים');
       console.error(err);
@@ -51,6 +67,57 @@ export default function Riders() {
 
   const handleSearch = () => {
     loadRiders();
+  };
+
+  const handleOpenDialog = (rider = null) => {
+    setEditingRider(rider);
+    setDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setEditingRider(null);
+  };
+
+  const handleSaveRider = async (riderData) => {
+    try {
+      if (editingRider) {
+        await ridersAPI.update(editingRider.id, riderData);
+        showSnackbar('הרוכב עודכן בהצלחה', 'success');
+      } else {
+        await ridersAPI.create(riderData);
+        showSnackbar('הרוכב נוסף בהצלחה', 'success');
+      }
+      handleCloseDialog();
+      loadRiders();
+    } catch (err) {
+      console.error('Error saving rider:', err);
+      showSnackbar('שגיאה בשמירת הרוכב', 'error');
+    }
+  };
+
+  const handleDeleteClick = (rider) => {
+    setRiderToDelete(rider);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!riderToDelete) return;
+
+    try {
+      await ridersAPI.delete(riderToDelete.id);
+      showSnackbar('הרוכב נמחק בהצלחה', 'success');
+      setDeleteDialogOpen(false);
+      setRiderToDelete(null);
+      loadRiders();
+    } catch (err) {
+      console.error('Error deleting rider:', err);
+      showSnackbar('שגיאה במחיקת הרוכב', 'error');
+    }
+  };
+
+  const showSnackbar = (message, severity) => {
+    setSnackbar({ open: true, message, severity });
   };
 
   const getStatusChip = (status) => {
@@ -84,6 +151,7 @@ export default function Riders() {
           variant="contained"
           startIcon={<Add />}
           size="large"
+          onClick={() => handleOpenDialog()}
         >
           רוכב חדש
         </Button>
@@ -147,9 +215,12 @@ export default function Riders() {
             ) : riders.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} align="center">
-                  <Typography color="textSecondary">
-                    לא נמצאו רוכבים
-                  </Typography>
+                  <Box sx={{ py: 4 }}>
+                    <Person sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+                    <Typography color="textSecondary">
+                      לא נמצאו רוכבים
+                    </Typography>
+                  </Box>
                 </TableCell>
               </TableRow>
             ) : (
@@ -168,13 +239,25 @@ export default function Riders() {
                   <TableCell>{getStatusChip(rider.riderStatus)}</TableCell>
                   <TableCell>{getAssignmentChip(rider.assignmentStatus)}</TableCell>
                   <TableCell align="center">
-                    <IconButton color="primary" size="small">
+                    <IconButton
+                      color="primary"
+                      size="small"
+                      onClick={() => navigate(`/riders/${rider.id}`)}
+                    >
                       <Visibility />
                     </IconButton>
-                    <IconButton color="secondary" size="small">
+                    <IconButton
+                      color="secondary"
+                      size="small"
+                      onClick={() => handleOpenDialog(rider)}
+                    >
                       <Edit />
                     </IconButton>
-                    <IconButton color="error" size="small">
+                    <IconButton
+                      color="error"
+                      size="small"
+                      onClick={() => handleDeleteClick(rider)}
+                    >
                       <Delete />
                     </IconButton>
                   </TableCell>
@@ -193,6 +276,52 @@ export default function Riders() {
           </Typography>
         </Box>
       )}
+
+      {/* Rider Dialog */}
+      <RiderDialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        onSave={handleSaveRider}
+        rider={editingRider}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        dir="rtl"
+      >
+        <DialogTitle>אישור מחיקה</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            האם אתה בטוח שברצונך למחוק את הרוכב{' '}
+            <strong>{riderToDelete?.firstName} {riderToDelete?.lastName}</strong>?
+            <br />
+            פעולה זו אינה הפיכה.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>ביטול</Button>
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
+            מחק
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
