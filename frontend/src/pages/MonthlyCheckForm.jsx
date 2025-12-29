@@ -63,7 +63,7 @@ export default function MonthlyCheckForm() {
       return false;
     }
     if (!formData.currentKm || isNaN(formData.currentKm)) {
-      setError('נא להזין קילומטראז' נוכחי תקין');
+      setError('נא להזין קילומטראז נוכחי תקין');
       return false;
     }
 
