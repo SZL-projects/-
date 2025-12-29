@@ -1,18 +1,13 @@
-const admin = require('firebase-admin');
-
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT))
-  });
-}
-
-const db = admin.firestore();
+// Vercel Serverless Function - /api/riders/[id]
+const { initFirebase } = require('../_utils/firebase');
+const { authenticateToken, checkAuthorization } = require('../_utils/auth');
 
 module.exports = async (req, res) => {
-  // Enable CORS
+  // CORS Headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -28,15 +23,26 @@ module.exports = async (req, res) => {
   }
 
   try {
+    const { db } = initFirebase();
+    const user = await authenticateToken(req, db);
+
     const riderRef = db.collection('riders').doc(id);
+    const doc = await riderRef.get();
 
+    if (!doc.exists) {
+      return res.status(404).json({
+        success: false,
+        message: 'רוכב לא נמצא'
+      });
+    }
+
+    // GET - קבלת רוכב לפי ID
     if (req.method === 'GET') {
-      const doc = await riderRef.get();
-
-      if (!doc.exists) {
-        return res.status(404).json({
+      // רוכב יכול לראות רק את עצמו
+      if (user.role === 'rider' && user.riderId !== id) {
+        return res.status(403).json({
           success: false,
-          message: 'רוכב לא נמצא'
+          message: 'אין הרשאה לצפות ברוכב זה'
         });
       }
 
@@ -49,38 +55,32 @@ module.exports = async (req, res) => {
       });
     }
 
+    // PUT - עדכון רוכב
     if (req.method === 'PUT') {
-      const doc = await riderRef.get();
-
-      if (!doc.exists) {
-        return res.status(404).json({
-          success: false,
-          message: 'רוכב לא נמצא'
-        });
-      }
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
 
       const updateData = {
         ...req.body,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedBy: user.id,
+        updatedAt: new Date()
       };
 
       await riderRef.update(updateData);
+      const updatedDoc = await riderRef.get();
 
       return res.status(200).json({
         success: true,
-        message: 'רוכב עודכן בהצלחה'
+        message: 'רוכב עודכן בהצלחה',
+        rider: {
+          id: updatedDoc.id,
+          ...updatedDoc.data()
+        }
       });
     }
 
+    // DELETE - מחיקת רוכב
     if (req.method === 'DELETE') {
-      const doc = await riderRef.get();
-
-      if (!doc.exists) {
-        return res.status(404).json({
-          success: false,
-          message: 'רוכב לא נמצא'
-        });
-      }
+      checkAuthorization(user, ['super_admin']);
 
       await riderRef.delete();
 
@@ -96,11 +96,18 @@ module.exports = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error in rider API:', error);
-    return res.status(500).json({
+    console.error('Rider [id] error:', error);
+
+    if (error.message.includes('token') || error.message.includes('authorized')) {
+      return res.status(401).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
       success: false,
-      message: 'שגיאת שרת',
-      error: error.message
+      message: error.message
     });
   }
 };

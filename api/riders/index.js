@@ -1,55 +1,52 @@
-const admin = require('firebase-admin');
-
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT))
-  });
-}
-
-const db = admin.firestore();
+// Vercel Serverless Function - /api/riders
+const { initFirebase } = require('../_utils/firebase');
+const { authenticateToken, checkAuthorization } = require('../_utils/auth');
 
 module.exports = async (req, res) => {
-  // Enable CORS
+  // CORS Headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   try {
+    const { db } = initFirebase();
+    const user = await authenticateToken(req, db);
+
+    // GET - קבלת רשימת רוכבים
     if (req.method === 'GET') {
-      const { search, riderStatus, assignmentStatus, region } = req.query;
+      const { search, riderStatus, assignmentStatus, region, page = 1, limit = 50 } = req.query;
 
       let query = db.collection('riders');
 
-      // Filter by rider status
+      // סינון לפי סטטוס רוכב
       if (riderStatus) {
         query = query.where('riderStatus', '==', riderStatus);
       }
 
-      // Filter by assignment status
+      // סינון לפי סטטוס שיבוץ
       if (assignmentStatus) {
         query = query.where('assignmentStatus', '==', assignmentStatus);
       }
 
-      // Filter by region
+      // סינון לפי מחוז
       if (region) {
         query = query.where('region.district', '==', region);
       }
 
+      // אם המשתמש הוא רוכב - רק את עצמו
+      if (user.role === 'rider' && user.riderId) {
+        query = query.where('__name__', '==', user.riderId);
+      }
+
       const snapshot = await query.get();
+      let riders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      let riders = [];
-      snapshot.forEach(doc => {
-        riders.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
-
-      // Client-side search for name, ID number, or phone
+      // חיפוש טקסט חופשי
       if (search) {
         const searchLower = search.toLowerCase();
         riders = riders.filter(rider =>
@@ -60,26 +57,38 @@ module.exports = async (req, res) => {
         );
       }
 
+      // Pagination
+      const startIndex = (page - 1) * limit;
+      const endIndex = page * limit;
+      const paginatedRiders = riders.slice(startIndex, endIndex);
+
       return res.status(200).json({
         success: true,
-        riders,
-        count: riders.length
+        count: riders.length,
+        totalPages: Math.ceil(riders.length / limit),
+        currentPage: parseInt(page),
+        riders: paginatedRiders
       });
     }
 
+    // POST - יצירת רוכב חדש
     if (req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
       const riderData = {
         ...req.body,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        createdBy: user.id,
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
 
-      const docRef = await db.collection('riders').add(riderData);
+      const riderRef = await db.collection('riders').add(riderData);
+      const riderDoc = await riderRef.get();
 
       return res.status(201).json({
         success: true,
         message: 'רוכב נוצר בהצלחה',
-        riderId: docRef.id
+        rider: { id: riderRef.id, ...riderDoc.data() }
       });
     }
 
@@ -89,11 +98,18 @@ module.exports = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error in riders API:', error);
-    return res.status(500).json({
+    console.error('Riders error:', error);
+
+    if (error.message.includes('token') || error.message.includes('authorized')) {
+      return res.status(401).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
       success: false,
-      message: 'שגיאת שרת',
-      error: error.message
+      message: error.message
     });
   }
 };

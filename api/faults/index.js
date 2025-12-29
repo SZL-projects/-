@@ -1,6 +1,6 @@
-// Vercel Serverless Function - /api/vehicles
+// Vercel Serverless Function - /api/faults
 const { initFirebase } = require('../_utils/firebase');
-const { authenticateToken, checkAuthorization } = require('../_utils/auth');
+const { authenticateToken } = require('../_utils/auth');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -17,63 +17,61 @@ module.exports = async (req, res) => {
     const { db } = initFirebase();
     const user = await authenticateToken(req, db);
 
-    // GET - קבלת רשימת כלים
+    // GET - קבלת רשימת תקלות
     if (req.method === 'GET') {
-      const { search, status, page = 1, limit = 50 } = req.query;
+      const { search, severity, status, vehicleId, riderId, page = 1, limit = 100 } = req.query;
 
-      let query = db.collection('vehicles');
+      let query = db.collection('faults');
 
-      // סינון לפי סטטוס
+      // סינונים
+      if (severity) {
+        query = query.where('severity', '==', severity);
+      }
       if (status) {
         query = query.where('status', '==', status);
       }
+      if (vehicleId) {
+        query = query.where('vehicleId', '==', vehicleId);
+      }
+      if (riderId) {
+        query = query.where('reportedBy', '==', riderId);
+      }
 
-      const snapshot = await query.get();
-      let vehicles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const snapshot = await query.limit(parseInt(limit)).get();
+      let faults = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
       // חיפוש טקסט חופשי
       if (search) {
         const searchLower = search.toLowerCase();
-        vehicles = vehicles.filter(vehicle =>
-          vehicle.licensePlate?.toLowerCase().includes(searchLower) ||
-          vehicle.internalNumber?.toLowerCase().includes(searchLower) ||
-          vehicle.manufacturer?.toLowerCase().includes(searchLower) ||
-          vehicle.model?.toLowerCase().includes(searchLower)
+        faults = faults.filter(fault =>
+          fault.description?.toLowerCase().includes(searchLower) ||
+          fault.faultType?.toLowerCase().includes(searchLower)
         );
       }
 
-      // Pagination
-      const startIndex = (page - 1) * limit;
-      const endIndex = page * limit;
-      const paginatedVehicles = vehicles.slice(startIndex, endIndex);
-
       return res.status(200).json({
         success: true,
-        count: vehicles.length,
-        totalPages: Math.ceil(vehicles.length / limit),
-        currentPage: parseInt(page),
-        vehicles: paginatedVehicles
+        count: faults.length,
+        faults
       });
     }
 
-    // POST - יצירת כלי חדש
+    // POST - דיווח תקלה חדשה
     if (req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'logistics']);
-
-      const vehicleData = {
+      const faultData = {
         ...req.body,
-        createdBy: user.id,
+        reportedBy: user.id,
         createdAt: new Date(),
         updatedAt: new Date()
       };
 
-      const vehicleRef = await db.collection('vehicles').add(vehicleData);
-      const vehicleDoc = await vehicleRef.get();
+      const faultRef = await db.collection('faults').add(faultData);
+      const faultDoc = await faultRef.get();
 
       return res.status(201).json({
         success: true,
-        message: 'כלי נוצר בהצלחה',
-        vehicle: { id: vehicleRef.id, ...vehicleDoc.data() }
+        message: 'תקלה דווחה בהצלחה',
+        fault: { id: faultRef.id, ...faultDoc.data() }
       });
     }
 
@@ -83,7 +81,7 @@ module.exports = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Vehicles error:', error);
+    console.error('Faults error:', error);
 
     if (error.message.includes('token') || error.message.includes('authorized')) {
       return res.status(401).json({

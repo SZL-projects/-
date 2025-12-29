@@ -1,4 +1,4 @@
-// Vercel Serverless Function - /api/vehicles
+// Vercel Serverless Function - /api/tasks
 const { initFirebase } = require('../_utils/firebase');
 const { authenticateToken, checkAuthorization } = require('../_utils/auth');
 
@@ -17,63 +17,63 @@ module.exports = async (req, res) => {
     const { db } = initFirebase();
     const user = await authenticateToken(req, db);
 
-    // GET - קבלת רשימת כלים
+    // GET - קבלת רשימת משימות
     if (req.method === 'GET') {
-      const { search, status, page = 1, limit = 50 } = req.query;
+      const { search, status, priority, riderId, vehicleId, page = 1, limit = 100 } = req.query;
 
-      let query = db.collection('vehicles');
+      let query = db.collection('tasks');
 
-      // סינון לפי סטטוס
+      // סינונים
       if (status) {
         query = query.where('status', '==', status);
       }
+      if (priority) {
+        query = query.where('priority', '==', priority);
+      }
+      if (riderId) {
+        query = query.where('riderId', '==', riderId);
+      }
+      if (vehicleId) {
+        query = query.where('vehicleId', '==', vehicleId);
+      }
 
-      const snapshot = await query.get();
-      let vehicles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const snapshot = await query.limit(parseInt(limit)).get();
+      let tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
       // חיפוש טקסט חופשי
       if (search) {
         const searchLower = search.toLowerCase();
-        vehicles = vehicles.filter(vehicle =>
-          vehicle.licensePlate?.toLowerCase().includes(searchLower) ||
-          vehicle.internalNumber?.toLowerCase().includes(searchLower) ||
-          vehicle.manufacturer?.toLowerCase().includes(searchLower) ||
-          vehicle.model?.toLowerCase().includes(searchLower)
+        tasks = tasks.filter(task =>
+          task.title?.toLowerCase().includes(searchLower) ||
+          task.description?.toLowerCase().includes(searchLower)
         );
       }
 
-      // Pagination
-      const startIndex = (page - 1) * limit;
-      const endIndex = page * limit;
-      const paginatedVehicles = vehicles.slice(startIndex, endIndex);
-
       return res.status(200).json({
         success: true,
-        count: vehicles.length,
-        totalPages: Math.ceil(vehicles.length / limit),
-        currentPage: parseInt(page),
-        vehicles: paginatedVehicles
+        count: tasks.length,
+        tasks
       });
     }
 
-    // POST - יצירת כלי חדש
+    // POST - יצירת משימה חדשה
     if (req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'logistics']);
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
 
-      const vehicleData = {
+      const taskData = {
         ...req.body,
         createdBy: user.id,
         createdAt: new Date(),
         updatedAt: new Date()
       };
 
-      const vehicleRef = await db.collection('vehicles').add(vehicleData);
-      const vehicleDoc = await vehicleRef.get();
+      const taskRef = await db.collection('tasks').add(taskData);
+      const taskDoc = await taskRef.get();
 
       return res.status(201).json({
         success: true,
-        message: 'כלי נוצר בהצלחה',
-        vehicle: { id: vehicleRef.id, ...vehicleDoc.data() }
+        message: 'משימה נוצרה בהצלחה',
+        task: { id: taskRef.id, ...taskDoc.data() }
       });
     }
 
@@ -83,7 +83,7 @@ module.exports = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Vehicles error:', error);
+    console.error('Tasks error:', error);
 
     if (error.message.includes('token') || error.message.includes('authorized')) {
       return res.status(401).json({
