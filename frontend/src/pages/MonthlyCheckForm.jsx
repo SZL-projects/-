@@ -163,7 +163,7 @@ export default function MonthlyCheckForm() {
             <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
-                label="בקרה הבאה ב-ק\"מ"
+                label='בקרה הבאה ב-ק"מ'
                 type="number"
                 value={formData.nextCheckKm}
                 onChange={handleChange('nextCheckKm')}
