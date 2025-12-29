@@ -1,7 +1,4 @@
-// Vercel Serverless Function
+// Vercel Serverless Function - Entry point for backend
 const app = require('../backend/server-firebase');
 
-// Export as Vercel function
-module.exports = (req, res) => {
-  return app(req, res);
-};
+module.exports = app;
