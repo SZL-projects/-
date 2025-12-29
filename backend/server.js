@@ -4,7 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
-const connectDB = require('./config/database');
+const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 
 // התחברות למסד הנתונים
@@ -24,19 +24,17 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Routes
-app.use('/api/auth', require('./routes/auth-firebase'));
-app.use('/api/riders', require('./routes/riders-firebase'));
-app.use('/api/vehicles', require('./routes/vehicles-firebase'));
-app.use('/api/tasks', require('./routes/tasks-firebase'));
-app.use('/api/faults', require('./routes/faults-firebase'));
-app.use('/api/monthly-checks', require('./routes/monthly-checks-firebase'));
+// Routes - MongoDB version
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/riders', require('./routes/riders'));
+app.use('/api/vehicles', require('./routes/vehicles'));
 
 // נתיב בדיקת בריאות
 app.get('/health', (req, res) => {
   res.json({
     success: true,
-    message: 'Server is running',
+    message: 'Server is running with MongoDB',
+    database: 'MongoDB',
     timestamp: new Date().toISOString()
   });
 });
@@ -45,8 +43,16 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'מערכת CRM לניהול יחידת האופנועים - API',
-    version: '3.13.0'
+    message: 'מערכת CRM לניהול יחידת האופנועים - API (MongoDB)',
+    version: '3.23.0',
+    database: 'MongoDB',
+    features: [
+      'MongoDB Database',
+      'JWT Authentication',
+      'Password Reset via Email',
+      'Remember Me feature',
+      'Role-based access control'
+    ]
   });
 });
 
@@ -60,6 +66,7 @@ const server = app.listen(PORT, () => {
 ╔═══════════════════════════════════════════════════╗
 ║   🏍️  מערכת CRM - יחידת האופנועים  🏍️           ║
 ║                                                   ║
+║   🍃 Database: MongoDB                           ║
 ║   Server running in ${process.env.NODE_ENV || 'development'} mode             ║
 ║   Port: ${PORT}                                      ║
 ║   Time: ${new Date().toLocaleString('he-IL')}      ║

@@ -15,26 +15,39 @@ const firebaseConfig = {
 // Initialize Firebase Admin
 let app;
 try {
-  // אם יש Service Account Key (מומלץ לפרודקשן)
-  if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+  // ננסה קודם עם קובץ serviceAccountKey.json
+  const path = require('path');
+  const fs = require('fs');
+  const serviceAccountPath = path.join(__dirname, '..', 'serviceAccountKey.json');
+
+  if (fs.existsSync(serviceAccountPath)) {
+    const serviceAccount = require(serviceAccountPath);
+    app = admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      projectId: firebaseConfig.projectId,
+      databaseURL: `https://${firebaseConfig.projectId}.firebaseio.com`,
+      storageBucket: firebaseConfig.storageBucket
+    });
+    console.log('✅ Firebase initialized with serviceAccountKey.json');
+  }
+  // אם יש Service Account Key ב-ENV (מומלץ לפרודקשן)
+  else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
     try {
       const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
       app = admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
         storageBucket: firebaseConfig.storageBucket
       });
-      console.log('✅ Firebase initialized with Service Account');
+      console.log('✅ Firebase initialized with Service Account from ENV');
     } catch (parseError) {
-      console.warn('⚠️ Failed to parse Service Account, using alternative method');
-      // אם נכשל ה-parsing, נשתמש בשיטה אלטרנטיבית
-      app = admin.initializeApp({
-        credential: admin.credential.applicationDefault(),
-        projectId: firebaseConfig.projectId,
-        storageBucket: firebaseConfig.storageBucket
-      });
+      console.error('❌ Failed to parse Service Account from ENV:', parseError.message);
+      throw parseError;
     }
   } else {
-    // ללא Service Account - ננסה Application Default Credentials
+    // למצב פיתוח - ללא credentials (לא מומלץ!)
+    console.warn('⚠️ No service account found! Some features may not work.');
+    console.warn('⚠️ Please add serviceAccountKey.json to backend folder');
+    // ננסה Application Default Credentials
     app = admin.initializeApp({
       credential: admin.credential.applicationDefault(),
       projectId: firebaseConfig.projectId,
@@ -45,17 +58,9 @@ try {
   console.log('✅ Firebase initialized successfully');
 } catch (error) {
   console.error('❌ Firebase initialization error:', error.message);
-  // אם הכל נכשל, ננסה בלי credentials (לא יעבוד לכתיבה, אבל לא יקרוס)
-  console.warn('⚠️ Attempting initialization without credentials');
-  try {
-    app = admin.initializeApp({
-      projectId: firebaseConfig.projectId,
-      storageBucket: firebaseConfig.storageBucket
-    });
-  } catch (finalError) {
-    console.error('❌ Final initialization attempt failed:', finalError.message);
-    throw finalError;
-  }
+  console.error('❌ Please download serviceAccountKey.json from Firebase Console');
+  console.error('❌ Project Settings > Service Accounts > Generate New Private Key');
+  throw error;
 }
 
 // Firestore Database

@@ -36,6 +36,9 @@ if (process.env.NODE_ENV === 'development') {
 app.use('/api/auth', require('./routes/auth-firebase'));
 app.use('/api/riders', require('./routes/riders-firebase'));
 app.use('/api/vehicles', require('./routes/vehicles-firebase'));
+app.use('/api/tasks', require('./routes/tasks-firebase'));
+app.use('/api/faults', require('./routes/faults-firebase'));
+app.use('/api/monthly-checks', require('./routes/monthly-checks-firebase'));
 
 // נתיב בדיקת בריאות
 app.get('/health', (req, res) => {

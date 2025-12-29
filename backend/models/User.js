@@ -64,6 +64,8 @@ const userSchema = new mongoose.Schema({
     ref: 'Rider'
   },
   lastLogin: Date,
+  resetPasswordToken: String,
+  resetPasswordExpire: Date,
   createdAt: {
     type: Date,
     default: Date.now

@@ -15,6 +15,8 @@ import Users from './pages/Users';
 import Faults from './pages/Faults';
 import FormBuilder from './pages/FormBuilder';
 import Reports from './pages/Reports';
+import FaultReport from './pages/FaultReport';
+import MonthlyCheckForm from './pages/MonthlyCheckForm';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Theme עם תמיכה בעברית (RTL)
@@ -70,6 +72,8 @@ function AppRoutes() {
         <Route path="tasks" element={<Tasks />} />
         <Route path="monthly-checks" element={<MonthlyChecks />} />
         <Route path="faults" element={<Faults />} />
+        <Route path="fault-report" element={<FaultReport />} />
+        <Route path="monthly-check-form" element={<MonthlyCheckForm />} />
         <Route path="reports" element={<Reports />} />
         <Route path="form-builder" element={<FormBuilder />} />
         <Route path="users" element={<Users />} />

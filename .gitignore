@@ -9,6 +9,10 @@ node_modules/
 */.env
 */.env.local
 
+# Firebase Service Account (NEVER commit this!)
+serviceAccountKey.json
+backend/serviceAccountKey.json
+
 # Logs
 logs
 *.log
