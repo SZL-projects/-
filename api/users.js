@@ -148,11 +148,26 @@ module.exports = async (req, res) => {
       // בדיקת הרשאות ליצירת משתמש
       checkAuthorization(user, ['super_admin', 'manager']);
 
-      console.log('📝 Creating user:', req.body?.username);
+      console.log('📝 Creating user - Request body:', {
+        username: req.body?.username,
+        email: req.body?.email,
+        hasPassword: !!req.body?.password,
+        role: req.body?.role
+      });
 
       const { username, email, password, firstName, lastName, phone, role } = req.body;
 
+      // Validation
+      if (!username || !email || !password) {
+        console.error('❌ Missing required fields:', { username: !!username, email: !!email, password: !!password });
+        return res.status(400).json({
+          success: false,
+          message: 'חסרים שדות חובה: שם משתמש, אימייל וסיסמה'
+        });
+      }
+
       // בדיקה אם משתמש קיים
+      console.log('🔍 Checking if user exists...');
       const usernameCheck = await db.collection('users')
         .where('username', '==', username)
         .limit(1)
@@ -163,7 +178,13 @@ module.exports = async (req, res) => {
         .limit(1)
         .get();
 
+      console.log('🔍 Check results:', {
+        usernameExists: !usernameCheck.empty,
+        emailExists: !emailCheck.empty
+      });
+
       if (!usernameCheck.empty || !emailCheck.empty) {
+        console.error('❌ User already exists');
         return res.status(400).json({
           success: false,
           message: 'משתמש עם אימייל או שם משתמש זה כבר קיים'
@@ -171,15 +192,18 @@ module.exports = async (req, res) => {
       }
 
       // הצפנת סיסמה
+      console.log('🔐 Hashing password...');
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
+      console.log('✅ Password hashed successfully');
 
+      console.log('📦 Creating user object...');
       const newUser = {
         username,
         email: email.toLowerCase(),
         password: hashedPassword,
-        firstName,
-        lastName,
+        firstName: firstName || '',
+        lastName: lastName || '',
         phone: phone || null,
         role: role || 'rider',
         isActive: true,
@@ -189,11 +213,15 @@ module.exports = async (req, res) => {
         updatedAt: new Date()
       };
 
+      console.log('💾 Saving to Firestore...');
       const userRef = await db.collection('users').add(newUser);
+      console.log('✅ User created with ID:', userRef.id);
+
       const userDoc = await userRef.get();
       const userData = userDoc.data();
       delete userData.password;
 
+      console.log('🎉 User creation successful!');
       return res.status(201).json({
         success: true,
         message: 'משתמש נוצר בהצלחה',
