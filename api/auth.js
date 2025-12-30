@@ -30,10 +30,17 @@ module.exports = async (req, res) => {
       path = path;
     }
 
-    console.log('Auth path:', path, 'Method:', req.method, 'Full URL:', req.url);
+    console.log('🔐 Auth Request:', {
+      path,
+      method: req.method,
+      fullUrl: req.url,
+      hasBody: !!req.body,
+      bodyKeys: req.body ? Object.keys(req.body) : []
+    });
 
     // POST /api/auth/login
     if (path === '/login' && req.method === 'POST') {
+      console.log('📝 Login attempt for username:', req.body?.username);
       const { username, password } = req.body;
 
       if (!username || !password) {
@@ -177,16 +184,40 @@ module.exports = async (req, res) => {
       });
     }
 
+    console.error('❌ Auth endpoint not found:', {
+      path,
+      method: req.method,
+      url: req.url,
+      availableEndpoints: ['/login (POST)', '/register (POST)', '/me (GET)']
+    });
+
     return res.status(404).json({
       success: false,
-      message: 'Endpoint not found'
+      message: 'נתיב לא נמצא',
+      details: {
+        requestedPath: path,
+        requestedMethod: req.method,
+        availableEndpoints: [
+          'POST /api/auth/login',
+          'POST /api/auth/register',
+          'GET /api/auth/me'
+        ]
+      }
     });
 
   } catch (error) {
-    console.error('Auth error:', error);
+    console.error('❌ Auth error:', {
+      message: error.message,
+      stack: error.stack,
+      url: req.url,
+      method: req.method
+    });
+
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'שגיאת שרת',
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };

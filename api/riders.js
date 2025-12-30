@@ -14,11 +14,18 @@ module.exports = async (req, res) => {
   }
 
   try {
+    console.log('👤 Riders Request:', {
+      method: req.method,
+      url: req.url,
+      hasAuth: !!req.headers.authorization
+    });
+
     const { db } = initFirebase();
     const user = await authenticateToken(req, db);
 
     // Extract ID from URL
     const riderId = extractIdFromUrl(req.url, 'riders');
+    console.log('📍 Rider ID extracted:', riderId);
 
     // Single rider operations (GET/PUT/DELETE /api/riders/[id])
     if (riderId) {
@@ -147,24 +154,42 @@ module.exports = async (req, res) => {
       });
     }
 
+    console.error('❌ Riders: Method not allowed:', {
+      method: req.method,
+      url: req.url,
+      riderId
+    });
+
     return res.status(405).json({
       success: false,
-      message: 'Method not allowed'
+      message: 'Method not allowed',
+      details: {
+        method: req.method,
+        allowedMethods: riderId ? ['GET', 'PUT', 'DELETE'] : ['GET', 'POST']
+      }
     });
 
   } catch (error) {
-    console.error('Riders error:', error);
+    console.error('❌ Riders error:', {
+      message: error.message,
+      stack: error.stack,
+      url: req.url,
+      method: req.method
+    });
 
     if (error.message.includes('token') || error.message.includes('authorized')) {
       return res.status(401).json({
         success: false,
-        message: error.message
+        message: 'שגיאת הרשאה',
+        error: error.message
       });
     }
 
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'שגיאת שרת',
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
