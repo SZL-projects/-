@@ -1,40 +1,47 @@
-const nodemailer = require('nodemailer');
+// Try different import methods for Vercel compatibility
+let nodemailer;
+try {
+  nodemailer = require('nodemailer');
+} catch (e) {
+  console.error('Failed to require nodemailer:', e);
+}
 
 // יצירת transporter
 const createTransporter = () => {
-  // Debug: בדיקה מה יש ב-nodemailer
-  console.log('🔍 nodemailer type:', typeof nodemailer);
-  console.log('🔍 nodemailer.createTransporter:', typeof nodemailer?.createTransporter);
-  console.log('🔍 nodemailer.default:', typeof nodemailer?.default);
-  console.log('🔍 nodemailer keys:', Object.keys(nodemailer || {}).slice(0, 10));
+  const transportConfig = {
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  };
 
-  // ניסיון מספר 1: שימוש ישיר
-  if (typeof nodemailer.createTransporter === 'function') {
-    return nodemailer.createTransporter({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+  // Try direct require of nodemailer's createTransport
+  try {
+    const { createTransport } = require('nodemailer');
+    if (typeof createTransport === 'function') {
+      console.log('✅ Using createTransport from direct destructure');
+      return createTransport(transportConfig);
+    }
+  } catch (e) {
+    console.log('❌ Direct destructure failed:', e.message);
   }
 
-  // ניסיון מספר 2: דרך default
-  if (nodemailer.default && typeof nodemailer.default.createTransporter === 'function') {
-    return nodemailer.default.createTransporter({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+  // Try nodemailer.createTransport (note: createTransport, not createTransporter)
+  if (nodemailer && typeof nodemailer.createTransport === 'function') {
+    console.log('✅ Using nodemailer.createTransport');
+    return nodemailer.createTransport(transportConfig);
   }
 
-  throw new Error('❌ Cannot find createTransporter in nodemailer module');
+  // Try nodemailer.default.createTransport
+  if (nodemailer?.default && typeof nodemailer.default.createTransport === 'function') {
+    console.log('✅ Using nodemailer.default.createTransport');
+    return nodemailer.default.createTransport(transportConfig);
+  }
+
+  throw new Error('❌ Cannot find createTransport in nodemailer module. Available keys: ' + Object.keys(nodemailer || {}).join(', '));
 };
 
 // שליחת מייל כללי
