@@ -37,4 +37,21 @@ function initFirebase() {
   }
 }
 
-module.exports = { initFirebase };
+// Extract ID from Vercel URL path - handles multiple patterns
+function extractIdFromUrl(url, resourceName) {
+  // Pattern 1: Full path /api/resource/123
+  let match = url.match(new RegExp(`/api/${resourceName}/([^?/]+)`));
+  if (match) return match[1];
+
+  // Pattern 2: Relative path /resource/123
+  match = url.match(new RegExp(`^/${resourceName}/([^?/]+)`));
+  if (match) return match[1];
+
+  // Pattern 3: Just the ID /123 (when Vercel strips the prefix)
+  match = url.match(/^\/([^?/]+)$/);
+  if (match && !url.includes(resourceName)) return match[1];
+
+  return null;
+}
+
+module.exports = { initFirebase, extractIdFromUrl };
