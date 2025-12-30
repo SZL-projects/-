@@ -42,7 +42,10 @@ api.interceptors.response.use(
 
 // Auth API
 export const authAPI = {
-  login: (credentials) => api.post('/auth/login', credentials),
+  login: (credentials) => {
+    console.log('🔐 Calling login API:', '/auth/login');
+    return api.post('/auth/login', credentials);
+  },
   register: (userData) => api.post('/auth/register', userData),
   getMe: () => api.get('/auth/me'),
   getAllUsers: (params) => api.get('/users', { params }),

@@ -1,10 +1,57 @@
 {
+  "version": 2,
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/**/*.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/api/auth/:path*",
+      "destination": "/api/auth"
+    },
+    {
+      "source": "/api/riders/:id",
+      "destination": "/api/riders"
+    },
+    {
+      "source": "/api/riders",
+      "destination": "/api/riders"
+    },
+    {
+      "source": "/api/vehicles/:id",
+      "destination": "/api/vehicles"
+    },
+    {
+      "source": "/api/vehicles",
+      "destination": "/api/vehicles"
+    },
+    {
+      "source": "/api/tasks/:id",
+      "destination": "/api/tasks"
+    },
+    {
+      "source": "/api/tasks",
+      "destination": "/api/tasks"
+    },
+    {
+      "source": "/api/faults/:id",
+      "destination": "/api/faults"
+    },
+    {
+      "source": "/api/faults",
+      "destination": "/api/faults"
+    },
+    {
+      "source": "/api/users/:id",
+      "destination": "/api/users"
+    },
+    {
+      "source": "/api/users",
+      "destination": "/api/users"
     },
     {
       "source": "/(.*)",
