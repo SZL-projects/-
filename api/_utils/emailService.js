@@ -16,6 +16,19 @@ const createTransporter = () => {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
+    // הגדרות נוספות עבור Vercel Serverless
+    tls: {
+      rejectUnauthorized: false, // Allow self-signed certificates
+      ciphers: 'SSLv3'
+    },
+    connectionTimeout: 10000, // 10 seconds
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+    dnsTimeout: 10000,
+    // Try to use IPv4 first
+    family: 4,
+    logger: true, // Enable logging
+    debug: process.env.NODE_ENV === 'development'
   };
 
   // Try direct require of nodemailer's createTransport
