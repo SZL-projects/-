@@ -1,6 +1,6 @@
 // Vercel Serverless Function - /api/tasks
-const { initFirebase } = require('../_utils/firebase');
-const { authenticateToken, checkAuthorization } = require('../_utils/auth');
+const { initFirebase } = require('./_utils/firebase');
+const { authenticateToken, checkAuthorization } = require('./_utils/auth');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -17,13 +17,65 @@ module.exports = async (req, res) => {
     const { db } = initFirebase();
     const user = await authenticateToken(req, db);
 
-    // GET - קבלת רשימת משימות
+    const pathMatch = req.url.match(/\/api\/tasks\/([^?]+)/);
+    const taskId = pathMatch ? pathMatch[1] : null;
+
+    // Single task operations
+    if (taskId) {
+      const taskRef = db.collection('tasks').doc(taskId);
+      const doc = await taskRef.get();
+
+      if (!doc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'משימה לא נמצאה'
+        });
+      }
+
+      if (req.method === 'GET') {
+        return res.status(200).json({
+          success: true,
+          task: { id: doc.id, ...doc.data() }
+        });
+      }
+
+      if (req.method === 'PUT') {
+        checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+        const updateData = {
+          ...req.body,
+          updatedBy: user.id,
+          updatedAt: new Date()
+        };
+
+        await taskRef.update(updateData);
+        const updatedDoc = await taskRef.get();
+
+        return res.status(200).json({
+          success: true,
+          message: 'משימה עודכנה בהצלחה',
+          task: { id: updatedDoc.id, ...updatedDoc.data() }
+        });
+      }
+
+      if (req.method === 'DELETE') {
+        checkAuthorization(user, ['super_admin']);
+
+        await taskRef.delete();
+
+        return res.status(200).json({
+          success: true,
+          message: 'משימה נמחקה בהצלחה'
+        });
+      }
+    }
+
+    // Collection operations
     if (req.method === 'GET') {
       const { search, status, priority, riderId, vehicleId, page = 1, limit = 100 } = req.query;
 
       let query = db.collection('tasks');
 
-      // סינונים
       if (status) {
         query = query.where('status', '==', status);
       }
@@ -40,7 +92,6 @@ module.exports = async (req, res) => {
       const snapshot = await query.limit(parseInt(limit)).get();
       let tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      // חיפוש טקסט חופשי
       if (search) {
         const searchLower = search.toLowerCase();
         tasks = tasks.filter(task =>
@@ -56,7 +107,6 @@ module.exports = async (req, res) => {
       });
     }
 
-    // POST - יצירת משימה חדשה
     if (req.method === 'POST') {
       checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
 

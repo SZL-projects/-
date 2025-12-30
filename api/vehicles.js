@@ -1,6 +1,6 @@
-// Vercel Serverless Function - /api/vehicles
-const { initFirebase } = require('../_utils/firebase');
-const { authenticateToken, checkAuthorization } = require('../_utils/auth');
+// Vercel Serverless Function - /api/vehicles (all vehicle endpoints)
+const { initFirebase } = require('./_utils/firebase');
+const { authenticateToken, checkAuthorization } = require('./_utils/auth');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -17,13 +17,66 @@ module.exports = async (req, res) => {
     const { db } = initFirebase();
     const user = await authenticateToken(req, db);
 
-    // GET - קבלת רשימת כלים
+    // Extract ID from URL if exists
+    const pathMatch = req.url.match(/\/api\/vehicles\/([^?]+)/);
+    const vehicleId = pathMatch ? pathMatch[1] : null;
+
+    // Single vehicle operations
+    if (vehicleId) {
+      const vehicleRef = db.collection('vehicles').doc(vehicleId);
+      const doc = await vehicleRef.get();
+
+      if (!doc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'כלי לא נמצא'
+        });
+      }
+
+      if (req.method === 'GET') {
+        return res.status(200).json({
+          success: true,
+          vehicle: { id: doc.id, ...doc.data() }
+        });
+      }
+
+      if (req.method === 'PUT') {
+        checkAuthorization(user, ['super_admin', 'manager', 'logistics']);
+
+        const updateData = {
+          ...req.body,
+          updatedBy: user.id,
+          updatedAt: new Date()
+        };
+
+        await vehicleRef.update(updateData);
+        const updatedDoc = await vehicleRef.get();
+
+        return res.status(200).json({
+          success: true,
+          message: 'כלי עודכן בהצלחה',
+          vehicle: { id: updatedDoc.id, ...updatedDoc.data() }
+        });
+      }
+
+      if (req.method === 'DELETE') {
+        checkAuthorization(user, ['super_admin']);
+
+        await vehicleRef.delete();
+
+        return res.status(200).json({
+          success: true,
+          message: 'כלי נמחק בהצלחה'
+        });
+      }
+    }
+
+    // Collection operations
     if (req.method === 'GET') {
       const { search, status, page = 1, limit = 50 } = req.query;
 
       let query = db.collection('vehicles');
 
-      // סינון לפי סטטוס
       if (status) {
         query = query.where('status', '==', status);
       }
@@ -31,7 +84,6 @@ module.exports = async (req, res) => {
       const snapshot = await query.get();
       let vehicles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      // חיפוש טקסט חופשי
       if (search) {
         const searchLower = search.toLowerCase();
         vehicles = vehicles.filter(vehicle =>
@@ -42,7 +94,6 @@ module.exports = async (req, res) => {
         );
       }
 
-      // Pagination
       const startIndex = (page - 1) * limit;
       const endIndex = page * limit;
       const paginatedVehicles = vehicles.slice(startIndex, endIndex);
@@ -56,7 +107,6 @@ module.exports = async (req, res) => {
       });
     }
 
-    // POST - יצירת כלי חדש
     if (req.method === 'POST') {
       checkAuthorization(user, ['super_admin', 'manager', 'logistics']);
 

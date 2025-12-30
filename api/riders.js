@@ -1,6 +1,6 @@
-// Vercel Serverless Function - /api/riders
-const { initFirebase } = require('../_utils/firebase');
-const { authenticateToken, checkAuthorization } = require('../_utils/auth');
+// Vercel Serverless Function - /api/riders (all rider endpoints)
+const { initFirebase } = require('./_utils/firebase');
+const { authenticateToken, checkAuthorization } = require('./_utils/auth');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -17,28 +17,86 @@ module.exports = async (req, res) => {
     const { db } = initFirebase();
     const user = await authenticateToken(req, db);
 
-    // GET - קבלת רשימת רוכבים
+    // Extract ID from URL if exists (/api/riders/[id])
+    const pathMatch = req.url.match(/\/api\/riders\/([^?]+)/);
+    const riderId = pathMatch ? pathMatch[1] : null;
+
+    // Single rider operations (GET/PUT/DELETE /api/riders/[id])
+    if (riderId) {
+      const riderRef = db.collection('riders').doc(riderId);
+      const doc = await riderRef.get();
+
+      if (!doc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'רוכב לא נמצא'
+        });
+      }
+
+      // GET single rider
+      if (req.method === 'GET') {
+        if (user.role === 'rider' && user.riderId !== riderId) {
+          return res.status(403).json({
+            success: false,
+            message: 'אין הרשאה לצפות ברוכב זה'
+          });
+        }
+
+        return res.status(200).json({
+          success: true,
+          rider: { id: doc.id, ...doc.data() }
+        });
+      }
+
+      // PUT - update rider
+      if (req.method === 'PUT') {
+        checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+        const updateData = {
+          ...req.body,
+          updatedBy: user.id,
+          updatedAt: new Date()
+        };
+
+        await riderRef.update(updateData);
+        const updatedDoc = await riderRef.get();
+
+        return res.status(200).json({
+          success: true,
+          message: 'רוכב עודכן בהצלחה',
+          rider: { id: updatedDoc.id, ...updatedDoc.data() }
+        });
+      }
+
+      // DELETE rider
+      if (req.method === 'DELETE') {
+        checkAuthorization(user, ['super_admin']);
+
+        await riderRef.delete();
+
+        return res.status(200).json({
+          success: true,
+          message: 'רוכב נמחק בהצלחה'
+        });
+      }
+    }
+
+    // Collection operations (GET/POST /api/riders)
+    // GET - list riders
     if (req.method === 'GET') {
       const { search, riderStatus, assignmentStatus, region, page = 1, limit = 50 } = req.query;
 
       let query = db.collection('riders');
 
-      // סינון לפי סטטוס רוכב
       if (riderStatus) {
         query = query.where('riderStatus', '==', riderStatus);
       }
-
-      // סינון לפי סטטוס שיבוץ
       if (assignmentStatus) {
         query = query.where('assignmentStatus', '==', assignmentStatus);
       }
-
-      // סינון לפי מחוז
       if (region) {
         query = query.where('region.district', '==', region);
       }
-
-      // אם המשתמש הוא רוכב - רק את עצמו
       if (user.role === 'rider' && user.riderId) {
         query = query.where('__name__', '==', user.riderId);
       }
@@ -46,7 +104,6 @@ module.exports = async (req, res) => {
       const snapshot = await query.get();
       let riders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      // חיפוש טקסט חופשי
       if (search) {
         const searchLower = search.toLowerCase();
         riders = riders.filter(rider =>
@@ -57,7 +114,6 @@ module.exports = async (req, res) => {
         );
       }
 
-      // Pagination
       const startIndex = (page - 1) * limit;
       const endIndex = page * limit;
       const paginatedRiders = riders.slice(startIndex, endIndex);
@@ -71,7 +127,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // POST - יצירת רוכב חדש
+    // POST - create rider
     if (req.method === 'POST') {
       checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
 

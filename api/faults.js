@@ -1,6 +1,6 @@
 // Vercel Serverless Function - /api/faults
-const { initFirebase } = require('../_utils/firebase');
-const { authenticateToken } = require('../_utils/auth');
+const { initFirebase } = require('./_utils/firebase');
+const { authenticateToken, checkAuthorization } = require('./_utils/auth');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -17,13 +17,65 @@ module.exports = async (req, res) => {
     const { db } = initFirebase();
     const user = await authenticateToken(req, db);
 
-    // GET - קבלת רשימת תקלות
+    const pathMatch = req.url.match(/\/api\/faults\/([^?]+)/);
+    const faultId = pathMatch ? pathMatch[1] : null;
+
+    // Single fault operations
+    if (faultId) {
+      const faultRef = db.collection('faults').doc(faultId);
+      const doc = await faultRef.get();
+
+      if (!doc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'תקלה לא נמצאה'
+        });
+      }
+
+      if (req.method === 'GET') {
+        return res.status(200).json({
+          success: true,
+          fault: { id: doc.id, ...doc.data() }
+        });
+      }
+
+      if (req.method === 'PUT') {
+        checkAuthorization(user, ['super_admin', 'manager', 'logistics']);
+
+        const updateData = {
+          ...req.body,
+          updatedBy: user.id,
+          updatedAt: new Date()
+        };
+
+        await faultRef.update(updateData);
+        const updatedDoc = await faultRef.get();
+
+        return res.status(200).json({
+          success: true,
+          message: 'תקלה עודכנה בהצלחה',
+          fault: { id: updatedDoc.id, ...updatedDoc.data() }
+        });
+      }
+
+      if (req.method === 'DELETE') {
+        checkAuthorization(user, ['super_admin']);
+
+        await faultRef.delete();
+
+        return res.status(200).json({
+          success: true,
+          message: 'תקלה נמחקה בהצלחה'
+        });
+      }
+    }
+
+    // Collection operations
     if (req.method === 'GET') {
       const { search, severity, status, vehicleId, riderId, page = 1, limit = 100 } = req.query;
 
       let query = db.collection('faults');
 
-      // סינונים
       if (severity) {
         query = query.where('severity', '==', severity);
       }
@@ -40,7 +92,6 @@ module.exports = async (req, res) => {
       const snapshot = await query.limit(parseInt(limit)).get();
       let faults = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      // חיפוש טקסט חופשי
       if (search) {
         const searchLower = search.toLowerCase();
         faults = faults.filter(fault =>
@@ -56,7 +107,6 @@ module.exports = async (req, res) => {
       });
     }
 
-    // POST - דיווח תקלה חדשה
     if (req.method === 'POST') {
       const faultData = {
         ...req.body,
