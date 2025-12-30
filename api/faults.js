@@ -1,5 +1,5 @@
 // Vercel Serverless Function - /api/faults
-const { initFirebase } = require('./_utils/firebase');
+const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkAuthorization } = require('./_utils/auth');
 
 module.exports = async (req, res) => {
@@ -17,8 +17,7 @@ module.exports = async (req, res) => {
     const { db } = initFirebase();
     const user = await authenticateToken(req, db);
 
-    const pathMatch = req.url.match(/\/api\/faults\/([^?]+)/);
-    const faultId = pathMatch ? pathMatch[1] : null;
+    const faultId = extractIdFromUrl(req.url, 'faults');
 
     // Single fault operations
     if (faultId) {

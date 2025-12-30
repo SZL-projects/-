@@ -1,5 +1,5 @@
 // Vercel Serverless Function - /api/tasks
-const { initFirebase } = require('./_utils/firebase');
+const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkAuthorization } = require('./_utils/auth');
 
 module.exports = async (req, res) => {
@@ -17,8 +17,7 @@ module.exports = async (req, res) => {
     const { db } = initFirebase();
     const user = await authenticateToken(req, db);
 
-    const pathMatch = req.url.match(/\/api\/tasks\/([^?]+)/);
-    const taskId = pathMatch ? pathMatch[1] : null;
+    const taskId = extractIdFromUrl(req.url, 'tasks');
 
     // Single task operations
     if (taskId) {

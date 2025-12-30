@@ -1,5 +1,5 @@
 // Vercel Serverless Function - /api/vehicles (all vehicle endpoints)
-const { initFirebase } = require('./_utils/firebase');
+const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkAuthorization } = require('./_utils/auth');
 
 module.exports = async (req, res) => {
@@ -17,9 +17,8 @@ module.exports = async (req, res) => {
     const { db } = initFirebase();
     const user = await authenticateToken(req, db);
 
-    // Extract ID from URL if exists
-    const pathMatch = req.url.match(/\/api\/vehicles\/([^?]+)/);
-    const vehicleId = pathMatch ? pathMatch[1] : null;
+    // Extract ID from URL
+    const vehicleId = extractIdFromUrl(req.url, 'vehicles');
 
     // Single vehicle operations
     if (vehicleId) {
