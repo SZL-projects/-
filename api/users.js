@@ -15,18 +15,26 @@ module.exports = async (req, res) => {
   }
 
   try {
+    console.log('👥 Users Request:', {
+      method: req.method,
+      url: req.url,
+      hasAuth: !!req.headers.authorization
+    });
+
     const { db } = initFirebase();
     const user = await authenticateToken(req, db);
-
-    // רק מנהלים יכולים לנהל משתמשים
-    checkAuthorization(user, ['super_admin', 'manager']);
 
     // Extract ID from URL if exists
     const pathMatch = req.url.match(/\/api\/users\/([^?]+)/);
     const userId = pathMatch ? pathMatch[1] : null;
 
+    console.log('📍 User ID extracted:', userId);
+
     // Single user operations
     if (userId) {
+      // בדיקת הרשאות למשתמש בודד
+      checkAuthorization(user, ['super_admin', 'manager']);
+
       const userRef = db.collection('users').doc(userId);
       const doc = await userRef.get();
 
@@ -91,6 +99,9 @@ module.exports = async (req, res) => {
     // Collection operations
     // GET - list users
     if (req.method === 'GET') {
+      // בדיקת הרשאות לצפייה ברשימת משתמשים
+      checkAuthorization(user, ['super_admin', 'manager']);
+
       const { search, role, isActive, page = 1, limit = 50 } = req.query;
 
       let query = db.collection('users');
@@ -134,6 +145,11 @@ module.exports = async (req, res) => {
 
     // POST - create user
     if (req.method === 'POST') {
+      // בדיקת הרשאות ליצירת משתמש
+      checkAuthorization(user, ['super_admin', 'manager']);
+
+      console.log('📝 Creating user:', req.body?.username);
+
       const { username, email, password, firstName, lastName, phone, role } = req.body;
 
       // בדיקה אם משתמש קיים
@@ -185,24 +201,42 @@ module.exports = async (req, res) => {
       });
     }
 
+    console.error('❌ Users: Method not allowed:', {
+      method: req.method,
+      url: req.url,
+      userId
+    });
+
     return res.status(405).json({
       success: false,
-      message: 'Method not allowed'
+      message: 'Method not allowed',
+      details: {
+        method: req.method,
+        allowedMethods: userId ? ['GET', 'PUT', 'DELETE'] : ['GET', 'POST']
+      }
     });
 
   } catch (error) {
-    console.error('Users error:', error);
+    console.error('❌ Users error:', {
+      message: error.message,
+      stack: error.stack,
+      url: req.url,
+      method: req.method
+    });
 
     if (error.message.includes('token') || error.message.includes('authorized')) {
       return res.status(401).json({
         success: false,
-        message: error.message
+        message: 'שגיאת הרשאה',
+        error: error.message
       });
     }
 
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'שגיאת שרת',
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
