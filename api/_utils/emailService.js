@@ -2,17 +2,39 @@ const nodemailer = require('nodemailer');
 
 // יצירת transporter
 const createTransporter = () => {
-  // Fix for Vercel serverless environment
-  const mailer = nodemailer.default || nodemailer;
-  return mailer.createTransporter({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT),
-    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+  // Debug: בדיקה מה יש ב-nodemailer
+  console.log('🔍 nodemailer type:', typeof nodemailer);
+  console.log('🔍 nodemailer.createTransporter:', typeof nodemailer?.createTransporter);
+  console.log('🔍 nodemailer.default:', typeof nodemailer?.default);
+  console.log('🔍 nodemailer keys:', Object.keys(nodemailer || {}).slice(0, 10));
+
+  // ניסיון מספר 1: שימוש ישיר
+  if (typeof nodemailer.createTransporter === 'function') {
+    return nodemailer.createTransporter({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+  }
+
+  // ניסיון מספר 2: דרך default
+  if (nodemailer.default && typeof nodemailer.default.createTransporter === 'function') {
+    return nodemailer.default.createTransporter({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+  }
+
+  throw new Error('❌ Cannot find createTransporter in nodemailer module');
 };
 
 // שליחת מייל כללי
