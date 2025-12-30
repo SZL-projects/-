@@ -17,7 +17,20 @@ module.exports = async (req, res) => {
 
   try {
     const { db } = initFirebase();
-    const path = req.url.replace('/api/auth', '').split('?')[0];
+
+    // Extract the sub-path - handle multiple Vercel URL patterns
+    let path = req.url.split('?')[0]; // Remove query params first
+
+    // Try different patterns
+    if (path.includes('/auth/')) {
+      // Pattern: /api/auth/login or /auth/login
+      path = path.substring(path.indexOf('/auth/') + 5); // Everything after /auth
+    } else if (path.startsWith('/')) {
+      // Pattern: /login (Vercel stripped the prefix)
+      path = path;
+    }
+
+    console.log('Auth path:', path, 'Method:', req.method, 'Full URL:', req.url);
 
     // POST /api/auth/login
     if (path === '/login' && req.method === 'POST') {
