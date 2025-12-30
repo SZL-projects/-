@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { initFirebase } = require('./_utils/firebase');
 const { getSignedJwtToken, authenticateToken } = require('./_utils/auth');
+const { sendPasswordResetEmail } = require('./_utils/emailService');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -226,10 +227,22 @@ module.exports = async (req, res) => {
 
       console.log('✅ Reset token created for user:', userId);
 
-      // TODO: שליחת מייל עם הקישור
-      // בגרסה הזו רק נחזיר הצלחה
-      // בפרודקשן צריך לשלוח מייל עם:
-      // const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+      // שליחת מייל עם קישור לאיפוס סיסמה
+      try {
+        const userData = userDoc.data();
+        await sendPasswordResetEmail(
+          {
+            email: userData.email,
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || ''
+          },
+          resetToken
+        );
+        console.log('✅ Password reset email sent successfully to:', userData.email);
+      } catch (emailError) {
+        console.error('❌ Failed to send password reset email:', emailError);
+        // לא נכשיל את הבקשה אם המייל נכשל - נמשיך הלאה
+      }
 
       return res.status(200).json({
         success: true,
