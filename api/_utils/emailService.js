@@ -2,7 +2,9 @@ const nodemailer = require('nodemailer');
 
 // יצירת transporter
 const createTransporter = () => {
-  return nodemailer.createTransporter({
+  // Fix for Vercel serverless environment
+  const mailer = nodemailer.default || nodemailer;
+  return mailer.createTransporter({
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT),
     secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
