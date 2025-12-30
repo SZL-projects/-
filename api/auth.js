@@ -184,11 +184,132 @@ module.exports = async (req, res) => {
       });
     }
 
+    // POST /api/auth/forgot-password
+    if (path === '/forgot-password' && req.method === 'POST') {
+      console.log('📧 Forgot password request for:', req.body?.email);
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: 'נא להזין כתובת אימייל'
+        });
+      }
+
+      // חיפוש משתמש לפי אימייל
+      const usersSnapshot = await db.collection('users')
+        .where('email', '==', email.toLowerCase())
+        .limit(1)
+        .get();
+
+      // תמיד נחזיר הצלחה (למניעת גילוי קיום משתמשים)
+      if (usersSnapshot.empty) {
+        console.log('⚠️ Email not found, but returning success for security');
+        return res.status(200).json({
+          success: true,
+          message: 'אם האימייל קיים במערכת, נשלח אליו קישור לאיפוס סיסמה'
+        });
+      }
+
+      const userDoc = usersSnapshot.docs[0];
+      const userId = userDoc.id;
+
+      // יצירת טוקן איפוס סיסמה
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetTokenExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 דקות
+
+      // שמירת הטוקן במשתמש
+      await db.collection('users').doc(userId).update({
+        resetPasswordToken: resetToken,
+        resetPasswordExpiry: resetTokenExpiry
+      });
+
+      console.log('✅ Reset token created for user:', userId);
+
+      // TODO: שליחת מייל עם הקישור
+      // בגרסה הזו רק נחזיר הצלחה
+      // בפרודקשן צריך לשלוח מייל עם:
+      // const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+
+      return res.status(200).json({
+        success: true,
+        message: 'אם האימייל קיים במערכת, נשלח אליו קישור לאיפוס סיסמה',
+        // לטסטים בלבד - להסיר בפרודקשן!
+        resetToken: process.env.NODE_ENV === 'development' ? resetToken : undefined
+      });
+    }
+
+    // PUT /api/auth/reset-password/:token
+    if (path.startsWith('/reset-password/') && req.method === 'PUT') {
+      const token = path.split('/reset-password/')[1];
+      console.log('🔄 Reset password request with token:', token?.substring(0, 10) + '...');
+
+      const { password } = req.body;
+
+      if (!password) {
+        return res.status(400).json({
+          success: false,
+          message: 'נא להזין סיסמה חדשה'
+        });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'הסיסמה חייבת להיות לפחות 6 תווים'
+        });
+      }
+
+      // חיפוש משתמש עם הטוקן
+      const usersSnapshot = await db.collection('users')
+        .where('resetPasswordToken', '==', token)
+        .limit(1)
+        .get();
+
+      if (usersSnapshot.empty) {
+        return res.status(400).json({
+          success: false,
+          message: 'טוקן לא תקין או שפג תוקפו'
+        });
+      }
+
+      const userDoc = usersSnapshot.docs[0];
+      const userData = userDoc.data();
+      const userId = userDoc.id;
+
+      // בדיקת תוקף הטוקן
+      if (!userData.resetPasswordExpiry || userData.resetPasswordExpiry.toDate() < new Date()) {
+        return res.status(400).json({
+          success: false,
+          message: 'הטוקן פג תוקף. אנא בקש איפוס סיסמה מחדש'
+        });
+      }
+
+      // הצפנת הסיסמה החדשה
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+
+      // עדכון הסיסמה ומחיקת הטוקן
+      await db.collection('users').doc(userId).update({
+        password: hashedPassword,
+        resetPasswordToken: null,
+        resetPasswordExpiry: null,
+        updatedAt: new Date()
+      });
+
+      console.log('✅ Password reset successful for user:', userId);
+
+      return res.status(200).json({
+        success: true,
+        message: 'הסיסמה אופסה בהצלחה'
+      });
+    }
+
     console.error('❌ Auth endpoint not found:', {
       path,
       method: req.method,
       url: req.url,
-      availableEndpoints: ['/login (POST)', '/register (POST)', '/me (GET)']
+      availableEndpoints: ['/login (POST)', '/register (POST)', '/me (GET)', '/forgot-password (POST)', '/reset-password/:token (PUT)']
     });
 
     return res.status(404).json({
@@ -200,7 +321,9 @@ module.exports = async (req, res) => {
         availableEndpoints: [
           'POST /api/auth/login',
           'POST /api/auth/register',
-          'GET /api/auth/me'
+          'GET /api/auth/me',
+          'POST /api/auth/forgot-password',
+          'PUT /api/auth/reset-password/:token'
         ]
       }
     });
