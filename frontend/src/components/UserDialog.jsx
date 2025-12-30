@@ -25,10 +25,12 @@ const userRoles = [
 
 export default function UserDialog({ open, onClose, onSave, user }) {
   const [formData, setFormData] = useState({
+    username: '',
     firstName: '',
     lastName: '',
     email: '',
     password: '',
+    phone: '',
     role: 'user',
     isActive: true,
   });
@@ -38,19 +40,23 @@ export default function UserDialog({ open, onClose, onSave, user }) {
   useEffect(() => {
     if (user) {
       setFormData({
+        username: user.username || '',
         firstName: user.firstName || '',
         lastName: user.lastName || '',
         email: user.email || '',
         password: '',
+        phone: user.phone || '',
         role: user.role || 'user',
         isActive: user.isActive !== undefined ? user.isActive : true,
       });
     } else {
       setFormData({
+        username: '',
         firstName: '',
         lastName: '',
         email: '',
         password: '',
+        phone: '',
         role: 'user',
         isActive: true,
       });
@@ -68,6 +74,10 @@ export default function UserDialog({ open, onClose, onSave, user }) {
 
   const validate = () => {
     const newErrors = {};
+
+    if (!formData.username.trim()) {
+      newErrors.username = 'שדה חובה';
+    }
 
     if (!formData.firstName.trim()) {
       newErrors.firstName = 'שדה חובה';
@@ -110,6 +120,19 @@ export default function UserDialog({ open, onClose, onSave, user }) {
       <DialogTitle>{user ? 'עריכת משתמש' : 'הוספת משתמש חדש'}</DialogTitle>
       <DialogContent>
         <Grid container spacing={2} sx={{ mt: 1 }}>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="שם משתמש"
+              value={formData.username}
+              onChange={handleChange('username')}
+              error={!!errors.username}
+              helperText={errors.username}
+              required
+              disabled={!!user}
+            />
+          </Grid>
+
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
@@ -144,6 +167,16 @@ export default function UserDialog({ open, onClose, onSave, user }) {
               error={!!errors.email}
               helperText={errors.email}
               required
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="טלפון"
+              value={formData.phone}
+              onChange={handleChange('phone')}
+              helperText="אופציונלי"
             />
           </Grid>
 
