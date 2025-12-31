@@ -131,12 +131,18 @@ export default function Users() {
   };
 
   const handleSendCredentials = async (user) => {
+    // בדיקה שלמשתמש יש מייל
+    if (!user.email) {
+      showSnackbar('למשתמש אין כתובת אימייל במערכת', 'warning');
+      return;
+    }
+
     try {
       await authAPI.sendCredentials(user.id);
       showSnackbar('פרטי ההתחברות נשלחו בהצלחה למייל', 'success');
     } catch (err) {
       console.error('Error sending credentials:', err);
-      showSnackbar('שגיאה בשליחת פרטי ההתחברות', 'error');
+      showSnackbar(err.response?.data?.message || 'שגיאה בשליחת פרטי ההתחברות', 'error');
     }
   };
 

@@ -49,6 +49,14 @@ module.exports = async (req, res) => {
 
       const userData = doc.data();
 
+      // בדיקה שלמשתמש יש מייל
+      if (!userData.email) {
+        return res.status(400).json({
+          success: false,
+          message: 'למשתמש אין כתובת אימייל במערכת'
+        });
+      }
+
       // יצירת סיסמה זמנית חדשה
       const temporaryPassword = crypto.randomBytes(4).toString('hex'); // 8 תווים
       const salt = await bcrypt.genSalt(10);
