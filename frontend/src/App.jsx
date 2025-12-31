@@ -7,6 +7,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Riders from './pages/Riders';
+import RiderDetail from './pages/RiderDetail';
 import Vehicles from './pages/Vehicles';
 import VehicleDetails from './pages/VehicleDetails';
 import Tasks from './pages/Tasks';
@@ -67,6 +68,7 @@ function AppRoutes() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="riders" element={<Riders />} />
+        <Route path="riders/:id" element={<RiderDetail />} />
         <Route path="vehicles" element={<Vehicles />} />
         <Route path="vehicles/:id" element={<VehicleDetails />} />
         <Route path="tasks" element={<Tasks />} />

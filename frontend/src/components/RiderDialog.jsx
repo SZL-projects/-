@@ -12,7 +12,9 @@ import {
   InputLabel,
   Select,
   Typography,
+  Autocomplete,
 } from '@mui/material';
+import { vehiclesAPI } from '../services/api';
 
 const riderStatuses = [
   { value: 'active', label: 'פעיל' },
@@ -48,6 +50,7 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
     },
     riderStatus: 'active',
     assignmentStatus: 'unassigned',
+    assignedVehicleId: '',
     address: {
       street: '',
       city: '',
@@ -56,6 +59,23 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
   });
 
   const [errors, setErrors] = useState({});
+  const [vehicles, setVehicles] = useState([]);
+
+  // טעינת רשימת כלים
+  useEffect(() => {
+    const loadVehicles = async () => {
+      try {
+        const response = await vehiclesAPI.getAll();
+        setVehicles(response.data.vehicles || []);
+      } catch (err) {
+        console.error('Error loading vehicles:', err);
+      }
+    };
+
+    if (open) {
+      loadVehicles();
+    }
+  }, [open]);
 
   useEffect(() => {
     if (rider) {
@@ -63,6 +83,7 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
         ...rider,
         region: rider.region || { district: '', station: '' },
         address: rider.address || { street: '', city: '', postalCode: '' },
+        assignedVehicleId: rider.assignedVehicleId || '',
       });
     } else {
       setFormData({
@@ -77,6 +98,7 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
         },
         riderStatus: 'active',
         assignmentStatus: 'unassigned',
+        assignedVehicleId: '',
         address: {
           street: '',
           city: '',
@@ -133,6 +155,11 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
 
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'כתובת אימייל לא תקינה';
+    }
+
+    // בדיקה שיש כלי משויך אם הסטטוס הוא "משויך"
+    if (formData.assignmentStatus === 'assigned' && !formData.assignedVehicleId) {
+      newErrors.assignedVehicleId = 'חובה לבחור כלי משויך';
     }
 
     setErrors(newErrors);
@@ -324,6 +351,33 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
               </Select>
             </FormControl>
           </Grid>
+
+          {/* שדה בחירת כלי - רק אם משויך */}
+          {formData.assignmentStatus === 'assigned' && (
+            <Grid item xs={12}>
+              <Autocomplete
+                options={vehicles}
+                getOptionLabel={(option) => `${option.vehicleNumber} - ${option.type || 'אופנוע'}`}
+                value={vehicles.find(v => v.id === formData.assignedVehicleId) || null}
+                onChange={(event, newValue) => {
+                  setFormData({
+                    ...formData,
+                    assignedVehicleId: newValue ? newValue.id : '',
+                  });
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="כלי משויך"
+                    required={formData.assignmentStatus === 'assigned'}
+                    error={!!errors.assignedVehicleId}
+                    helperText={errors.assignedVehicleId || 'חובה לבחור כלי כאשר הסטטוס "משויך"'}
+                  />
+                )}
+                noOptionsText="לא נמצאו כלים"
+              />
+            </Grid>
+          )}
         </Grid>
       </DialogContent>
       <DialogActions>

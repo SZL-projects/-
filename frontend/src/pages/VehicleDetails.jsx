@@ -10,6 +10,7 @@ import {
   CircularProgress,
   Alert,
   Divider,
+  Snackbar,
 } from '@mui/material';
 import { ArrowBack, Edit } from '@mui/icons-material';
 import { vehiclesAPI } from '../services/api';
@@ -23,6 +24,7 @@ export default function VehicleDetails() {
   const [error, setError] = useState('');
   const [folderData, setFolderData] = useState(null);
   const [creatingFolders, setCreatingFolders] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
     loadVehicle();
@@ -45,6 +47,10 @@ export default function VehicleDetails() {
     }
   };
 
+  const showSnackbar = (message, severity) => {
+    setSnackbar({ open: true, message, severity });
+  };
+
   const createFolderStructure = async () => {
     if (!vehicle) return;
 
@@ -52,9 +58,10 @@ export default function VehicleDetails() {
     try {
       const response = await vehiclesAPI.createFolder(vehicle.internalNumber || vehicle.licensePlate);
       setFolderData(response.data.data);
+      showSnackbar('תיקיות נוצרו בהצלחה', 'success');
     } catch (err) {
       console.error('Error creating folders:', err);
-      alert('שגיאה ביצירת תיקיות');
+      showSnackbar(err.response?.data?.message || 'שגיאה ביצירת תיקיות', 'error');
     } finally {
       setCreatingFolders(false);
     }
@@ -215,6 +222,21 @@ export default function VehicleDetails() {
           />
         )}
       </Box>
+
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
