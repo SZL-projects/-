@@ -46,6 +46,10 @@
       "destination": "/api/faults"
     },
     {
+      "source": "/api/users/:id/send-credentials",
+      "destination": "/api/users"
+    },
+    {
       "source": "/api/users/:id",
       "destination": "/api/users"
     },
