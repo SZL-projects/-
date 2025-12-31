@@ -1,7 +1,17 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const VehicleModel = require('../models/firestore/VehicleModel');
+const googleDriveService = require('../services/googleDriveService');
 const { protect, authorize } = require('../middleware/auth-firebase');
+
+// הגדרת multer לטיפול בקבצים
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB
+  }
+});
 
 // כל הנתיבים מוגנים
 router.use(protect);
@@ -164,6 +174,168 @@ router.delete('/:id', authorize('super_admin'), async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message
+    });
+  }
+});
+
+// ==================== Google Drive Endpoints ====================
+
+// @route   POST /api/vehicles/create-folder
+// @desc    יצירת מבנה תיקיות ב-Drive עבור כלי
+// @access  Private (מנהלים בלבד)
+router.post('/create-folder', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+  try {
+    const { vehicleNumber } = req.body;
+
+    if (!vehicleNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'מספר כלי הוא שדה חובה'
+      });
+    }
+
+    const folderData = await googleDriveService.createVehicleFolderStructure(vehicleNumber);
+
+    res.json({
+      success: true,
+      message: 'מבנה תיקיות נוצר בהצלחה',
+      data: folderData
+    });
+  } catch (error) {
+    console.error('Error creating folder structure:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה ביצירת מבנה תיקיות'
+    });
+  }
+});
+
+// @route   POST /api/vehicles/create-rider-folder
+// @desc    יצירת תיקיית רוכב בתוך תיקיית הביטוחים
+// @access  Private (מנהלים בלבד)
+router.post('/create-rider-folder', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+  try {
+    const { riderName, insuranceFolderId } = req.body;
+
+    if (!riderName || !insuranceFolderId) {
+      return res.status(400).json({
+        success: false,
+        message: 'שם רוכב ומזהה תיקיית ביטוחים הם שדות חובה'
+      });
+    }
+
+    const riderFolderData = await googleDriveService.createRiderFolder(riderName, insuranceFolderId);
+
+    res.json({
+      success: true,
+      message: 'תיקיית רוכב נוצרה בהצלחה',
+      data: riderFolderData
+    });
+  } catch (error) {
+    console.error('Error creating rider folder:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה ביצירת תיקיית רוכב'
+    });
+  }
+});
+
+// @route   POST /api/vehicles/upload-file
+// @desc    העלאת קובץ ל-Drive
+// @access  Private
+router.post('/upload-file', upload.single('file'), async (req, res) => {
+  try {
+    const { folderId } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'לא הועלה קובץ'
+      });
+    }
+
+    if (!folderId) {
+      return res.status(400).json({
+        success: false,
+        message: 'מזהה תיקייה הוא שדה חובה'
+      });
+    }
+
+    const fileData = await googleDriveService.uploadFile(
+      req.file.originalname,
+      req.file.buffer,
+      folderId,
+      req.file.mimetype
+    );
+
+    res.json({
+      success: true,
+      message: 'קובץ הועלה בהצלחה',
+      data: fileData
+    });
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה בהעלאת קובץ'
+    });
+  }
+});
+
+// @route   GET /api/vehicles/list-files
+// @desc    קבלת רשימת קבצים בתיקייה
+// @access  Private
+router.get('/list-files', async (req, res) => {
+  try {
+    const { folderId } = req.query;
+
+    if (!folderId) {
+      return res.status(400).json({
+        success: false,
+        message: 'מזהה תיקייה הוא שדה חובה'
+      });
+    }
+
+    const files = await googleDriveService.listFiles(folderId);
+
+    res.json({
+      success: true,
+      files
+    });
+  } catch (error) {
+    console.error('Error listing files:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה בקבלת רשימת קבצים'
+    });
+  }
+});
+
+// @route   DELETE /api/vehicles/delete-file
+// @desc    מחיקת קובץ מ-Drive
+// @access  Private (מנהלים בלבד)
+router.delete('/delete-file', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+  try {
+    const { fileId } = req.query;
+
+    if (!fileId) {
+      return res.status(400).json({
+        success: false,
+        message: 'מזהה קובץ הוא שדה חובה'
+      });
+    }
+
+    const result = await googleDriveService.deleteFile(fileId);
+
+    res.json({
+      success: true,
+      message: 'קובץ נמחק בהצלחה'
+    });
+  } catch (error) {
+    console.error('Error deleting file:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה במחיקת קובץ'
     });
   }
 });
