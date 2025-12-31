@@ -117,7 +117,9 @@ router.post('/login', async (req, res) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role
+        roles: user.roles || [user.role || 'rider'],
+        riderId: user.riderId,
+        vehicleAccess: user.vehicleAccess || []
       }
     });
   } catch (error) {
@@ -204,7 +206,7 @@ router.get('/users', require('../middleware/auth-firebase').protect, require('..
 // @access  Private (מנהלים בלבד)
 router.post('/users', require('../middleware/auth-firebase').protect, require('../middleware/auth-firebase').authorize('super_admin', 'manager'), async (req, res) => {
   try {
-    const { username, email, password, firstName, lastName, phone, role } = req.body;
+    const { username, email, password, firstName, lastName, phone, roles, riderId, vehicleAccess, isActive } = req.body;
 
     // ולידציות בסיסיות
     if (!username || !email || !password || !firstName || !lastName) {
@@ -222,7 +224,10 @@ router.post('/users', require('../middleware/auth-firebase').protect, require('.
       firstName,
       lastName,
       phone,
-      role: role || 'viewer',
+      roles: roles || ['rider'],
+      riderId: riderId || null,
+      vehicleAccess: vehicleAccess || [],
+      isActive: isActive !== undefined ? isActive : true,
       createdBy: req.user.id
     });
 

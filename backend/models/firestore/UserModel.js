@@ -24,7 +24,7 @@ class UserModel {
         username: userData.username,
         email: userData.email.toLowerCase(),
         password: hashedPassword,
-        role: userData.role || 'rider',
+        roles: userData.roles || ['rider'],
         firstName: userData.firstName,
         lastName: userData.lastName,
         phone: userData.phone || null,
@@ -35,6 +35,7 @@ class UserModel {
         lockedBy: null,
         region: userData.region || null,
         riderId: userData.riderId || null,
+        vehicleAccess: userData.vehicleAccess || [],
         lastLogin: null,
         createdAt: new Date(),
         updatedAt: new Date()
