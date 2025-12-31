@@ -7,20 +7,26 @@ import {
   Button,
   TextField,
   Grid,
-  MenuItem,
   FormControl,
   InputLabel,
   Select,
   FormControlLabel,
   Switch,
   Typography,
+  MenuItem,
+  Checkbox,
+  ListItemText,
+  Chip,
+  Box,
 } from '@mui/material';
 
 const userRoles = [
   { value: 'super_admin', label: 'מנהל על' },
-  { value: 'admin', label: 'מנהל' },
-  { value: 'user', label: 'משתמש' },
-  { value: 'viewer', label: 'צופה' },
+  { value: 'manager', label: 'מנהל' },
+  { value: 'secretary', label: 'מזכירה' },
+  { value: 'logistics', label: 'לוגיסטיקה' },
+  { value: 'rider', label: 'רוכב' },
+  { value: 'regional_manager', label: 'מנהל אזורי' },
 ];
 
 export default function UserDialog({ open, onClose, onSave, user }) {
@@ -31,7 +37,7 @@ export default function UserDialog({ open, onClose, onSave, user }) {
     email: '',
     password: '',
     phone: '',
-    role: 'user',
+    roles: ['rider'],
     isActive: true,
   });
 
@@ -39,6 +45,9 @@ export default function UserDialog({ open, onClose, onSave, user }) {
 
   useEffect(() => {
     if (user) {
+      // תמיכה הן ב-roles חדש והן ב-role ישן
+      const userRoles = Array.isArray(user.roles) ? user.roles : [user.role || 'rider'];
+
       setFormData({
         username: user.username || '',
         firstName: user.firstName || '',
@@ -46,7 +55,7 @@ export default function UserDialog({ open, onClose, onSave, user }) {
         email: user.email || '',
         password: '',
         phone: user.phone || '',
-        role: user.role || 'user',
+        roles: userRoles,
         isActive: user.isActive !== undefined ? user.isActive : true,
       });
     } else {
@@ -57,7 +66,7 @@ export default function UserDialog({ open, onClose, onSave, user }) {
         email: '',
         password: '',
         phone: '',
-        role: 'user',
+        roles: ['rider'],
         isActive: true,
       });
     }
@@ -69,6 +78,14 @@ export default function UserDialog({ open, onClose, onSave, user }) {
     setFormData({ ...formData, [field]: value });
     if (errors[field]) {
       setErrors({ ...errors, [field]: '' });
+    }
+  };
+
+  const handleRolesChange = (event) => {
+    const value = event.target.value;
+    setFormData({ ...formData, roles: typeof value === 'string' ? value.split(',') : value });
+    if (errors.roles) {
+      setErrors({ ...errors, roles: '' });
     }
   };
 
@@ -99,6 +116,10 @@ export default function UserDialog({ open, onClose, onSave, user }) {
 
     if (formData.password && formData.password.length < 6) {
       newErrors.password = 'סיסמה חייבת להכיל לפחות 6 תווים';
+    }
+
+    if (!formData.roles || formData.roles.length === 0) {
+      newErrors.roles = 'חובה לבחור לפחות תפקיד אחד';
     }
 
     setErrors(newErrors);
@@ -194,19 +215,36 @@ export default function UserDialog({ open, onClose, onSave, user }) {
           </Grid>
 
           <Grid item xs={12}>
-            <FormControl fullWidth>
-              <InputLabel>תפקיד</InputLabel>
+            <FormControl fullWidth error={!!errors.roles}>
+              <InputLabel>תפקידים</InputLabel>
               <Select
-                value={formData.role}
-                onChange={handleChange('role')}
-                label="תפקיד"
+                multiple
+                value={formData.roles}
+                onChange={handleRolesChange}
+                label="תפקידים"
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((value) => {
+                      const role = userRoles.find(r => r.value === value);
+                      return (
+                        <Chip key={value} label={role?.label || value} size="small" />
+                      );
+                    })}
+                  </Box>
+                )}
               >
                 {userRoles.map((role) => (
                   <MenuItem key={role.value} value={role.value}>
-                    {role.label}
+                    <Checkbox checked={formData.roles.indexOf(role.value) > -1} />
+                    <ListItemText primary={role.label} />
                   </MenuItem>
                 ))}
               </Select>
+              {errors.roles && (
+                <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 2 }}>
+                  {errors.roles}
+                </Typography>
+              )}
             </FormControl>
           </Grid>
 

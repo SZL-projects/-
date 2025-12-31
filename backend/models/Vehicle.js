@@ -46,6 +46,35 @@ const vehicleSchema = new mongoose.Schema({
     required: true
   },
 
+  // שיוך רוכב
+  assignedRider: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Rider',
+    default: null
+  },
+  isAssigned: {
+    type: Boolean,
+    default: false
+  },
+  assignmentDate: Date,
+  assignmentHistory: [{
+    rider: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Rider'
+    },
+    assignedAt: Date,
+    unassignedAt: Date,
+    assignedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    unassignedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    reason: String
+  }],
+
   // קילומטראז'
   currentKilometers: {
     type: Number,

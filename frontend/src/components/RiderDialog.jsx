@@ -61,16 +61,25 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
   const [errors, setErrors] = useState({});
   const [vehicles, setVehicles] = useState([]);
 
-  // טעינת רשימת כלים פעילים בלבד
+  // טעינת רשימת כלים פעילים ולא משויכים
   useEffect(() => {
     const loadVehicles = async () => {
       try {
         const response = await vehiclesAPI.getAll();
-        // סינון רק כלים פעילים
-        const activeVehicles = (response.data.vehicles || []).filter(
-          vehicle => vehicle.status === 'active'
-        );
-        setVehicles(activeVehicles);
+        console.log('All vehicles:', response.data.vehicles);
+
+        // סינון רק כלים פעילים שלא משויכים (או הכלי הנוכחי אם עורכים)
+        const availableVehicles = (response.data.vehicles || []).filter(vehicle => {
+          // אם עורכים רוכב, להציג את הכלי הנוכחי שלו גם אם משויך
+          if (rider && vehicle.id === rider.assignedVehicleId) {
+            return true;
+          }
+          // אחרת, להציג רק כלים לא משויכים
+          return !vehicle.isAssigned || vehicle.assignedRider === null || vehicle.assignedRider === undefined;
+        });
+
+        console.log('Available vehicles:', availableVehicles);
+        setVehicles(availableVehicles);
       } catch (err) {
         console.error('Error loading vehicles:', err);
       }
@@ -79,15 +88,21 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
     if (open) {
       loadVehicles();
     }
-  }, [open]);
+  }, [open, rider]);
 
   useEffect(() => {
     if (rider) {
       setFormData({
-        ...rider,
+        firstName: rider.firstName || '',
+        lastName: rider.lastName || '',
+        idNumber: rider.idNumber || '',
+        phone: rider.phone || '',
+        email: rider.email || '',
         region: rider.region || { district: '', station: '' },
-        address: rider.address || { street: '', city: '', postalCode: '' },
+        riderStatus: rider.riderStatus || 'active',
+        assignmentStatus: rider.assignmentStatus || 'unassigned',
         assignedVehicleId: rider.assignedVehicleId || '',
+        address: rider.address || { street: '', city: '', postalCode: '' },
       });
     } else {
       setFormData({
@@ -361,13 +376,20 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
             <Grid item xs={12}>
               <Autocomplete
                 options={vehicles}
-                getOptionLabel={(option) => `${option.vehicleNumber} - ${option.type || 'אופנוע'}`}
+                getOptionLabel={(option) => {
+                  const number = option.vehicleNumber || option.internalNumber || option.licensePlate || 'ללא מספר';
+                  const type = option.type || 'אופנוע';
+                  return `${number} - ${type}`;
+                }}
                 value={vehicles.find(v => v.id === formData.assignedVehicleId) || null}
                 onChange={(event, newValue) => {
                   setFormData({
                     ...formData,
                     assignedVehicleId: newValue ? newValue.id : '',
                   });
+                  if (errors.assignedVehicleId) {
+                    setErrors({ ...errors, assignedVehicleId: '' });
+                  }
                 }}
                 renderInput={(params) => (
                   <TextField
@@ -375,10 +397,10 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
                     label="כלי משויך"
                     required={formData.assignmentStatus === 'assigned'}
                     error={!!errors.assignedVehicleId}
-                    helperText={errors.assignedVehicleId || 'חובה לבחור כלי כאשר הסטטוס "משויך"'}
+                    helperText={errors.assignedVehicleId || `בחר כלי (${vehicles.length} כלים זמינים)`}
                   />
                 )}
-                noOptionsText="לא נמצאו כלים"
+                noOptionsText="לא נמצאו כלים זמינים"
               />
             </Grid>
           )}
