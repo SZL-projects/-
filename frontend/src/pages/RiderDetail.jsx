@@ -85,7 +85,7 @@ export default function RiderDetail() {
         password: temporaryPassword,
         firstName: rider.firstName,
         lastName: rider.lastName,
-        role: 'rider', // תפקיד מיוחד לרוכבים
+        roles: ['rider'], // תפקיד רוכב - ניתן להוסיף עוד roles בעתיד
         riderId: id,
         isActive: true,
       });

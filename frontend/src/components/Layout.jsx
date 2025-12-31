@@ -39,6 +39,8 @@ import {
   People,
   Description,
   Lock,
+  DirectionsBike,
+  Settings,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import ChangePasswordDialog from './ChangePasswordDialog';
@@ -46,7 +48,15 @@ import ChangePasswordDialog from './ChangePasswordDialog';
 const drawerWidth = 260;
 const drawerWidthClosed = 65;
 
-const menuItems = [
+// תפריט לאופנוען - רק למשתמשים עם role 'rider'
+const riderMenuItems = [
+  { text: 'הכלי שלי', icon: <TwoWheeler />, path: '/my-vehicle' },
+  { text: 'התקלות שלי', icon: <Warning />, path: '/my-faults' },
+  { text: 'הפרופיל שלי', icon: <Person />, path: '/my-profile' },
+];
+
+// תפריט לניהול - למשתמשים עם הרשאות ניהול
+const managementMenuItems = [
   { text: 'דשבורד', icon: <Dashboard />, path: '/dashboard' },
   { text: 'רוכבים', icon: <Person />, path: '/riders' },
   { text: 'כלים', icon: <TwoWheeler />, path: '/vehicles' },
@@ -61,12 +71,17 @@ const menuItems = [
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, hasRole, hasAnyRole } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+
+  // בדיקה אם יש למשתמש הרשאות ניהול
+  const hasManagementRole = hasAnyRole(['super_admin', 'manager', 'secretary', 'logistics', 'regional_manager']);
+  // בדיקה אם המשתמש הוא רוכב
+  const isRider = hasRole('rider');
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -132,30 +147,80 @@ export default function Layout() {
       </Toolbar>
       <Divider />
       <List sx={{ flexGrow: 1 }}>
-        {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ display: 'block' }}>
-            <ListItemButton
-              selected={location.pathname === item.path}
-              onClick={() => handleMenuClick(item.path)}
-              sx={{
-                minHeight: 48,
-                justifyContent: drawerOpen ? 'initial' : 'center',
-                px: 2.5,
-              }}
-            >
-              <ListItemIcon
-                sx={{
-                  minWidth: 0,
-                  mr: drawerOpen ? 2 : 'auto',
-                  justifyContent: 'center'
-                }}
-              >
-                {item.icon}
-              </ListItemIcon>
-              {drawerOpen && <ListItemText primary={item.text} />}
-            </ListItemButton>
-          </ListItem>
-        ))}
+        {/* קטגוריית אופנוען - רק אם יש role rider */}
+        {isRider && (
+          <>
+            {drawerOpen && (
+              <ListItem>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold', px: 1 }}>
+                  🏍️ אופנוען
+                </Typography>
+              </ListItem>
+            )}
+            {riderMenuItems.map((item) => (
+              <ListItem key={item.text} disablePadding sx={{ display: 'block' }}>
+                <ListItemButton
+                  selected={location.pathname === item.path}
+                  onClick={() => handleMenuClick(item.path)}
+                  sx={{
+                    minHeight: 48,
+                    justifyContent: drawerOpen ? 'initial' : 'center',
+                    px: 2.5,
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 0,
+                      mr: drawerOpen ? 2 : 'auto',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  {drawerOpen && <ListItemText primary={item.text} />}
+                </ListItemButton>
+              </ListItem>
+            ))}
+            {hasManagementRole && <Divider sx={{ my: 1 }} />}
+          </>
+        )}
+
+        {/* קטגוריית ניהול - רק אם יש הרשאות ניהול */}
+        {hasManagementRole && (
+          <>
+            {drawerOpen && (
+              <ListItem>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold', px: 1 }}>
+                  📊 ניהול
+                </Typography>
+              </ListItem>
+            )}
+            {managementMenuItems.map((item) => (
+              <ListItem key={item.text} disablePadding sx={{ display: 'block' }}>
+                <ListItemButton
+                  selected={location.pathname === item.path}
+                  onClick={() => handleMenuClick(item.path)}
+                  sx={{
+                    minHeight: 48,
+                    justifyContent: drawerOpen ? 'initial' : 'center',
+                    px: 2.5,
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 0,
+                      mr: drawerOpen ? 2 : 'auto',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  {drawerOpen && <ListItemText primary={item.text} />}
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </>
+        )}
       </List>
     </Box>
   );
@@ -204,17 +269,50 @@ export default function Layout() {
             </Toolbar>
             <Divider />
             <List sx={{ flexGrow: 1 }}>
-              {menuItems.map((item) => (
-                <ListItem key={item.text} disablePadding>
-                  <ListItemButton
-                    selected={location.pathname === item.path}
-                    onClick={() => handleMenuClick(item.path)}
-                  >
-                    <ListItemIcon>{item.icon}</ListItemIcon>
-                    <ListItemText primary={item.text} />
-                  </ListItemButton>
-                </ListItem>
-              ))}
+              {/* קטגוריית אופנוען - מובייל */}
+              {isRider && (
+                <>
+                  <ListItem>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold', px: 1 }}>
+                      🏍️ אופנוען
+                    </Typography>
+                  </ListItem>
+                  {riderMenuItems.map((item) => (
+                    <ListItem key={item.text} disablePadding>
+                      <ListItemButton
+                        selected={location.pathname === item.path}
+                        onClick={() => handleMenuClick(item.path)}
+                      >
+                        <ListItemIcon>{item.icon}</ListItemIcon>
+                        <ListItemText primary={item.text} />
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                  {hasManagementRole && <Divider sx={{ my: 1 }} />}
+                </>
+              )}
+
+              {/* קטגוריית ניהול - מובייל */}
+              {hasManagementRole && (
+                <>
+                  <ListItem>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold', px: 1 }}>
+                      📊 ניהול
+                    </Typography>
+                  </ListItem>
+                  {managementMenuItems.map((item) => (
+                    <ListItem key={item.text} disablePadding>
+                      <ListItemButton
+                        selected={location.pathname === item.path}
+                        onClick={() => handleMenuClick(item.path)}
+                      >
+                        <ListItemIcon>{item.icon}</ListItemIcon>
+                        <ListItemText primary={item.text} />
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </>
+              )}
             </List>
           </Box>
         </Drawer>
@@ -339,7 +437,18 @@ export default function Layout() {
             >
               <MenuItem disabled>
                 <Typography variant="body2">
-                  {user?.role === 'super_admin' ? 'מנהל על' : user?.role}
+                  {(() => {
+                    const userRoles = Array.isArray(user?.roles) ? user.roles : [user?.role];
+                    const roleLabels = {
+                      'super_admin': 'מנהל על',
+                      'manager': 'מנהל',
+                      'secretary': 'מזכירה',
+                      'logistics': 'לוגיסטיקה',
+                      'rider': 'רוכב',
+                      'regional_manager': 'מנהל אזורי'
+                    };
+                    return userRoles.map(r => roleLabels[r] || r).join(' • ');
+                  })()}
                 </Typography>
               </MenuItem>
               <Divider />

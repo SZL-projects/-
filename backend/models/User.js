@@ -21,11 +21,17 @@ const userSchema = new mongoose.Schema({
     minlength: 6,
     select: false
   },
-  role: {
-    type: String,
+  roles: {
+    type: [String],
     enum: ['super_admin', 'manager', 'secretary', 'logistics', 'rider', 'regional_manager'],
-    default: 'rider',
-    required: true
+    default: ['rider'],
+    required: true,
+    validate: {
+      validator: function(roles) {
+        return roles && roles.length > 0;
+      },
+      message: 'חובה להגדיר לפחות תפקיד אחד'
+    }
   },
   firstName: {
     type: String,
@@ -92,6 +98,16 @@ userSchema.pre('save', async function(next) {
 // השוואת סיסמה
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
+};
+
+// בדיקה אם למשתמש יש תפקיד מסוים
+userSchema.methods.hasRole = function(role) {
+  return this.roles && this.roles.includes(role);
+};
+
+// בדיקה אם למשתמש יש אחד מהתפקידים
+userSchema.methods.hasAnyRole = function(rolesArray) {
+  return this.roles && rolesArray.some(role => this.roles.includes(role));
 };
 
 module.exports = mongoose.model('User', userSchema);

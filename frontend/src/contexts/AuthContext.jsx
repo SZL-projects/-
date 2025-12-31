@@ -84,6 +84,21 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  // פונקציה לבדיקה אם למשתמש יש תפקיד מסוים
+  const hasRole = (role) => {
+    if (!user) return false;
+    // תמיכה גם ב-role בודד וגם ב-roles מערך
+    const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
+    return userRoles.includes(role);
+  };
+
+  // פונקציה לבדיקה אם למשתמש יש לפחות אחד מהתפקידים
+  const hasAnyRole = (rolesArray) => {
+    if (!user) return false;
+    const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
+    return rolesArray.some(role => userRoles.includes(role));
+  };
+
   const value = {
     user,
     loading,
@@ -91,6 +106,8 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     isAuthenticated: !!user,
+    hasRole,
+    hasAnyRole,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

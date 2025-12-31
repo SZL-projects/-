@@ -57,13 +57,19 @@ exports.protect = async (req, res, next) => {
   }
 };
 
-// בדיקת הרשאות לפי תפקיד
+// בדיקת הרשאות לפי תפקיד - תומך ב-roles מרובים
 exports.authorize = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    // תמיכה גם ב-role בודד (תאימות לאחור) וגם ב-roles מערך
+    const userRoles = Array.isArray(req.user.roles) ? req.user.roles : [req.user.role];
+
+    // בדיקה אם למשתמש יש לפחות אחד מהתפקידים המתאימים
+    const hasPermission = userRoles.some(userRole => roles.includes(userRole));
+
+    if (!hasPermission) {
       return res.status(403).json({
         success: false,
-        message: `התפקיד ${req.user.role} אינו מורשה לבצע פעולה זו`
+        message: `התפקידים ${userRoles.join(', ')} אינם מורשים לבצע פעולה זו`
       });
     }
     next();
