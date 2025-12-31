@@ -48,34 +48,45 @@ export default function MyVehicle() {
     try {
       setLoading(true);
 
-      // בדיקה אם למשתמש יש riderId
-      if (!user?.riderId) {
-        setError('משתמש זה אינו משויך לרוכב');
-        setLoading(false);
-        return;
+      let vehicleId = null;
+
+      // אם למשתמש יש riderId - נסה לטעון את הכלי המשויך לרוכב
+      if (user?.riderId) {
+        try {
+          const riderResponse = await ridersAPI.getById(user.riderId);
+          const riderData = riderResponse.data.rider;
+          setRider(riderData);
+
+          if (riderData.assignmentStatus === 'assigned' && riderData.assignedVehicleId) {
+            vehicleId = riderData.assignedVehicleId;
+          }
+        } catch (err) {
+          console.error('Error loading rider:', err);
+        }
       }
 
-      // טעינת פרטי הרוכב
-      const riderResponse = await ridersAPI.getById(user.riderId);
-      const riderData = riderResponse.data.rider;
-      setRider(riderData);
+      // אם לא נמצא כלי משויך, בדוק אם יש הרשאות גישה לכלים
+      if (!vehicleId && user?.vehicleAccess && user.vehicleAccess.length > 0) {
+        // נבחר את הכלי הראשון ברשימת ההרשאות
+        vehicleId = user.vehicleAccess[0];
+      }
 
-      // בדיקה אם הרוכב משויך לכלי
-      if (riderData.assignmentStatus !== 'assigned' || !riderData.assignedVehicleId) {
-        setError('אינך משויך לכלי כרגע');
+      // אם אין כלי - הצג שגיאה
+      if (!vehicleId) {
+        setError('אינך משויך לכלי ואין לך הרשאות גישה לכלים');
         setLoading(false);
         return;
       }
 
       // טעינת פרטי הכלי
-      const vehicleResponse = await vehiclesAPI.getById(riderData.assignedVehicleId);
+      const vehicleResponse = await vehiclesAPI.getById(vehicleId);
       setVehicle(vehicleResponse.data.vehicle);
 
       // טעינת תקלות אחרונות
       try {
         const faultsResponse = await faultsAPI.getAll();
         const vehicleFaults = faultsResponse.data.faults
-          .filter(fault => fault.vehicleId === riderData.assignedVehicleId)
+          .filter(fault => fault.vehicleId === vehicleId)
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
           .slice(0, 5); // 5 תקלות אחרונות
         setRecentFaults(vehicleFaults);
@@ -128,11 +139,9 @@ export default function MyVehicle() {
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
-        {!user?.riderId && (
-          <Typography variant="body2" color="textSecondary">
-            אנא פנה למנהל המערכת לשיוך חשבון המשתמש לרוכב
-          </Typography>
-        )}
+        <Typography variant="body2" color="textSecondary">
+          אנא פנה למנהל המערכת לשיוך חשבון המשתמש לרוכב או להוספת הרשאות גישה לכלים
+        </Typography>
       </Box>
     );
   }

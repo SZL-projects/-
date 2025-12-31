@@ -99,6 +99,9 @@ export default function RiderDetail() {
       // יצירת משתמש עם סיסמה זמנית
       const temporaryPassword = Math.random().toString(36).slice(-8);
 
+      // הכנת מערך vehicleAccess - כולל את הכלי המשויך אם יש
+      const vehicleAccessArray = rider.assignedVehicleId ? [rider.assignedVehicleId] : [];
+
       await authAPI.createUser({
         username,
         email,
@@ -107,6 +110,7 @@ export default function RiderDetail() {
         lastName: rider.lastName,
         roles: ['rider'], // תפקיד רוכב - ניתן להוסיף עוד roles בעתיד
         riderId: id,
+        vehicleAccess: vehicleAccessArray,
         isActive: true,
       });
 

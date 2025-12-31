@@ -18,7 +18,9 @@ import {
   ListItemText,
   Chip,
   Box,
+  Autocomplete,
 } from '@mui/material';
+import { vehiclesAPI } from '../services/api';
 
 const userRoles = [
   { value: 'super_admin', label: 'מנהל על' },
@@ -39,9 +41,27 @@ export default function UserDialog({ open, onClose, onSave, user }) {
     phone: '',
     roles: ['rider'],
     isActive: true,
+    vehicleAccess: [],
   });
 
   const [errors, setErrors] = useState({});
+  const [vehicles, setVehicles] = useState([]);
+
+  // טעינת רשימת כלים
+  useEffect(() => {
+    const loadVehicles = async () => {
+      try {
+        const response = await vehiclesAPI.getAll();
+        setVehicles(response.data.vehicles || []);
+      } catch (err) {
+        console.error('Error loading vehicles:', err);
+      }
+    };
+
+    if (open) {
+      loadVehicles();
+    }
+  }, [open]);
 
   useEffect(() => {
     if (user) {
@@ -57,6 +77,7 @@ export default function UserDialog({ open, onClose, onSave, user }) {
         phone: user.phone || '',
         roles: userRoles,
         isActive: user.isActive !== undefined ? user.isActive : true,
+        vehicleAccess: user.vehicleAccess || [],
       });
     } else {
       setFormData({
@@ -68,6 +89,7 @@ export default function UserDialog({ open, onClose, onSave, user }) {
         phone: '',
         roles: ['rider'],
         isActive: true,
+        vehicleAccess: [],
       });
     }
     setErrors({});
@@ -245,6 +267,43 @@ export default function UserDialog({ open, onClose, onSave, user }) {
                 </Typography>
               )}
             </FormControl>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Autocomplete
+              multiple
+              options={vehicles}
+              getOptionLabel={(option) => {
+                const licensePlate = option.licensePlate || 'ללא ל"ז';
+                const internalNumber = option.internalNumber || 'ללא מספר פנימי';
+                return `ל"ז: ${licensePlate} | מספר פנימי: ${internalNumber}`;
+              }}
+              value={vehicles.filter(v => formData.vehicleAccess.includes(v._id || v.id))}
+              onChange={(event, newValue) => {
+                setFormData({
+                  ...formData,
+                  vehicleAccess: newValue.map(v => v._id || v.id),
+                });
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="הרשאות צפייה בכלים"
+                  helperText={`נבחרו ${formData.vehicleAccess.length} כלים`}
+                />
+              )}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip
+                    key={option._id || option.id}
+                    label={option.internalNumber || option.licensePlate || 'כלי'}
+                    {...getTagProps({ index })}
+                    size="small"
+                  />
+                ))
+              }
+              noOptionsText="לא נמצאו כלים"
+            />
           </Grid>
 
           <Grid item xs={12}>

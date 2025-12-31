@@ -69,6 +69,11 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Rider'
   },
+  // רשימת כלים שהמשתמש יכול לגשת אליהם
+  vehicleAccess: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Vehicle'
+  }],
   lastLogin: Date,
   resetPasswordToken: String,
   resetPasswordExpire: Date,
