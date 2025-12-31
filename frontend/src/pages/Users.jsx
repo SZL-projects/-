@@ -38,6 +38,7 @@ import {
   People as PeopleIcon,
   Email,
   AdminPanelSettings,
+  Send as SendIcon,
 } from '@mui/icons-material';
 import { authAPI } from '../services/api';
 import UserDialog from '../components/UserDialog';
@@ -127,6 +128,16 @@ export default function Users() {
 
   const showSnackbar = (message, severity) => {
     setSnackbar({ open: true, message, severity });
+  };
+
+  const handleSendCredentials = async (user) => {
+    try {
+      await authAPI.sendCredentials(user.id);
+      showSnackbar('פרטי ההתחברות נשלחו בהצלחה למייל', 'success');
+    } catch (err) {
+      console.error('Error sending credentials:', err);
+      showSnackbar('שגיאה בשליחת פרטי ההתחברות', 'error');
+    }
   };
 
   const getRoleChip = (role) => {
@@ -244,9 +255,18 @@ export default function Users() {
                   </TableCell>
                   <TableCell align="center">
                     <IconButton
+                      color="primary"
+                      size="small"
+                      onClick={() => handleSendCredentials(user)}
+                      title="שלח פרטי התחברות למייל"
+                    >
+                      <SendIcon />
+                    </IconButton>
+                    <IconButton
                       color="secondary"
                       size="small"
                       onClick={() => handleOpenDialog(user)}
+                      title="ערוך משתמש"
                     >
                       <Edit />
                     </IconButton>
@@ -255,6 +275,7 @@ export default function Users() {
                       size="small"
                       onClick={() => handleDeleteClick(user)}
                       disabled={user.role === 'super_admin'}
+                      title="מחק משתמש"
                     >
                       <Delete />
                     </IconButton>

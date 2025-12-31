@@ -155,3 +155,127 @@ exports.sendPasswordResetEmail = async (user, resetToken) => {
     html,
   });
 };
+
+// שליחת פרטי התחברות למשתמש
+exports.sendLoginCredentials = async (user, temporaryPassword) => {
+  const loginUrl = `${process.env.FRONTEND_URL}/login`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html dir="rtl" lang="he">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          background-color: #f4f4f4;
+          padding: 20px;
+        }
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          background-color: #ffffff;
+          padding: 30px;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+          color: #1976d2;
+          text-align: center;
+        }
+        p {
+          color: #333;
+          line-height: 1.6;
+          font-size: 16px;
+        }
+        .credentials {
+          background-color: #f5f5f5;
+          padding: 20px;
+          border-radius: 5px;
+          margin: 20px 0;
+        }
+        .credential-item {
+          margin: 10px 0;
+          font-size: 16px;
+        }
+        .credential-label {
+          font-weight: bold;
+          color: #666;
+        }
+        .credential-value {
+          color: #1976d2;
+          font-size: 18px;
+          font-weight: bold;
+        }
+        .button {
+          display: inline-block;
+          background-color: #1976d2;
+          color: #ffffff !important;
+          padding: 12px 30px;
+          text-decoration: none;
+          border-radius: 5px;
+          margin: 20px 0;
+          font-weight: bold;
+        }
+        .warning {
+          background-color: #fff3cd;
+          border-right: 4px solid #ffc107;
+          padding: 15px;
+          margin: 20px 0;
+        }
+        .footer {
+          margin-top: 30px;
+          padding-top: 20px;
+          border-top: 1px solid #ddd;
+          text-align: center;
+          font-size: 14px;
+          color: #777;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>🏍️ ברוך הבא למערכת CRM יחידת האופנועים</h1>
+        <p>שלום ${user.firstName} ${user.lastName},</p>
+        <p>נוצר עבורך חשבון במערכת CRM לניהול יחידת האופנועים.</p>
+
+        <div class="credentials">
+          <h3 style="margin-top: 0;">פרטי ההתחברות שלך:</h3>
+          <div class="credential-item">
+            <span class="credential-label">שם משתמש:</span><br/>
+            <span class="credential-value">${user.username}</span>
+          </div>
+          <div class="credential-item">
+            <span class="credential-label">סיסמה זמנית:</span><br/>
+            <span class="credential-value">${temporaryPassword}</span>
+          </div>
+          <div class="credential-item">
+            <span class="credential-label">כתובת המערכת:</span><br/>
+            <a href="${loginUrl}" style="color: #1976d2;">${loginUrl}</a>
+          </div>
+        </div>
+
+        <div class="warning">
+          <strong>⚠️ חשוב:</strong> מומלץ לשנות את הסיסמה הזמנית לאחר ההתחברות הראשונה.
+          תוכל לעשות זאת דרך תפריט הפרופיל במערכת.
+        </div>
+
+        <center>
+          <a href="${loginUrl}" class="button">התחבר למערכת</a>
+        </center>
+
+        <div class="footer">
+          <p>© ${new Date().getFullYear()} מערכת CRM יחידת האופנועים</p>
+          <p>אם לא ביקשת הרשמה למערכת, אנא התעלם ממייל זה</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await exports.sendEmail({
+    email: user.email,
+    subject: 'פרטי התחברות למערכת CRM יחידת האופנועים',
+    html,
+  });
+};

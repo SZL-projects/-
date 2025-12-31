@@ -38,8 +38,10 @@ import {
   Search,
   People,
   Description,
+  Lock,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import ChangePasswordDialog from './ChangePasswordDialog';
 
 const drawerWidth = 260;
 const drawerWidthClosed = 65;
@@ -64,6 +66,7 @@ export default function Layout() {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -85,6 +88,11 @@ export default function Layout() {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleChangePassword = () => {
+    setChangePasswordOpen(true);
+    handleProfileMenuClose();
   };
 
   const drawer = (
@@ -335,6 +343,12 @@ export default function Layout() {
                 </Typography>
               </MenuItem>
               <Divider />
+              <MenuItem onClick={handleChangePassword}>
+                <ListItemIcon>
+                  <Lock fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>שינוי סיסמה</ListItemText>
+              </MenuItem>
               <MenuItem onClick={handleLogout}>
                 <ListItemIcon>
                   <Logout fontSize="small" />
@@ -374,6 +388,12 @@ export default function Layout() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Change Password Dialog */}
+      <ChangePasswordDialog
+        open={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
+      />
     </Box>
   );
 }

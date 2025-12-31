@@ -3,6 +3,8 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { initFirebase } = require('./_utils/firebase');
 const { getSignedJwtToken, authenticateToken } = require('./_utils/auth');
+// שימוש ב-SMTP כרגע - לשימוש ב-Gmail API צריך Domain-Wide Delegation
+// כשתהיה גישת אדמין, החלף ל: const { sendPasswordResetEmail } = require('./_utils/gmailService');
 const { sendPasswordResetEmail } = require('./_utils/emailService');
 
 module.exports = async (req, res) => {
@@ -291,7 +293,30 @@ module.exports = async (req, res) => {
       const userId = userDoc.id;
 
       // בדיקת תוקף הטוקן
-      if (!userData.resetPasswordExpiry || userData.resetPasswordExpiry.toDate() < new Date()) {
+      const now = new Date();
+      let expiryDate;
+
+      // טיפול בפורמטים שונים של תאריך
+      if (userData.resetPasswordExpiry) {
+        if (typeof userData.resetPasswordExpiry.toDate === 'function') {
+          // Firestore Timestamp
+          expiryDate = userData.resetPasswordExpiry.toDate();
+        } else if (userData.resetPasswordExpiry instanceof Date) {
+          // JavaScript Date
+          expiryDate = userData.resetPasswordExpiry;
+        } else if (typeof userData.resetPasswordExpiry === 'string' || typeof userData.resetPasswordExpiry === 'number') {
+          // String או Number
+          expiryDate = new Date(userData.resetPasswordExpiry);
+        }
+      }
+
+      console.log('🕐 Token expiry check:', {
+        now: now.toISOString(),
+        expiry: expiryDate ? expiryDate.toISOString() : 'N/A',
+        isExpired: !expiryDate || expiryDate < now
+      });
+
+      if (!expiryDate || expiryDate < now) {
         return res.status(400).json({
           success: false,
           message: 'הטוקן פג תוקף. אנא בקש איפוס סיסמה מחדש'
@@ -318,11 +343,81 @@ module.exports = async (req, res) => {
       });
     }
 
+    // PUT /api/auth/change-password
+    if (path === '/change-password' && req.method === 'PUT') {
+      // בדיקת אימות - דורש משתמש מחובר
+      const authUser = await authenticateToken(req, db);
+
+      if (!authUser) {
+        return res.status(401).json({
+          success: false,
+          message: 'נדרשת התחברות'
+        });
+      }
+
+      const { oldPassword, newPassword } = req.body;
+
+      if (!oldPassword || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'נא להזין סיסמה ישנה וסיסמה חדשה'
+        });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'הסיסמה החדשה חייבת להיות לפחות 6 תווים'
+        });
+      }
+
+      // קבלת פרטי המשתמש הנוכחי
+      const userRef = db.collection('users').doc(authUser.id);
+      const userDoc = await userRef.get();
+
+      if (!userDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'משתמש לא נמצא'
+        });
+      }
+
+      const userData = userDoc.data();
+
+      // בדיקת הסיסמה הישנה
+      const isMatch = await bcrypt.compare(oldPassword, userData.password);
+
+      if (!isMatch) {
+        return res.status(400).json({
+          success: false,
+          message: 'הסיסמה הישנה שגויה'
+        });
+      }
+
+      // הצפנת הסיסמה החדשה
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+      // עדכון הסיסמה
+      await userRef.update({
+        password: hashedPassword,
+        mustChangePassword: false,
+        updatedAt: new Date()
+      });
+
+      console.log('✅ Password changed successfully for user:', authUser.id);
+
+      return res.status(200).json({
+        success: true,
+        message: 'הסיסמה שונתה בהצלחה'
+      });
+    }
+
     console.error('❌ Auth endpoint not found:', {
       path,
       method: req.method,
       url: req.url,
-      availableEndpoints: ['/login (POST)', '/register (POST)', '/me (GET)', '/forgot-password (POST)', '/reset-password/:token (PUT)']
+      availableEndpoints: ['/login (POST)', '/register (POST)', '/me (GET)', '/forgot-password (POST)', '/reset-password/:token (PUT)', '/change-password (PUT)']
     });
 
     return res.status(404).json({
@@ -336,7 +431,8 @@ module.exports = async (req, res) => {
           'POST /api/auth/register',
           'GET /api/auth/me',
           'POST /api/auth/forgot-password',
-          'PUT /api/auth/reset-password/:token'
+          'PUT /api/auth/reset-password/:token',
+          'PUT /api/auth/change-password'
         ]
       }
     });

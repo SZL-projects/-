@@ -1,7 +1,9 @@
 // Vercel Serverless Function - /api/users (all user management endpoints)
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { initFirebase } = require('./_utils/firebase');
 const { authenticateToken, checkAuthorization } = require('./_utils/auth');
+const { sendLoginCredentials } = require('./_utils/emailService');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -24,14 +26,70 @@ module.exports = async (req, res) => {
     const { db } = initFirebase();
     const user = await authenticateToken(req, db);
 
-    // Extract ID from URL if exists
-    const pathMatch = req.url.match(/\/api\/users\/([^?]+)/);
+    // Extract ID and action from URL
+    const pathMatch = req.url.match(/\/api\/users\/([^/?]+)(?:\/([^?]+))?/);
     const userId = pathMatch ? pathMatch[1] : null;
+    const action = pathMatch ? pathMatch[2] : null;
 
-    console.log('📍 User ID extracted:', userId);
+    console.log('📍 User ID extracted:', userId, 'Action:', action);
+
+    // POST /api/users/:id/send-credentials - Send login credentials to user
+    if (userId && action === 'send-credentials' && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager']);
+
+      const userRef = db.collection('users').doc(userId);
+      const doc = await userRef.get();
+
+      if (!doc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'משתמש לא נמצא'
+        });
+      }
+
+      const userData = doc.data();
+
+      // יצירת סיסמה זמנית חדשה
+      const temporaryPassword = crypto.randomBytes(4).toString('hex'); // 8 תווים
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(temporaryPassword, salt);
+
+      // עדכון הסיסמה במסד הנתונים
+      await userRef.update({
+        password: hashedPassword,
+        mustChangePassword: true,
+        updatedAt: new Date()
+      });
+
+      // שליחת המייל
+      try {
+        await sendLoginCredentials(
+          {
+            email: userData.email,
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || '',
+            username: userData.username
+          },
+          temporaryPassword
+        );
+
+        console.log('✅ Login credentials sent to:', userData.email);
+
+        return res.status(200).json({
+          success: true,
+          message: 'פרטי ההתחברות נשלחו בהצלחה למייל'
+        });
+      } catch (emailError) {
+        console.error('❌ Failed to send credentials email:', emailError);
+        return res.status(500).json({
+          success: false,
+          message: 'שגיאה בשליחת המייל'
+        });
+      }
+    }
 
     // Single user operations
-    if (userId) {
+    if (userId && !action) {
       // בדיקת הרשאות למשתמש בודד
       checkAuthorization(user, ['super_admin', 'manager']);
 
