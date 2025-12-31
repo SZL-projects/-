@@ -381,9 +381,9 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
               <Autocomplete
                 options={vehicles}
                 getOptionLabel={(option) => {
-                  const number = option.vehicleNumber || option.internalNumber || option.licensePlate || 'ללא מספר';
-                  const type = option.type || 'אופנוע';
-                  return `${number} - ${type}`;
+                  const licensePlate = option.licensePlate || 'ללא ל"ז';
+                  const internalNumber = option.internalNumber || 'ללא מספר פנימי';
+                  return `ל"ז: ${licensePlate} | מספר פנימי: ${internalNumber}`;
                 }}
                 value={vehicles.find(v => v.id === formData.assignedVehicleId) || null}
                 onChange={(event, newValue) => {
