@@ -61,12 +61,16 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
   const [errors, setErrors] = useState({});
   const [vehicles, setVehicles] = useState([]);
 
-  // טעינת רשימת כלים
+  // טעינת רשימת כלים פעילים בלבד
   useEffect(() => {
     const loadVehicles = async () => {
       try {
         const response = await vehiclesAPI.getAll();
-        setVehicles(response.data.vehicles || []);
+        // סינון רק כלים פעילים
+        const activeVehicles = (response.data.vehicles || []).filter(
+          vehicle => vehicle.status === 'active'
+        );
+        setVehicles(activeVehicles);
       } catch (err) {
         console.error('Error loading vehicles:', err);
       }

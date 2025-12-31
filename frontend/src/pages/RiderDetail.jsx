@@ -262,7 +262,9 @@ export default function RiderDetail() {
                     כתובת
                   </Typography>
                   <Typography variant="body1" fontWeight="500">
-                    {rider.address || '-'}
+                    {rider.address?.street || rider.address?.city
+                      ? `${rider.address.street || ''} ${rider.address.city || ''}`.trim()
+                      : '-'}
                   </Typography>
                 </Grid>
               </Grid>
