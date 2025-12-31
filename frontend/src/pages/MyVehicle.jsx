@@ -61,7 +61,7 @@ export default function MyVehicle() {
       setRider(riderData);
 
       // בדיקה אם הרוכב משויך לכלי
-      if (!riderData.isAssigned || !riderData.assignedVehicleId) {
+      if (riderData.assignmentStatus !== 'assigned' || !riderData.assignedVehicleId) {
         setError('אינך משויך לכלי כרגע');
         setLoading(false);
         return;
