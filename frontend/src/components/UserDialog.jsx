@@ -150,7 +150,6 @@ export default function UserDialog({ open, onClose, onSave, user }) {
               error={!!errors.username}
               helperText={errors.username}
               required
-              disabled={!!user}
             />
           </Grid>
 
