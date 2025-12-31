@@ -29,16 +29,21 @@ import {
   Badge,
   DirectionsCar,
   PersonAdd,
+  TwoWheeler,
+  Visibility,
 } from '@mui/icons-material';
-import { ridersAPI, authAPI } from '../services/api';
+import { ridersAPI, authAPI, vehiclesAPI } from '../services/api';
+import RiderDialog from '../components/RiderDialog';
 
 export default function RiderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [rider, setRider] = useState(null);
+  const [vehicle, setVehicle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [creatingUser, setCreatingUser] = useState(false);
@@ -47,6 +52,12 @@ export default function RiderDetail() {
   useEffect(() => {
     loadRider();
   }, [id]);
+
+  useEffect(() => {
+    if (rider?.assignedVehicleId) {
+      loadVehicle(rider.assignedVehicleId);
+    }
+  }, [rider]);
 
   const loadRider = async () => {
     try {
@@ -60,6 +71,15 @@ export default function RiderDetail() {
       setError('שגיאה בטעינת פרטי הרוכב');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadVehicle = async (vehicleId) => {
+    try {
+      const response = await vehiclesAPI.getById(vehicleId);
+      setVehicle(response.data.vehicle);
+    } catch (err) {
+      console.error('Error loading vehicle:', err);
     }
   };
 
@@ -100,6 +120,18 @@ export default function RiderDetail() {
       showSnackbar(err.response?.data?.message || 'שגיאה ביצירת המשתמש', 'error');
     } finally {
       setCreatingUser(false);
+    }
+  };
+
+  const handleSaveRider = async (riderData) => {
+    try {
+      await ridersAPI.update(id, riderData);
+      showSnackbar('הרוכב עודכן בהצלחה', 'success');
+      setEditDialogOpen(false);
+      loadRider();
+    } catch (err) {
+      console.error('Error updating rider:', err);
+      showSnackbar(err.response?.data?.message || 'שגיאה בעדכון הרוכב', 'error');
     }
   };
 
@@ -171,7 +203,7 @@ export default function RiderDetail() {
           <Button
             variant="contained"
             startIcon={<Edit />}
-            onClick={() => navigate(`/riders?edit=${id}`)}
+            onClick={() => setEditDialogOpen(true)}
           >
             עריכה
           </Button>
@@ -221,7 +253,7 @@ export default function RiderDetail() {
                     סטטוס
                   </Typography>
                   <Box sx={{ mt: 0.5 }}>
-                    {getStatusChip(rider.status)}
+                    {getStatusChip(rider.riderStatus)}
                   </Box>
                 </Grid>
               </Grid>
@@ -309,7 +341,7 @@ export default function RiderDetail() {
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <DirectionsCar /> שיוך לכלי
+                <TwoWheeler /> שיוך לכלי
               </Typography>
               <Divider sx={{ my: 2 }} />
 
@@ -320,28 +352,76 @@ export default function RiderDetail() {
                   </Typography>
                   <Box sx={{ mt: 0.5 }}>
                     <Chip
-                      label={rider.isAssigned ? 'משויך' : 'לא משויך'}
-                      color={rider.isAssigned ? 'primary' : 'default'}
+                      label={rider.assignmentStatus === 'assigned' ? 'משויך' : 'לא משויך'}
+                      color={rider.assignmentStatus === 'assigned' ? 'primary' : 'default'}
                       size="small"
                     />
                   </Box>
                 </Grid>
 
-                {rider.assignedVehicle && (
-                  <Grid item xs={12}>
-                    <Typography variant="body2" color="textSecondary">
-                      כלי משויך
-                    </Typography>
-                    <Typography variant="body1" fontWeight="500">
-                      {rider.assignedVehicle}
-                    </Typography>
-                  </Grid>
+                {vehicle && (
+                  <>
+                    <Grid item xs={6}>
+                      <Typography variant="body2" color="textSecondary">
+                        מספר רישוי (ל"ז)
+                      </Typography>
+                      <Typography variant="body1" fontWeight="500">
+                        {vehicle.licensePlate || '-'}
+                      </Typography>
+                    </Grid>
+
+                    <Grid item xs={6}>
+                      <Typography variant="body2" color="textSecondary">
+                        מספר פנימי
+                      </Typography>
+                      <Typography variant="body1" fontWeight="500">
+                        {vehicle.internalNumber || '-'}
+                      </Typography>
+                    </Grid>
+
+                    <Grid item xs={6}>
+                      <Typography variant="body2" color="textSecondary">
+                        יצרן ודגם
+                      </Typography>
+                      <Typography variant="body1" fontWeight="500">
+                        {vehicle.manufacturer} {vehicle.model}
+                      </Typography>
+                    </Grid>
+
+                    <Grid item xs={6}>
+                      <Typography variant="body2" color="textSecondary">
+                        סוג
+                      </Typography>
+                      <Typography variant="body1" fontWeight="500">
+                        {vehicle.type === 'scooter' ? 'סקוטר' : 'אופנוע'}
+                      </Typography>
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <Button
+                        variant="outlined"
+                        startIcon={<Visibility />}
+                        onClick={() => navigate(`/vehicles/${vehicle._id}`)}
+                        fullWidth
+                      >
+                        צפה בפרטי הכלי המלאים
+                      </Button>
+                    </Grid>
+                  </>
                 )}
               </Grid>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
+
+      {/* Edit Rider Dialog */}
+      <RiderDialog
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+        onSave={handleSaveRider}
+        rider={rider}
+      />
 
       {/* Create User Dialog */}
       <Dialog open={createUserDialogOpen} onClose={() => setCreateUserDialogOpen(false)} maxWidth="sm" fullWidth dir="rtl">
