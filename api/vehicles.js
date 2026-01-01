@@ -1,6 +1,28 @@
 // Vercel Serverless Function - /api/vehicles (all vehicle endpoints)
 const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkAuthorization } = require('./_utils/auth');
+const googleDriveService = require('./services/googleDriveService');
+const multer = require('multer');
+
+// הגדרת multer לטיפול בקבצים
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB
+  }
+});
+
+// Helper to run multer middleware
+const runMiddleware = (req, res, fn) => {
+  return new Promise((resolve, reject) => {
+    fn(req, res, (result) => {
+      if (result instanceof Error) {
+        return reject(result);
+      }
+      return resolve(result);
+    });
+  });
+};
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -15,10 +37,192 @@ module.exports = async (req, res) => {
 
   try {
     const { db } = initFirebase();
+
+    // Initialize Google Drive service
+    await googleDriveService.initialize();
+
     const user = await authenticateToken(req, db);
 
-    // Extract ID from URL
+    // Check for special routes first (before extracting ID)
+    const url = req.url.split('?')[0]; // Remove query params for matching
+
+    // ==================== Google Drive Endpoints ====================
+
+    // POST /api/vehicles/create-folder
+    if (url.endsWith('/create-folder') && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { vehicleNumber, vehicleId } = req.body;
+
+      if (!vehicleNumber) {
+        return res.status(400).json({
+          success: false,
+          message: 'מספר כלי הוא שדה חובה'
+        });
+      }
+
+      const folderData = await googleDriveService.createVehicleFolderStructure(vehicleNumber);
+
+      // שמירת נתוני התיקיות בכלי אם סופק vehicleId
+      if (vehicleId) {
+        const vehicleRef = db.collection('vehicles').doc(vehicleId);
+        await vehicleRef.update({
+          driveFolderData: folderData,
+          updatedBy: user.id,
+          updatedAt: new Date()
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: 'מבנה תיקיות נוצר בהצלחה',
+        data: folderData
+      });
+    }
+
+    // POST /api/vehicles/create-rider-folder
+    if (url.endsWith('/create-rider-folder') && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { riderName, insuranceFolderId } = req.body;
+
+      if (!riderName || !insuranceFolderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'שם רוכב ומזהה תיקיית ביטוחים הם שדות חובה'
+        });
+      }
+
+      const riderFolderData = await googleDriveService.createRiderFolder(riderName, insuranceFolderId);
+
+      return res.json({
+        success: true,
+        message: 'תיקיית רוכב נוצרה בהצלחה',
+        data: riderFolderData
+      });
+    }
+
+    // POST /api/vehicles/upload-file
+    if (url.endsWith('/upload-file') && req.method === 'POST') {
+      await runMiddleware(req, res, upload.single('file'));
+
+      const { folderId } = req.body;
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: 'לא הועלה קובץ'
+        });
+      }
+
+      if (!folderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה תיקייה הוא שדה חובה'
+        });
+      }
+
+      const fileData = await googleDriveService.uploadFile(
+        req.file.originalname,
+        req.file.buffer,
+        folderId,
+        req.file.mimetype
+      );
+
+      return res.json({
+        success: true,
+        message: 'קובץ הועלה בהצלחה',
+        data: fileData
+      });
+    }
+
+    // GET /api/vehicles/list-files
+    if (url.endsWith('/list-files') && req.method === 'GET') {
+      const { folderId } = req.query;
+
+      if (!folderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה תיקייה הוא שדה חובה'
+        });
+      }
+
+      const files = await googleDriveService.listFiles(folderId);
+
+      return res.json({
+        success: true,
+        files
+      });
+    }
+
+    // DELETE /api/vehicles/delete-file
+    if (url.endsWith('/delete-file') && req.method === 'DELETE') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { fileId } = req.query;
+
+      if (!fileId) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה קובץ הוא שדה חובה'
+        });
+      }
+
+      await googleDriveService.deleteFile(fileId);
+
+      return res.json({
+        success: true,
+        message: 'קובץ נמחק בהצלחה'
+      });
+    }
+
+    // ==================== Regular Vehicle Endpoints ====================
+
+    // Extract ID from URL for regular vehicle operations
     const vehicleId = extractIdFromUrl(req.url, 'vehicles');
+
+    // PATCH /api/vehicles/:id/kilometers
+    if (vehicleId && url.includes('/kilometers') && req.method === 'PATCH') {
+      const { kilometers, source, notes } = req.body;
+
+      if (!kilometers || !source) {
+        return res.status(400).json({
+          success: false,
+          message: 'קילומטראז ומקור הם שדות חובה'
+        });
+      }
+
+      const vehicleRef = db.collection('vehicles').doc(vehicleId);
+      const doc = await vehicleRef.get();
+
+      if (!doc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'כלי לא נמצא'
+        });
+      }
+
+      const updateData = {
+        currentKilometers: kilometers,
+        lastKilometerUpdate: {
+          kilometers,
+          source,
+          notes: notes || '',
+          updatedBy: user.id,
+          updatedAt: new Date()
+        },
+        updatedBy: user.id,
+        updatedAt: new Date()
+      };
+
+      await vehicleRef.update(updateData);
+      const updatedDoc = await vehicleRef.get();
+
+      return res.status(200).json({
+        success: true,
+        vehicle: { id: updatedDoc.id, ...updatedDoc.data() }
+      });
+    }
 
     // Single vehicle operations
     if (vehicleId) {
@@ -40,7 +244,7 @@ module.exports = async (req, res) => {
       }
 
       if (req.method === 'PUT') {
-        checkAuthorization(user, ['super_admin', 'manager', 'logistics']);
+        checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
 
         const updateData = {
           ...req.body,
@@ -72,12 +276,16 @@ module.exports = async (req, res) => {
 
     // Collection operations
     if (req.method === 'GET') {
-      const { search, status, page = 1, limit = 50 } = req.query;
+      const { search, status, type, page = 1, limit = 50 } = req.query;
 
       let query = db.collection('vehicles');
 
       if (status) {
         query = query.where('status', '==', status);
+      }
+
+      if (type) {
+        query = query.where('type', '==', type);
       }
 
       const snapshot = await query.get();
@@ -107,7 +315,7 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'logistics']);
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
 
       const vehicleData = {
         ...req.body,
