@@ -5,6 +5,7 @@ class GoogleDriveService {
   constructor() {
     this.drive = null;
     this.initialized = false;
+    this.rootFolderId = null;
   }
 
   // אתחול ה-Drive API
@@ -30,8 +31,13 @@ class GoogleDriveService {
       });
 
       this.drive = google.drive({ version: 'v3', auth });
+
+      // הגדרת תיקיית ROOT (אם קיימת במשתני סביבה)
+      this.rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || '186mat7V_XgO02xkmIqjQXeZDs26S1SFY';
+
       this.initialized = true;
       console.log('Google Drive service initialized successfully');
+      console.log('Root folder ID:', this.rootFolderId);
       return true;
     } catch (error) {
       console.error('Failed to initialize Google Drive service:', error);
@@ -126,9 +132,9 @@ class GoogleDriveService {
     }
 
     try {
-      // תיקייה ראשית של הכלי
-      const mainFolder = await this.createFolder(vehicleIdentifier);
-      console.log(`Created main folder: ${mainFolder.name} (${mainFolder.id})`);
+      // תיקייה ראשית של הכלי - בתוך תיקיית ה-ROOT
+      const mainFolder = await this.createFolder(vehicleIdentifier, this.rootFolderId);
+      console.log(`Created main folder: ${mainFolder.name} (${mainFolder.id}) in root folder ${this.rootFolderId}`);
 
       // תיקיית ביטוחים
       const insuranceFolder = await this.createFolder('ביטוחים', mainFolder.id);
