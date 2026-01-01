@@ -2,27 +2,8 @@
 const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkAuthorization } = require('./_utils/auth');
 const googleDriveService = require('./services/googleDriveService');
-const multer = require('multer');
-
-// הגדרת multer לטיפול בקבצים
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB
-  }
-});
-
-// Helper to run multer middleware
-const runMiddleware = (req, res, fn) => {
-  return new Promise((resolve, reject) => {
-    fn(req, res, (result) => {
-      if (result instanceof Error) {
-        return reject(result);
-      }
-      return resolve(result);
-    });
-  });
-};
+const formidable = require('formidable');
+const fs = require('fs');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -104,35 +85,66 @@ module.exports = async (req, res) => {
 
     // POST /api/vehicles/upload-file
     if (url.endsWith('/upload-file') && req.method === 'POST') {
-      await runMiddleware(req, res, upload.single('file'));
-
-      const { folderId } = req.body;
-
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          message: 'לא הועלה קובץ'
+      return new Promise((resolve, reject) => {
+        const form = formidable({
+          maxFileSize: 10 * 1024 * 1024, // 10MB
+          keepExtensions: true
         });
-      }
 
-      if (!folderId) {
-        return res.status(400).json({
-          success: false,
-          message: 'מזהה תיקייה הוא שדה חובה'
+        form.parse(req, async (err, fields, files) => {
+          try {
+            if (err) {
+              return res.status(500).json({
+                success: false,
+                message: 'שגיאה בעיבוד הקובץ: ' + err.message
+              });
+            }
+
+            const file = files.file;
+            if (!file) {
+              return res.status(400).json({
+                success: false,
+                message: 'לא הועלה קובץ'
+              });
+            }
+
+            const folderId = fields.folderId;
+            if (!folderId) {
+              return res.status(400).json({
+                success: false,
+                message: 'מזהה תיקייה הוא שדה חובה'
+              });
+            }
+
+            // קריאת הקובץ מה-disk
+            const fileBuffer = fs.readFileSync(file[0].filepath);
+
+            const fileData = await googleDriveService.uploadFile(
+              file[0].originalFilename,
+              fileBuffer,
+              folderId,
+              file[0].mimetype
+            );
+
+            // מחיקת הקובץ הזמני
+            fs.unlinkSync(file[0].filepath);
+
+            res.json({
+              success: true,
+              message: 'קובץ הועלה בהצלחה',
+              data: fileData
+            });
+
+            resolve();
+          } catch (error) {
+            console.error('Error uploading file:', error);
+            res.status(500).json({
+              success: false,
+              message: error.message
+            });
+            reject(error);
+          }
         });
-      }
-
-      const fileData = await googleDriveService.uploadFile(
-        req.file.originalname,
-        req.file.buffer,
-        folderId,
-        req.file.mimetype
-      );
-
-      return res.json({
-        success: true,
-        message: 'קובץ הועלה בהצלחה',
-        data: fileData
       });
     }
 

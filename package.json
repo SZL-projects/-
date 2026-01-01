@@ -27,7 +27,7 @@
     "express-validator": "^7.0.1",
     "firebase": "^10.7.1",
     "firebase-admin": "^12.0.0",
-    "formidable": "^3.5.1",
+    "formidable": "^3.5.4",
     "googleapis": "^144.0.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
