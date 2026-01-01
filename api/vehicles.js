@@ -3,6 +3,8 @@ const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkAuthorization } = require('./_utils/auth');
 const googleDriveService = require('./services/googleDriveService');
 const Busboy = require('busboy');
+const getRawBody = require('raw-body');
+const { Readable } = require('stream');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -84,8 +86,22 @@ module.exports = async (req, res) => {
 
     // POST /api/vehicles/upload-file
     if (url.endsWith('/upload-file') && req.method === 'POST') {
-      return new Promise((resolve, reject) => {
+      return new Promise(async (resolve, reject) => {
         try {
+          console.log('Upload file request received');
+          console.log('Headers:', req.headers);
+
+          // Get raw body first
+          const rawBody = await getRawBody(req, {
+            length: req.headers['content-length'],
+            limit: '10mb'
+          });
+
+          console.log('Raw body received, size:', rawBody.length);
+
+          // Convert buffer to stream
+          const bufferStream = Readable.from(rawBody);
+
           const busboy = Busboy({ headers: req.headers });
 
           let fileBuffer = null;
@@ -176,7 +192,7 @@ module.exports = async (req, res) => {
             reject(error);
           });
 
-          req.pipe(busboy);
+          bufferStream.pipe(busboy);
         } catch (error) {
           console.error('Error setting up busboy:', error);
           res.status(500).json({
