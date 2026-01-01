@@ -56,9 +56,14 @@ export default function VehicleDetails() {
 
     setCreatingFolders(true);
     try {
-      const response = await vehiclesAPI.createFolder(vehicle.internalNumber || vehicle.licensePlate);
+      const response = await vehiclesAPI.createFolder(
+        vehicle.internalNumber || vehicle.licensePlate,
+        id
+      );
       setFolderData(response.data.data);
       showSnackbar('תיקיות נוצרו בהצלחה', 'success');
+      // רענון נתוני הכלי
+      await loadVehicle();
     } catch (err) {
       console.error('Error creating folders:', err);
       showSnackbar(err.response?.data?.message || 'שגיאה ביצירת תיקיות', 'error');

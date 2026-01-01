@@ -185,7 +185,7 @@ router.delete('/:id', authorize('super_admin'), async (req, res) => {
 // @access  Private (מנהלים בלבד)
 router.post('/create-folder', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
   try {
-    const { vehicleNumber } = req.body;
+    const { vehicleNumber, vehicleId } = req.body;
 
     if (!vehicleNumber) {
       return res.status(400).json({
@@ -195,6 +195,11 @@ router.post('/create-folder', authorize('super_admin', 'manager', 'secretary'), 
     }
 
     const folderData = await googleDriveService.createVehicleFolderStructure(vehicleNumber);
+
+    // שמירת נתוני התיקיות בכלי אם סופק vehicleId
+    if (vehicleId) {
+      await VehicleModel.update(vehicleId, { driveFolderData: folderData }, req.user.id);
+    }
 
     res.json({
       success: true,

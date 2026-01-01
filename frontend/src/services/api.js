@@ -75,7 +75,7 @@ export const vehiclesAPI = {
   update: (id, data) => api.put(`/vehicles/${id}`, data),
   delete: (id) => api.delete(`/vehicles/${id}`),
   updateKilometers: (id, data) => api.patch(`/vehicles/${id}/kilometers`, data),
-  createFolder: (vehicleNumber) => api.post('/vehicles/create-folder', { vehicleNumber }),
+  createFolder: (vehicleNumber, vehicleId) => api.post('/vehicles/create-folder', { vehicleNumber, vehicleId }),
   uploadFile: (formData, folderId) => {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     return axios.post(`${API_URL}/vehicles/upload-file`, formData, {

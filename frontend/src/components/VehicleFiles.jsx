@@ -28,10 +28,8 @@ import {
 import { vehiclesAPI } from '../services/api';
 
 const categories = [
-  { id: 'ביטוח', label: 'ביטוח' },
-  { id: 'רישיון', label: 'רישיון' },
-  { id: 'תמונות', label: 'תמונות' },
-  { id: 'דוחות', label: 'דוחות' },
+  { id: 'insurance', label: 'ביטוחים', folderKey: 'insuranceFolderId' },
+  { id: 'photos', label: 'תמונות כלי', folderKey: 'photosFolderId' },
 ];
 
 export default function VehicleFiles({ vehicleNumber, vehicleFolderData }) {
@@ -42,15 +40,15 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData }) {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
-    if (vehicleFolderData?.categoryFolders) {
+    if (vehicleFolderData) {
       loadFiles();
     }
   }, [currentTab, vehicleFolderData]);
 
   const getCurrentFolderId = () => {
-    if (!vehicleFolderData?.categoryFolders) return null;
-    const currentCategory = categories[currentTab].id;
-    return vehicleFolderData.categoryFolders[currentCategory];
+    if (!vehicleFolderData) return null;
+    const currentCategory = categories[currentTab];
+    return vehicleFolderData[currentCategory.folderKey];
   };
 
   const loadFiles = async () => {
@@ -60,7 +58,7 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData }) {
     setLoading(true);
     try {
       const response = await vehiclesAPI.listFiles(folderId);
-      setFiles(response.data.data || []);
+      setFiles(response.data.files || []);
     } catch (error) {
       console.error('Error loading files:', error);
       showSnackbar('שגיאה בטעינת קבצים', 'error');
