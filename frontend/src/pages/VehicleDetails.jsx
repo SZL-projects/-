@@ -72,6 +72,30 @@ export default function VehicleDetails() {
     }
   };
 
+  const deleteFolderStructure = async () => {
+    if (!folderData || !window.confirm('האם אתה בטוח שברצונך למחוק את כל מבנה התיקיות? פעולה זו תמחק את כל הקבצים!')) {
+      return;
+    }
+
+    setCreatingFolders(true);
+    try {
+      // מחיקת התיקייה הראשית (זה ימחק גם את כל תתי-התיקיות)
+      await vehiclesAPI.deleteFile(folderData.mainFolderId);
+
+      // עדכון הכלי - הסרת נתוני התיקיות
+      await vehiclesAPI.update(id, { driveFolderData: null });
+
+      setFolderData(null);
+      showSnackbar('מבנה התיקיות נמחק בהצלחה', 'success');
+      await loadVehicle();
+    } catch (err) {
+      console.error('Error deleting folders:', err);
+      showSnackbar(err.response?.data?.message || 'שגיאה במחיקת תיקיות', 'error');
+    } finally {
+      setCreatingFolders(false);
+    }
+  };
+
   const getStatusChip = (status) => {
     const statusMap = {
       active: { label: 'פעיל', color: 'success' },
@@ -221,10 +245,26 @@ export default function VehicleDetails() {
             </Button>
           </Paper>
         ) : (
-          <VehicleFiles
-            vehicleNumber={vehicle.internalNumber || vehicle.licensePlate}
-            vehicleFolderData={folderData}
-          />
+          <Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">
+                קבצים ומסמכים
+              </Typography>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={deleteFolderStructure}
+                disabled={creatingFolders}
+                size="small"
+              >
+                מחק מבנה תיקיות
+              </Button>
+            </Box>
+            <VehicleFiles
+              vehicleNumber={vehicle.internalNumber || vehicle.licensePlate}
+              vehicleFolderData={folderData}
+            />
+          </Box>
         )}
       </Box>
 
