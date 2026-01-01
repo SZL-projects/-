@@ -192,6 +192,13 @@ class GoogleDriveService {
     }
 
     try {
+      const { Readable } = require('stream');
+
+      // המרת Buffer ל-stream
+      const bufferStream = new Readable();
+      bufferStream.push(fileContent);
+      bufferStream.push(null); // מסמן סוף ה-stream
+
       const fileMetadata = {
         name: fileName,
         parents: [folderId]
@@ -199,7 +206,7 @@ class GoogleDriveService {
 
       const media = {
         mimeType: mimeType,
-        body: fileContent
+        body: bufferStream
       };
 
       const response = await this.drive.files.create({
