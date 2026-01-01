@@ -22,6 +22,30 @@
       "destination": "/api/riders"
     },
     {
+      "source": "/api/vehicles/create-folder",
+      "destination": "/api/vehicles"
+    },
+    {
+      "source": "/api/vehicles/upload-file",
+      "destination": "/api/vehicles"
+    },
+    {
+      "source": "/api/vehicles/list-files",
+      "destination": "/api/vehicles"
+    },
+    {
+      "source": "/api/vehicles/delete-file",
+      "destination": "/api/vehicles"
+    },
+    {
+      "source": "/api/vehicles/create-rider-folder",
+      "destination": "/api/vehicles"
+    },
+    {
+      "source": "/api/vehicles/:id/kilometers",
+      "destination": "/api/vehicles"
+    },
+    {
       "source": "/api/vehicles/:id",
       "destination": "/api/vehicles"
     },
