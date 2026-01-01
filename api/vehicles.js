@@ -85,86 +85,106 @@ module.exports = async (req, res) => {
     // POST /api/vehicles/upload-file
     if (url.endsWith('/upload-file') && req.method === 'POST') {
       return new Promise((resolve, reject) => {
-        const busboy = Busboy({ headers: req.headers });
+        try {
+          const busboy = Busboy({ headers: req.headers });
 
-        let fileBuffer = null;
-        let fileName = '';
-        let mimeType = '';
-        let folderId = '';
+          let fileBuffer = null;
+          let fileName = '';
+          let mimeType = '';
+          let folderId = '';
+          let fileReceived = false;
 
-        busboy.on('file', (fieldname, file, info) => {
-          const { filename, encoding, mimeType: mime } = info;
-          fileName = filename;
-          mimeType = mime;
+          busboy.on('file', (fieldname, file, info) => {
+            console.log('Busboy file event:', { fieldname, info });
+            fileName = info.filename;
+            mimeType = info.mimeType;
+            fileReceived = true;
 
-          const chunks = [];
-          file.on('data', (data) => {
-            chunks.push(data);
-          });
+            const chunks = [];
 
-          file.on('end', () => {
-            fileBuffer = Buffer.concat(chunks);
-          });
-        });
-
-        busboy.on('field', (fieldname, value) => {
-          if (fieldname === 'folderId') {
-            folderId = value;
-          }
-        });
-
-        busboy.on('finish', async () => {
-          try {
-            if (!fileBuffer) {
-              res.status(400).json({
-                success: false,
-                message: 'לא הועלה קובץ'
-              });
-              return reject(new Error('No file uploaded'));
-            }
-
-            if (!folderId) {
-              res.status(400).json({
-                success: false,
-                message: 'מזהה תיקייה הוא שדה חובה'
-              });
-              return reject(new Error('No folderId provided'));
-            }
-
-            const fileData = await googleDriveService.uploadFile(
-              fileName,
-              fileBuffer,
-              folderId,
-              mimeType
-            );
-
-            res.json({
-              success: true,
-              message: 'קובץ הועלה בהצלחה',
-              data: fileData
+            file.on('data', (data) => {
+              chunks.push(data);
             });
 
-            resolve();
-          } catch (error) {
-            console.error('Error uploading file:', error);
+            file.on('end', () => {
+              fileBuffer = Buffer.concat(chunks);
+              console.log('File received, size:', fileBuffer.length);
+            });
+
+            file.on('error', (err) => {
+              console.error('File stream error:', err);
+            });
+          });
+
+          busboy.on('field', (fieldname, value) => {
+            console.log('Busboy field event:', { fieldname, value });
+            if (fieldname === 'folderId') {
+              folderId = value;
+            }
+          });
+
+          busboy.on('finish', async () => {
+            try {
+              console.log('Busboy finish event', { fileName, folderId, fileBufferSize: fileBuffer?.length });
+
+              if (!fileReceived || !fileBuffer) {
+                res.status(400).json({
+                  success: false,
+                  message: 'לא הועלה קובץ'
+                });
+                return reject(new Error('No file uploaded'));
+              }
+
+              if (!folderId) {
+                res.status(400).json({
+                  success: false,
+                  message: 'מזהה תיקייה הוא שדה חובה'
+                });
+                return reject(new Error('No folderId provided'));
+              }
+
+              const fileData = await googleDriveService.uploadFile(
+                fileName,
+                fileBuffer,
+                folderId,
+                mimeType
+              );
+
+              res.json({
+                success: true,
+                message: 'קובץ הועלה בהצלחה',
+                data: fileData
+              });
+
+              resolve();
+            } catch (error) {
+              console.error('Error in busboy finish handler:', error);
+              res.status(500).json({
+                success: false,
+                message: error.message
+              });
+              reject(error);
+            }
+          });
+
+          busboy.on('error', (error) => {
+            console.error('Busboy error:', error);
             res.status(500).json({
               success: false,
-              message: error.message
+              message: 'שגיאה בעיבוד הקובץ: ' + error.message
             });
             reject(error);
-          }
-        });
+          });
 
-        busboy.on('error', (error) => {
-          console.error('Busboy error:', error);
+          req.pipe(busboy);
+        } catch (error) {
+          console.error('Error setting up busboy:', error);
           res.status(500).json({
             success: false,
-            message: 'שגיאה בעיבוד הקובץ: ' + error.message
+            message: 'שגיאה באתחול העלאת הקובץ: ' + error.message
           });
           reject(error);
-        });
-
-        req.pipe(busboy);
+        }
       });
     }
 
