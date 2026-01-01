@@ -71,7 +71,8 @@ class GoogleDriveService {
       await this.drive.permissions.create({
         fileId: fileId,
         requestBody: permission,
-        fields: 'id'
+        fields: 'id',
+        supportsAllDrives: true
       });
 
       console.log(`Shared file ${fileId} with ${emailAddress || 'anyone'}`);
@@ -103,7 +104,9 @@ class GoogleDriveService {
 
       const response = await this.drive.files.create({
         requestBody: fileMetadata,
-        fields: 'id, name, webViewLink'
+        fields: 'id, name, webViewLink',
+        supportsAllDrives: true,
+        supportsTeamDrives: true
       });
 
       // שיתוף התיקייה
@@ -212,7 +215,9 @@ class GoogleDriveService {
       const response = await this.drive.files.create({
         requestBody: fileMetadata,
         media: media,
-        fields: 'id, name, webViewLink, size, createdTime, mimeType'
+        fields: 'id, name, webViewLink, size, createdTime, mimeType',
+        supportsAllDrives: true,
+        supportsTeamDrives: true
       });
 
       // שיתוף הקובץ
@@ -239,7 +244,9 @@ class GoogleDriveService {
       const response = await this.drive.files.list({
         q: `'${folderId}' in parents and trashed = false`,
         fields: 'files(id, name, mimeType, size, createdTime, webViewLink)',
-        orderBy: 'createdTime desc'
+        orderBy: 'createdTime desc',
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true
       });
 
       return response.data.files;
@@ -261,7 +268,8 @@ class GoogleDriveService {
 
     try {
       await this.drive.files.delete({
-        fileId: fileId
+        fileId: fileId,
+        supportsAllDrives: true
       });
 
       return { success: true, message: 'File deleted successfully' };
