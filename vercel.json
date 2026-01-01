@@ -8,9 +8,6 @@
       "maxDuration": 30
     }
   },
-  "api": {
-    "bodyParser": false
-  },
   "rewrites": [
     {
       "source": "/api/auth/:path*",
