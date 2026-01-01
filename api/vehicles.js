@@ -2,8 +2,7 @@
 const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkAuthorization } = require('./_utils/auth');
 const googleDriveService = require('./services/googleDriveService');
-const formidable = require('formidable');
-const fs = require('fs');
+const Busboy = require('busboy');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -86,25 +85,37 @@ module.exports = async (req, res) => {
     // POST /api/vehicles/upload-file
     if (url.endsWith('/upload-file') && req.method === 'POST') {
       return new Promise((resolve, reject) => {
-        const form = formidable({
-          maxFileSize: 10 * 1024 * 1024, // 10MB
-          keepExtensions: true,
-          multiples: false
+        const busboy = Busboy({ headers: req.headers });
+
+        let fileBuffer = null;
+        let fileName = '';
+        let mimeType = '';
+        let folderId = '';
+
+        busboy.on('file', (fieldname, file, info) => {
+          const { filename, encoding, mimeType: mime } = info;
+          fileName = filename;
+          mimeType = mime;
+
+          const chunks = [];
+          file.on('data', (data) => {
+            chunks.push(data);
+          });
+
+          file.on('end', () => {
+            fileBuffer = Buffer.concat(chunks);
+          });
         });
 
-        form.parse(req, async (err, fields, files) => {
-          try {
-            if (err) {
-              console.error('Formidable parse error:', err);
-              res.status(500).json({
-                success: false,
-                message: 'שגיאה בעיבוד הקובץ: ' + err.message
-              });
-              return reject(err);
-            }
+        busboy.on('field', (fieldname, value) => {
+          if (fieldname === 'folderId') {
+            folderId = value;
+          }
+        });
 
-            const file = Array.isArray(files.file) ? files.file[0] : files.file;
-            if (!file) {
+        busboy.on('finish', async () => {
+          try {
+            if (!fileBuffer) {
               res.status(400).json({
                 success: false,
                 message: 'לא הועלה קובץ'
@@ -112,7 +123,6 @@ module.exports = async (req, res) => {
               return reject(new Error('No file uploaded'));
             }
 
-            const folderId = Array.isArray(fields.folderId) ? fields.folderId[0] : fields.folderId;
             if (!folderId) {
               res.status(400).json({
                 success: false,
@@ -121,33 +131,12 @@ module.exports = async (req, res) => {
               return reject(new Error('No folderId provided'));
             }
 
-            // קריאת הקובץ מה-disk
-            let fileBuffer;
-            try {
-              fileBuffer = fs.readFileSync(file.filepath);
-            } catch (readErr) {
-              console.error('File read error:', readErr);
-              res.status(500).json({
-                success: false,
-                message: 'שגיאה בקריאת הקובץ'
-              });
-              return reject(readErr);
-            }
-
             const fileData = await googleDriveService.uploadFile(
-              file.originalFilename,
+              fileName,
               fileBuffer,
               folderId,
-              file.mimetype
+              mimeType
             );
-
-            // מחיקת הקובץ הזמני
-            try {
-              fs.unlinkSync(file.filepath);
-            } catch (unlinkErr) {
-              console.error('File cleanup error:', unlinkErr);
-              // Continue anyway - file uploaded successfully
-            }
 
             res.json({
               success: true,
@@ -165,6 +154,17 @@ module.exports = async (req, res) => {
             reject(error);
           }
         });
+
+        busboy.on('error', (error) => {
+          console.error('Busboy error:', error);
+          res.status(500).json({
+            success: false,
+            message: 'שגיאה בעיבוד הקובץ: ' + error.message
+          });
+          reject(error);
+        });
+
+        req.pipe(busboy);
       });
     }
 
