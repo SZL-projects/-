@@ -88,46 +88,66 @@ module.exports = async (req, res) => {
       return new Promise((resolve, reject) => {
         const form = formidable({
           maxFileSize: 10 * 1024 * 1024, // 10MB
-          keepExtensions: true
+          keepExtensions: true,
+          multiples: false
         });
 
         form.parse(req, async (err, fields, files) => {
           try {
             if (err) {
-              return res.status(500).json({
+              console.error('Formidable parse error:', err);
+              res.status(500).json({
                 success: false,
                 message: 'שגיאה בעיבוד הקובץ: ' + err.message
               });
+              return reject(err);
             }
 
-            const file = files.file;
+            const file = Array.isArray(files.file) ? files.file[0] : files.file;
             if (!file) {
-              return res.status(400).json({
+              res.status(400).json({
                 success: false,
                 message: 'לא הועלה קובץ'
               });
+              return reject(new Error('No file uploaded'));
             }
 
-            const folderId = fields.folderId;
+            const folderId = Array.isArray(fields.folderId) ? fields.folderId[0] : fields.folderId;
             if (!folderId) {
-              return res.status(400).json({
+              res.status(400).json({
                 success: false,
                 message: 'מזהה תיקייה הוא שדה חובה'
               });
+              return reject(new Error('No folderId provided'));
             }
 
             // קריאת הקובץ מה-disk
-            const fileBuffer = fs.readFileSync(file[0].filepath);
+            let fileBuffer;
+            try {
+              fileBuffer = fs.readFileSync(file.filepath);
+            } catch (readErr) {
+              console.error('File read error:', readErr);
+              res.status(500).json({
+                success: false,
+                message: 'שגיאה בקריאת הקובץ'
+              });
+              return reject(readErr);
+            }
 
             const fileData = await googleDriveService.uploadFile(
-              file[0].originalFilename,
+              file.originalFilename,
               fileBuffer,
               folderId,
-              file[0].mimetype
+              file.mimetype
             );
 
             // מחיקת הקובץ הזמני
-            fs.unlinkSync(file[0].filepath);
+            try {
+              fs.unlinkSync(file.filepath);
+            } catch (unlinkErr) {
+              console.error('File cleanup error:', unlinkErr);
+              // Continue anyway - file uploaded successfully
+            }
 
             res.json({
               success: true,
