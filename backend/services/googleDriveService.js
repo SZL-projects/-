@@ -26,7 +26,7 @@ class GoogleDriveService {
 
       const auth = new google.auth.GoogleAuth({
         credentials,
-        scopes: ['https://www.googleapis.com/auth/drive.file']
+        scopes: ['https://www.googleapis.com/auth/drive']
       });
 
       this.drive = google.drive({ version: 'v3', auth });
@@ -39,8 +39,44 @@ class GoogleDriveService {
     }
   }
 
+  // מתן הרשאות לתיקייה/קובץ
+  async shareFile(fileId, emailAddress = null, role = 'writer') {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    if (!this.initialized) {
+      throw new Error('Google Drive service not initialized');
+    }
+
+    try {
+      // אם לא צוין email, תן הרשאות לכולם עם הלינק
+      const permission = emailAddress
+        ? {
+            type: 'user',
+            role: role, // owner, organizer, fileOrganizer, writer, commenter, reader
+            emailAddress: emailAddress
+          }
+        : {
+            type: 'anyone',
+            role: 'reader' // כולם יכולים לקרוא
+          };
+
+      await this.drive.permissions.create({
+        fileId: fileId,
+        requestBody: permission,
+        fields: 'id'
+      });
+
+      console.log(`Shared file ${fileId} with ${emailAddress || 'anyone'}`);
+    } catch (error) {
+      console.error('Error sharing file:', error);
+      throw error;
+    }
+  }
+
   // יצירת תיקייה
-  async createFolder(folderName, parentId = null) {
+  async createFolder(folderName, parentId = null, shareWithEmail = null) {
     if (!this.initialized) {
       await this.initialize();
     }
@@ -63,6 +99,14 @@ class GoogleDriveService {
         requestBody: fileMetadata,
         fields: 'id, name, webViewLink'
       });
+
+      // שיתוף התיקייה
+      if (shareWithEmail) {
+        await this.shareFile(response.data.id, shareWithEmail, 'writer');
+      } else {
+        // תן הרשאות לכולם עם הלינק
+        await this.shareFile(response.data.id, null, 'reader');
+      }
 
       return response.data;
     } catch (error) {
@@ -155,8 +199,11 @@ class GoogleDriveService {
       const response = await this.drive.files.create({
         requestBody: fileMetadata,
         media: media,
-        fields: 'id, name, webViewLink'
+        fields: 'id, name, webViewLink, size, createdTime, mimeType'
       });
+
+      // שיתוף הקובץ
+      await this.shareFile(response.data.id, null, 'reader');
 
       return response.data;
     } catch (error) {
@@ -178,7 +225,7 @@ class GoogleDriveService {
     try {
       const response = await this.drive.files.list({
         q: `'${folderId}' in parents and trashed = false`,
-        fields: 'files(id, name, mimeType, createdTime, webViewLink)',
+        fields: 'files(id, name, mimeType, size, createdTime, webViewLink)',
         orderBy: 'createdTime desc'
       });
 
