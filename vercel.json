@@ -42,6 +42,10 @@
       "destination": "/api/vehicles"
     },
     {
+      "source": "/api/drive/:path*",
+      "destination": "/api/drive"
+    },
+    {
       "source": "/api/vehicles/:id/kilometers",
       "destination": "/api/vehicles"
     },

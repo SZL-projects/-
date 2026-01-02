@@ -66,6 +66,7 @@ const managementMenuItems = [
   { text: 'דוחות', icon: <Assessment />, path: '/reports' },
   { text: 'יוצר טפסים', icon: <Description />, path: '/form-builder' },
   { text: 'משתמשים', icon: <People />, path: '/users' },
+  { text: 'הגדרות', icon: <Settings />, path: '/settings', adminOnly: true },
 ];
 
 export default function Layout() {
@@ -195,30 +196,37 @@ export default function Layout() {
                 </Typography>
               </ListItem>
             )}
-            {managementMenuItems.map((item) => (
-              <ListItem key={item.text} disablePadding sx={{ display: 'block' }}>
-                <ListItemButton
-                  selected={location.pathname === item.path}
-                  onClick={() => handleMenuClick(item.path)}
-                  sx={{
-                    minHeight: 48,
-                    justifyContent: drawerOpen ? 'initial' : 'center',
-                    px: 2.5,
-                  }}
-                >
-                  <ListItemIcon
+            {managementMenuItems.map((item) => {
+              // אם הפריט מיועד רק לאדמין, בדוק אם המשתמש הוא super_admin
+              if (item.adminOnly && !hasRole('super_admin')) {
+                return null;
+              }
+
+              return (
+                <ListItem key={item.text} disablePadding sx={{ display: 'block' }}>
+                  <ListItemButton
+                    selected={location.pathname === item.path}
+                    onClick={() => handleMenuClick(item.path)}
                     sx={{
-                      minWidth: 0,
-                      mr: drawerOpen ? 2 : 'auto',
-                      justifyContent: 'center'
+                      minHeight: 48,
+                      justifyContent: drawerOpen ? 'initial' : 'center',
+                      px: 2.5,
                     }}
                   >
-                    {item.icon}
-                  </ListItemIcon>
-                  {drawerOpen && <ListItemText primary={item.text} />}
-                </ListItemButton>
-              </ListItem>
-            ))}
+                    <ListItemIcon
+                      sx={{
+                        minWidth: 0,
+                        mr: drawerOpen ? 2 : 'auto',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {item.icon}
+                    </ListItemIcon>
+                    {drawerOpen && <ListItemText primary={item.text} />}
+                  </ListItemButton>
+                </ListItem>
+              );
+            })}
           </>
         )}
       </List>

@@ -20,7 +20,8 @@ module.exports = async (req, res) => {
   try {
     const { db } = initFirebase();
 
-    // Initialize Google Drive service
+    // Initialize Google Drive service with Firestore
+    googleDriveService.setFirestore(db);
     await googleDriveService.initialize();
 
     const user = await authenticateToken(req, db);

@@ -6,29 +6,60 @@ class GoogleDriveService {
     this.drive = null;
     this.initialized = false;
     this.rootFolderId = null;
+    this.db = null;
+  }
+
+  // הגדרת Firestore instance
+  setFirestore(db) {
+    this.db = db;
+  }
+
+  // קבלת OAuth2 client עם טוקנים מ-Firestore
+  async getOAuth2Client() {
+    if (!this.db) {
+      throw new Error('Firestore not initialized. Call setFirestore(db) first.');
+    }
+
+    const settingsRef = this.db.collection('settings').doc('googleDrive');
+    const settingsDoc = await settingsRef.get();
+
+    if (!settingsDoc.exists || !settingsDoc.data().tokens) {
+      throw new Error('Google Drive לא מאומת. יש להתחבר דרך ממשק הניהול.');
+    }
+
+    const tokens = settingsDoc.data().tokens;
+
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_OAUTH_CLIENT_ID,
+      process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI || 'https://seven-roan-19.vercel.app/api/drive/oauth2callback'
+    );
+
+    oauth2Client.setCredentials(tokens);
+
+    // טיפול באוטומטי ברענון טוקן
+    oauth2Client.on('tokens', async (newTokens) => {
+      console.log('Refreshing Google Drive tokens...');
+
+      const updatedTokens = {
+        ...tokens,
+        ...newTokens
+      };
+
+      await settingsRef.update({
+        tokens: updatedTokens,
+        updatedAt: new Date()
+      });
+    });
+
+    return oauth2Client;
   }
 
   // אתחול ה-Drive API
   async initialize() {
     try {
-      // אפשרויות לאימות:
-      // 1. Service Account (מומלץ לשרת)
-      // 2. OAuth2 (למשתמשים)
-
-      // בדיקה אם יש Service Account credentials
-      const credentials = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
-        ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY)
-        : null;
-
-      if (!credentials) {
-        console.warn('Google Drive credentials not found. Set GOOGLE_SERVICE_ACCOUNT_KEY environment variable.');
-        return false;
-      }
-
-      const auth = new google.auth.GoogleAuth({
-        credentials,
-        scopes: ['https://www.googleapis.com/auth/drive']
-      });
+      // יצירת OAuth2 client עם הטוקנים השמורים
+      const auth = await this.getOAuth2Client();
 
       this.drive = google.drive({ version: 'v3', auth });
 
@@ -36,7 +67,7 @@ class GoogleDriveService {
       this.rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || '186mat7V_XgO02xkmIqjQXeZDs26S1SFY';
 
       this.initialized = true;
-      console.log('Google Drive service initialized successfully');
+      console.log('Google Drive service initialized successfully with OAuth2');
       console.log('Root folder ID:', this.rootFolderId);
       return true;
     } catch (error) {
