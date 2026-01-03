@@ -39,6 +39,7 @@ module.exports = async (req, res) => {
         access_type: 'offline',
         scope: [
           'https://www.googleapis.com/auth/drive.file',
+          'https://www.googleapis.com/auth/gmail.send',
           'https://www.googleapis.com/auth/userinfo.email'
         ],
         prompt: 'consent' // Force to get refresh token

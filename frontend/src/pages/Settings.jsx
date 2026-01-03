@@ -140,7 +140,7 @@ const Settings = () => {
                 <CloudOff color="error" sx={{ mr: 2, fontSize: 40 }} />
               )}
               <Typography variant="h6">
-                Google Drive
+                חשבון Google
               </Typography>
             </Box>
 
@@ -179,7 +179,7 @@ const Settings = () => {
                       onClick={handleAuthorize}
                       disabled={authorizing}
                     >
-                      {authorizing ? 'מתחבר...' : 'התחבר ל-Google Drive'}
+                      {authorizing ? 'מתחבר...' : 'התחבר לחשבון Google'}
                     </Button>
                   ) : (
                     <>
@@ -206,16 +206,16 @@ const Settings = () => {
 
             <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
               <Typography variant="subtitle2" gutterBottom>
-                מידע על חיבור Google Drive:
+                מידע על חיבור חשבון Google:
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                • החיבור מאפשר העלאת קבצים לתיקיית Google Drive שלך
+                • Google Drive - העלאת קבצים ומסמכים לכל כלי
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                • כל כלי יקבל תיקייה נפרדת עם תיקיות משנה לביטוחים ותמונות
+                • Gmail - שליחת מיילים אוטומטיים לרוכבים והתראות
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                • הקבצים יהיו זמינים לכולם עם הקישור
+                • החיבור מאובטח ונשמר בצורה מוצפנת
               </Typography>
             </Box>
           </CardContent>
