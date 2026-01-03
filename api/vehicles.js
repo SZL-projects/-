@@ -113,13 +113,15 @@ module.exports = async (req, res) => {
 
           busboy.on('file', (fieldname, file, info) => {
             console.log('Busboy file event:', { fieldname, info });
-            // נסה לקרוא את שם הקובץ בקידוד תקין
+            // תיקון קידוד תווים עבריים - busboy מקבל latin1 במקום utf8
             try {
-              fileName = decodeURIComponent(info.filename);
+              // המר מ-latin1 ל-utf8
+              fileName = Buffer.from(info.filename, 'latin1').toString('utf8');
             } catch (e) {
               fileName = info.filename;
             }
-            console.log('Final filename:', fileName);
+            console.log('Original filename:', info.filename);
+            console.log('Fixed filename:', fileName);
             mimeType = info.mimeType;
             fileReceived = true;
 
