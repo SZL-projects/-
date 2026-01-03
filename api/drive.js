@@ -2,6 +2,7 @@
 const { google } = require('googleapis');
 const { initFirebase } = require('./_utils/firebase');
 const { authenticateToken, checkAuthorization } = require('./_utils/auth');
+const googleDriveService = require('./services/googleDriveService');
 
 // OAuth2 client configuration
 const getOAuth2Client = () => {
@@ -128,22 +129,37 @@ module.exports = async (req, res) => {
         });
       }
 
-      const tokens = settingsDoc.data().tokens;
-      const updatedAt = settingsDoc.data().updatedAt;
+      // נסה לרענן את הטוקן אם צריך
+      try {
+        googleDriveService.setFirestore(db);
+        await googleDriveService.getOAuth2Client();
 
-      // Check if token is expired
-      const isExpired = tokens.expiry_date && tokens.expiry_date < Date.now();
+        // קרא שוב את הטוקנים אחרי הרענון
+        const updatedDoc = await settingsRef.get();
+        const tokens = updatedDoc.data().tokens;
+        const updatedAt = updatedDoc.data().updatedAt;
 
-      // המר Firestore Timestamp ל-ISO string
-      const lastUpdatedISO = updatedAt?.toDate ? updatedAt.toDate().toISOString() : updatedAt;
+        // בדוק אם הטוקן פג תוקף
+        const isExpired = tokens.expiry_date && tokens.expiry_date < Date.now();
 
-      return res.json({
-        success: true,
-        authorized: true,
-        expired: isExpired,
-        lastUpdated: lastUpdatedISO,
-        message: isExpired ? 'הטוקן פג תוקף, נדרש אימות מחדש' : 'Google Drive מחובר'
-      });
+        // המר Firestore Timestamp ל-ISO string
+        const lastUpdatedISO = updatedAt?.toDate ? updatedAt.toDate().toISOString() : updatedAt;
+
+        return res.json({
+          success: true,
+          authorized: true,
+          expired: isExpired,
+          lastUpdated: lastUpdatedISO,
+          message: isExpired ? 'הטוקן פג תוקף, נדרש אימות מחדש' : 'Google Drive מחובר'
+        });
+      } catch (error) {
+        console.error('Error checking Drive status:', error);
+        return res.json({
+          success: true,
+          authorized: false,
+          message: error.message || 'שגיאה בבדיקת סטטוס Google Drive'
+        });
+      }
     }
 
     // POST /api/drive/revoke - Revoke authorization
