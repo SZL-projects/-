@@ -38,13 +38,29 @@ class GoogleDriveService {
     oauth2Client.setCredentials(tokens);
 
     // בדוק אם הטוקן פג תוקף ורענן אותו
-    if (tokens.expiry_date && tokens.expiry_date < Date.now()) {
-      console.log('Access token expired, refreshing...');
+    // המר Firestore Timestamp למספר אם צריך
+    const expiryDate = tokens.expiry_date?.toMillis ? tokens.expiry_date.toMillis() : tokens.expiry_date;
+    const now = Date.now();
+
+    // הוסף 5 דקות buffer - רענן 5 דקות לפני שפג תוקף
+    const needsRefresh = !expiryDate || expiryDate < (now + 5 * 60 * 1000);
+
+    if (needsRefresh) {
+      console.log('Access token needs refresh. Expiry:', expiryDate, 'Now:', now);
       try {
         const { credentials } = await oauth2Client.refreshAccessToken();
+        console.log('New credentials received:', {
+          has_access_token: !!credentials.access_token,
+          has_refresh_token: !!credentials.refresh_token,
+          expiry_date: credentials.expiry_date
+        });
+
         const updatedTokens = {
-          ...tokens,
-          ...credentials
+          access_token: credentials.access_token,
+          refresh_token: credentials.refresh_token || tokens.refresh_token, // שמור refresh_token הישן אם לא קיבלנו חדש
+          scope: credentials.scope || tokens.scope,
+          token_type: credentials.token_type || tokens.token_type,
+          expiry_date: credentials.expiry_date
         };
 
         await settingsRef.update({
@@ -56,7 +72,8 @@ class GoogleDriveService {
         console.log('Access token refreshed successfully');
       } catch (error) {
         console.error('Failed to refresh access token:', error);
-        throw new Error('Google Drive טוקן פג תוקף ונכשל ברענון. יש להתחבר מחדש דרך ממשק הניהול.');
+        // אם הרענון נכשל, נסה להשתמש בטוקן הקיים ונקווה שעדיין תקף
+        console.log('Attempting to continue with existing token...');
       }
     }
 
