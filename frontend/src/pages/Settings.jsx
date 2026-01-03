@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatDateTime } from '../utils/dateUtils';
 import {
   Container,
   Paper,
@@ -165,7 +166,7 @@ const Settings = () => {
 
                 {driveStatus.lastUpdated && (
                   <Typography variant="caption" color="text.secondary">
-                    עדכון אחרון: {new Date(driveStatus.lastUpdated.seconds * 1000).toLocaleString('he-IL')}
+                    עדכון אחרון: {formatDateTime(driveStatus.lastUpdated)}
                   </Typography>
                 )}
 

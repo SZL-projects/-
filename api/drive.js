@@ -129,15 +129,19 @@ module.exports = async (req, res) => {
       }
 
       const tokens = settingsDoc.data().tokens;
+      const updatedAt = settingsDoc.data().updatedAt;
 
       // Check if token is expired
       const isExpired = tokens.expiry_date && tokens.expiry_date < Date.now();
+
+      // המר Firestore Timestamp ל-ISO string
+      const lastUpdatedISO = updatedAt?.toDate ? updatedAt.toDate().toISOString() : updatedAt;
 
       return res.json({
         success: true,
         authorized: true,
         expired: isExpired,
-        lastUpdated: settingsDoc.data().updatedAt,
+        lastUpdated: lastUpdatedISO,
         message: isExpired ? 'הטוקן פג תוקף, נדרש אימות מחדש' : 'Google Drive מחובר'
       });
     }
