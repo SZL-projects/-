@@ -54,7 +54,7 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'מערכת CRM לניהול יחידת האופנועים - API (Firebase)',
+    message: 'מערכת CRM צי לוג ידידים - API (Firebase)',
     version: '3.13.0',
     database: 'Firebase Firestore',
     features: [
@@ -80,7 +80,7 @@ if (process.env.NODE_ENV !== 'production') {
   const server = app.listen(PORT, () => {
     console.log(`
 ╔═══════════════════════════════════════════════════╗
-║   🏍️  מערכת CRM - יחידת האופנועים  🏍️           ║
+║   🏍️  מערכת CRM - צי לוג ידידים  🏍️              ║
 ║                                                   ║
 ║   🔥 Database: Firebase Firestore                ║
 ║   Server running in ${process.env.NODE_ENV || 'development'} mode             ║

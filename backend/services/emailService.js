@@ -88,7 +88,7 @@ exports.sendPasswordResetEmail = async (user, resetToken) => {
     </head>
     <body>
       <div class="container">
-        <h1>🏍️ איפוס סיסמה - מערכת CRM יחידת האופנועים</h1>
+        <h1>🏍️ איפוס סיסמה - צי לוג ידידים</h1>
         <p>שלום ${user.firstName} ${user.lastName},</p>
         <p>קיבלנו בקשה לאיפוס הסיסמה שלך במערכת.</p>
         <p>לאיפוס הסיסמה, לחץ על הכפתור הבא:</p>
@@ -98,7 +98,7 @@ exports.sendPasswordResetEmail = async (user, resetToken) => {
         <p><strong>שים לב:</strong> קישור זה יפוג בעוד 10 דקות.</p>
         <p>אם לא ביקשת איפוס סיסמה, התעלם ממייל זה.</p>
         <div class="footer">
-          <p>© ${new Date().getFullYear()} מערכת CRM יחידת האופנועים</p>
+          <p>© ${new Date().getFullYear()} צי לוג ידידים</p>
         </div>
       </div>
     </body>
@@ -107,7 +107,7 @@ exports.sendPasswordResetEmail = async (user, resetToken) => {
 
   await exports.sendEmail({
     email: user.email,
-    subject: 'איפוס סיסמה - מערכת CRM יחידת האופנועים',
+    subject: 'איפוס סיסמה - צי לוג ידידים',
     html,
   });
 };
@@ -184,7 +184,7 @@ exports.sendMonthlyCheckReminder = async (rider, vehicle) => {
           <a href="${process.env.FRONTEND_URL}/monthly-checks" class="button">לביצוע בקרה חודשית</a>
         </center>
         <div class="footer">
-          <p>© ${new Date().getFullYear()} מערכת CRM יחידת האופנועים</p>
+          <p>© ${new Date().getFullYear()} צי לוג ידידים</p>
         </div>
       </div>
     </body>
@@ -193,7 +193,7 @@ exports.sendMonthlyCheckReminder = async (rider, vehicle) => {
 
   await exports.sendEmail({
     email: rider.email,
-    subject: 'תזכורת: בקרה חודשית - מערכת CRM יחידת האופנועים',
+    subject: 'תזכורת: בקרה חודשית - צי לוג ידידים',
     html,
   });
 };
@@ -258,7 +258,7 @@ exports.sendCriticalFaultNotification = async (fault, vehicle, rider) => {
         </div>
         <p>יש לטפל בתקלה בהקדם האפשרי.</p>
         <div class="footer">
-          <p>© ${new Date().getFullYear()} מערכת CRM יחידת האופנועים</p>
+          <p>© ${new Date().getFullYear()} צי לוג ידידים</p>
         </div>
       </div>
     </body>
@@ -337,7 +337,7 @@ exports.sendNewUserWelcomeEmail = async (user, temporaryPassword) => {
     </head>
     <body>
       <div class="container">
-        <h1>🏍️ ברוכים הבאים למערכת CRM יחידת האופנועים</h1>
+        <h1>🏍️ ברוכים הבאים לצי לוג ידידים</h1>
         <p>שלום ${user.firstName} ${user.lastName},</p>
         <p>חשבון המשתמש שלך נוצר בהצלחה במערכת!</p>
         <div class="info-box">
@@ -351,7 +351,7 @@ exports.sendNewUserWelcomeEmail = async (user, temporaryPassword) => {
           <a href="${loginUrl}" class="button">התחבר למערכת</a>
         </center>
         <div class="footer">
-          <p>© ${new Date().getFullYear()} מערכת CRM יחידת האופנועים</p>
+          <p>© ${new Date().getFullYear()} צי לוג ידידים</p>
         </div>
       </div>
     </body>

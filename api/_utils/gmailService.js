@@ -131,7 +131,7 @@ exports.sendPasswordResetEmail = async (user, resetToken) => {
     </head>
     <body>
       <div class="container">
-        <h1>🏍️ איפוס סיסמה - מערכת CRM יחידת האופנועים</h1>
+        <h1>🏍️ איפוס סיסמה - מערכת CRM צי לוג ידידים</h1>
         <p>שלום ${user.firstName} ${user.lastName},</p>
         <p>קיבלנו בקשה לאיפוס הסיסמה שלך במערכת.</p>
         <p>לאיפוס הסיסמה, לחץ על הכפתור הבא:</p>
@@ -141,7 +141,7 @@ exports.sendPasswordResetEmail = async (user, resetToken) => {
         <p><strong>שים לב:</strong> קישור זה יפוג בעוד 10 דקות.</p>
         <p>אם לא ביקשת איפוס סיסמה, התעלם ממייל זה.</p>
         <div class="footer">
-          <p>© ${new Date().getFullYear()} מערכת CRM יחידת האופנועים</p>
+          <p>© ${new Date().getFullYear()} מערכת CRM צי לוג ידידים</p>
         </div>
       </div>
     </body>
@@ -150,7 +150,7 @@ exports.sendPasswordResetEmail = async (user, resetToken) => {
 
   await exports.sendEmail({
     email: user.email,
-    subject: 'איפוס סיסמה - מערכת CRM יחידת האופנועים',
+    subject: 'איפוס סיסמה - מערכת CRM צי לוג ידידים',
     html,
   });
 };

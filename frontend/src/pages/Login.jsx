@@ -86,7 +86,7 @@ export default function Login() {
               מערכת CRM
             </Typography>
             <Typography variant="h6" color="text.secondary">
-              יחידת האופנועים
+              צי לוג ידידים
             </Typography>
           </Box>
 

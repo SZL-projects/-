@@ -1,7 +1,7 @@
 {
   "name": "motorcycle-crm",
   "version": "3.13.0",
-  "description": "מערכת CRM לניהול יחידת האופנועים",
+  "description": "מערכת CRM לניהול צי לוג ידידים",
   "main": "index.js",
   "scripts": {
     "install-all": "cd backend && npm install && cd ../frontend && npm install",

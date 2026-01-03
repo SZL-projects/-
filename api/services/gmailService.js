@@ -127,11 +127,11 @@ class GmailService {
 
   // שליחת מייל ברוכים הבאים
   async sendWelcomeEmail(userEmail, userName, loginUrl) {
-    const subject = 'ברוכים הבאים למערכת CRM יחידת האופנועים';
+    const subject = 'ברוכים הבאים למערכת CRM צי לוג ידידים';
     const html = `
       <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #1976d2;">שלום ${userName},</h2>
-        <p>ברוכים הבאים למערכת CRM של יחידת האופנועים!</p>
+        <p>ברוכים הבאים למערכת CRM של צי לוג ידידים!</p>
         <p>המשתמש שלך נוצר בהצלחה.</p>
         <p><strong>פרטי התחברות:</strong></p>
         <ul>
@@ -158,7 +158,7 @@ class GmailService {
 
   // שליחת מייל איפוס סיסמה
   async sendPasswordResetEmail(userEmail, userName, resetLink) {
-    const subject = 'איפוס סיסמה - מערכת CRM יחידת האופנועים';
+    const subject = 'איפוס סיסמה - מערכת CRM צי לוג ידידים';
     const html = `
       <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #1976d2;">שלום ${userName},</h2>
@@ -194,7 +194,7 @@ class GmailService {
           ${message}
         </div>
         <p style="color: #666; font-size: 14px;">
-          נשלח מ: מערכת CRM יחידת האופנועים
+          נשלח מ: מערכת CRM צי לוג ידידים
         </p>
       </div>
     `;
@@ -220,7 +220,7 @@ class GmailService {
           </p>
         ` : ''}
         <p style="color: #666; font-size: 14px; margin-top: 30px;">
-          מערכת CRM יחידת האופנועים
+          מערכת CRM צי לוג ידידים
         </p>
       </div>
     `;

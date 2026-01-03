@@ -126,7 +126,7 @@ export default function Layout() {
           {drawerOpen && (
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="h6" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>
-                CRM אופנועים
+                צי לוג ידידים
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 גרסה 3.17.0
@@ -267,7 +267,7 @@ export default function Layout() {
                 <TwoWheeler sx={{ fontSize: 40, color: 'primary.main' }} />
                 <Box>
                   <Typography variant="h6" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>
-                    CRM אופנועים
+                    צי לוג ידידים
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     גרסה 3.17.0
@@ -375,7 +375,7 @@ export default function Layout() {
               <MenuIcon />
             </IconButton>
             <Typography variant="h6" noWrap component="div" sx={{ display: { xs: 'none', md: 'block' }, mr: 2 }}>
-              מערכת CRM - יחידת האופנועים
+              מערכת CRM - צי לוג ידידים
             </Typography>
 
             {/* Global Search - Desktop */}

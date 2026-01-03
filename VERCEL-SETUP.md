@@ -41,7 +41,7 @@ https://vercel.com/dashboard
 - `SMTP_USER` = `bikes@yedidim-il.org`
 - `SMTP_PASS` = `wvqn zjbj mxsv kwzj`
 - `FROM_EMAIL` = `bikes@yedidim-il.org`
-- `FROM_NAME` = `מערכת CRM יחידת האופנועים`
+- `FROM_NAME` = `מערכת CRM צי לוג ידידים`
 
 **חשוב:** החלף את `YOUR-PROJECT` בשם האמיתי של הפרויקט שלך ב-Vercel!
 

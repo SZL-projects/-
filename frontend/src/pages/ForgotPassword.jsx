@@ -159,7 +159,7 @@ export default function ForgotPassword() {
             align="center"
             sx={{ mt: 4 }}
           >
-            © {new Date().getFullYear()} מערכת CRM יחידת האופנועים
+            © {new Date().getFullYear()} צי לוג ידידים
           </Typography>
         </Paper>
       </Container>

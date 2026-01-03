@@ -127,4 +127,4 @@ curl -X POST https://your-app.vercel.app/api/auth/register \
 ## 📞 תמיכה
 
 לבעיות בפריסה, פנה למפתח:
-שלמה זלמן לרנר - מזכיר יחידת האופנועים
+שלמה זלמן לרנר - מזכיר צי לוג ידידים

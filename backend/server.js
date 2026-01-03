@@ -43,7 +43,7 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'מערכת CRM לניהול יחידת האופנועים - API (MongoDB)',
+    message: 'מערכת CRM צי לוג ידידים - API (MongoDB)',
     version: '3.23.0',
     database: 'MongoDB',
     features: [
@@ -64,7 +64,7 @@ const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════╗
-║   🏍️  מערכת CRM - יחידת האופנועים  🏍️           ║
+║   🏍️  מערכת CRM - צי לוג ידידים  🏍️              ║
 ║                                                   ║
 ║   🍃 Database: MongoDB                           ║
 ║   Server running in ${process.env.NODE_ENV || 'development'} mode             ║

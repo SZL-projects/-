@@ -1,7 +1,7 @@
 {
-  "name": "מערכת CRM - יחידת האופנועים",
-  "short_name": "CRM אופנועים",
-  "description": "מערכת ניהול רוכבים וכלים ליחידת האופנועים",
+  "name": "מערכת CRM - צי לוג ידידים",
+  "short_name": "צי לוג ידידים",
+  "description": "מערכת ניהול רוכבים וכלים - צי לוג ידידים",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
