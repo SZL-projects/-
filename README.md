@@ -1,5 +1,7 @@
 # מערכת CRM - צי לוג ידידים
 
+🌐 **גישה למערכת:** https://tzi-log-yedidim.vercel.app
+
 ## תיאור הפרויקט
 מערכת ניהול מקיפה לצי הרכב הכוללת:
 - ניהול רוכבים וכלים

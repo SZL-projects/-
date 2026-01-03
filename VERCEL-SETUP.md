@@ -34,7 +34,7 @@ https://vercel.com/dashboard
 - `JWT_SECRET` = `motorcycle-crm-secret-key-change-in-production-2024`
 - `JWT_EXPIRE` = `30d`
 - `NODE_ENV` = `production`
-- `FRONTEND_URL` = (כתובת האתר שלך ב-Vercel - https://YOUR-PROJECT.vercel.app)
+- `FRONTEND_URL` = `https://tzi-log-yedidim.vercel.app`
 - `SMTP_HOST` = `smtp.gmail.com`
 - `SMTP_PORT` = `587`
 - `SMTP_SECURE` = `false`
@@ -42,8 +42,6 @@ https://vercel.com/dashboard
 - `SMTP_PASS` = `wvqn zjbj mxsv kwzj`
 - `FROM_EMAIL` = `bikes@yedidim-il.org`
 - `FROM_NAME` = `מערכת CRM צי לוג ידידים`
-
-**חשוב:** החלף את `YOUR-PROJECT` בשם האמיתי של הפרויקט שלך ב-Vercel!
 
 ### 5. שמור את ההגדרות
 
