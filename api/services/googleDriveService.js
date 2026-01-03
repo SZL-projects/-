@@ -37,9 +37,32 @@ class GoogleDriveService {
 
     oauth2Client.setCredentials(tokens);
 
-    // טיפול באוטומטי ברענון טוקן
+    // בדוק אם הטוקן פג תוקף ורענן אותו
+    if (tokens.expiry_date && tokens.expiry_date < Date.now()) {
+      console.log('Access token expired, refreshing...');
+      try {
+        const { credentials } = await oauth2Client.refreshAccessToken();
+        const updatedTokens = {
+          ...tokens,
+          ...credentials
+        };
+
+        await settingsRef.update({
+          tokens: updatedTokens,
+          updatedAt: new Date()
+        });
+
+        oauth2Client.setCredentials(updatedTokens);
+        console.log('Access token refreshed successfully');
+      } catch (error) {
+        console.error('Failed to refresh access token:', error);
+        throw new Error('Google Drive טוקן פג תוקף ונכשל ברענון. יש להתחבר מחדש דרך ממשק הניהול.');
+      }
+    }
+
+    // טיפול באוטומטי ברענון טוקן עתידי
     oauth2Client.on('tokens', async (newTokens) => {
-      console.log('Refreshing Google Drive tokens...');
+      console.log('Auto-refreshing Google Drive tokens...');
 
       const updatedTokens = {
         ...tokens,
@@ -228,13 +251,18 @@ class GoogleDriveService {
     try {
       const { Readable } = require('stream');
 
+      // וודא שהשם בקידוד UTF-8 תקין
+      const safeFileName = Buffer.from(fileName, 'utf-8').toString('utf-8');
+      console.log('Original fileName:', fileName);
+      console.log('Safe fileName:', safeFileName);
+
       // המרת Buffer ל-stream
       const bufferStream = new Readable();
       bufferStream.push(fileContent);
       bufferStream.push(null); // מסמן סוף ה-stream
 
       const fileMetadata = {
-        name: fileName,
+        name: safeFileName,
         parents: [folderId]
       };
 
@@ -250,6 +278,8 @@ class GoogleDriveService {
         supportsAllDrives: true,
         supportsTeamDrives: true
       });
+
+      console.log('File uploaded to Drive with name:', response.data.name);
 
       // שיתוף הקובץ
       await this.shareFile(response.data.id, null, 'reader');

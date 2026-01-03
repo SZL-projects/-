@@ -113,7 +113,13 @@ module.exports = async (req, res) => {
 
           busboy.on('file', (fieldname, file, info) => {
             console.log('Busboy file event:', { fieldname, info });
-            fileName = info.filename;
+            // נסה לקרוא את שם הקובץ בקידוד תקין
+            try {
+              fileName = decodeURIComponent(info.filename);
+            } catch (e) {
+              fileName = info.filename;
+            }
+            console.log('Final filename:', fileName);
             mimeType = info.mimeType;
             fileReceived = true;
 
