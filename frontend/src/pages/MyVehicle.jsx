@@ -27,6 +27,9 @@ import {
   Info,
   Speed,
   LocalGasStation,
+  FolderOpen,
+  Image as ImageIcon,
+  OpenInNew,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { vehiclesAPI, ridersAPI, faultsAPI } from '../services/api';
@@ -49,12 +52,13 @@ export default function MyVehicle() {
       setLoading(true);
 
       let vehicleId = null;
+      let riderData = null;
 
-      // אם למשתמש יש riderId - נסה לטעון את הכלי המשויך לרוכב
+      // נסיון 1: אם למשתמש יש riderId - נסה לטעון את הכלי המשויך לרוכב
       if (user?.riderId) {
         try {
           const riderResponse = await ridersAPI.getById(user.riderId);
-          const riderData = riderResponse.data.rider;
+          riderData = riderResponse.data.rider;
           setRider(riderData);
 
           if (riderData.assignmentStatus === 'assigned' && riderData.assignedVehicleId) {
@@ -65,15 +69,43 @@ export default function MyVehicle() {
         }
       }
 
-      // אם לא נמצא כלי משויך, בדוק אם יש הרשאות גישה לכלים
+      // נסיון 2: אם אין riderId, נחפש את הרוכב לפי username
+      if (!riderData && user?.username) {
+        try {
+          // חיפוש כל הרוכבים
+          const ridersResponse = await ridersAPI.getAll();
+          const allRiders = ridersResponse.data.riders || ridersResponse.data;
+
+          // חיפוש רוכב עם username תואם או שם תואם
+          const matchedRider = allRiders.find(r =>
+            (r.username && r.username.toLowerCase() === user.username.toLowerCase()) ||
+            (`${r.firstName} ${r.lastName}`.toLowerCase() === `${user.firstName} ${user.lastName}`.toLowerCase())
+          );
+
+          if (matchedRider) {
+            riderData = matchedRider;
+            setRider(riderData);
+
+            if (riderData.assignmentStatus === 'assigned' && riderData.assignedVehicleId) {
+              vehicleId = riderData.assignedVehicleId;
+            } else if (riderData.isAssigned && riderData.assignedVehicleId) {
+              vehicleId = riderData.assignedVehicleId;
+            }
+          }
+        } catch (err) {
+          console.error('Error searching for rider:', err);
+        }
+      }
+
+      // נסיון 3: אם לא נמצא כלי משויך, בדוק אם יש הרשאות גישה לכלים
       if (!vehicleId && user?.vehicleAccess && user.vehicleAccess.length > 0) {
         // נבחר את הכלי הראשון ברשימת ההרשאות
         vehicleId = user.vehicleAccess[0];
       }
 
-      // אם אין כלי - הצג שגיאה
+      // אם אין כלי - הצג הודעה ידידותית
       if (!vehicleId) {
-        setError('אינך משויך לכלי ואין לך הרשאות גישה לכלים');
+        setError('אינך משויך לכלי כרגע. אנא פנה למנהל המערכת לשיוך לכלי.');
         setLoading(false);
         return;
       }
@@ -369,6 +401,111 @@ export default function MyVehicle() {
                     </ListItem>
                   ))}
                 </List>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* תמונות ומסמכים */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <ImageIcon /> תמונות הכלי
+              </Typography>
+              <Divider sx={{ my: 2 }} />
+
+              {vehicle.images && vehicle.images.length > 0 ? (
+                <Grid container spacing={2}>
+                  {vehicle.images.map((image, idx) => (
+                    <Grid item xs={6} sm={4} key={idx}>
+                      <Box
+                        component="img"
+                        src={image.url || image}
+                        alt={`תמונה ${idx + 1}`}
+                        sx={{
+                          width: '100%',
+                          height: 120,
+                          objectFit: 'cover',
+                          borderRadius: 1,
+                          cursor: 'pointer',
+                          '&:hover': { opacity: 0.8 }
+                        }}
+                        onClick={() => window.open(image.url || image, '_blank')}
+                      />
+                    </Grid>
+                  ))}
+                </Grid>
+              ) : (
+                <Box sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
+                  <ImageIcon sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} />
+                  <Typography variant="body2">
+                    אין תמונות זמינות
+                  </Typography>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* קישורי Drive ומסמכים */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <FolderOpen /> מסמכים וקישורים
+              </Typography>
+              <Divider sx={{ my: 2 }} />
+
+              {vehicle.driveLinks && vehicle.driveLinks.length > 0 ? (
+                <List>
+                  {vehicle.driveLinks.map((link, idx) => (
+                    <ListItem
+                      key={idx}
+                      sx={{
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 1,
+                        mb: 1,
+                        cursor: 'pointer',
+                        '&:hover': { bgcolor: 'action.hover' }
+                      }}
+                      onClick={() => window.open(link.url || link, '_blank')}
+                    >
+                      <ListItemIcon>
+                        <FolderOpen color="primary" />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={link.name || link.title || `מסמך ${idx + 1}`}
+                        secondary={link.description || 'קישור למסמך'}
+                      />
+                      <OpenInNew fontSize="small" color="action" />
+                    </ListItem>
+                  ))}
+                </List>
+              ) : (
+                <Box sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
+                  <FolderOpen sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} />
+                  <Typography variant="body2">
+                    אין מסמכים זמינים
+                  </Typography>
+                </Box>
+              )}
+
+              {/* קישור למסמכים נוספים אם קיים */}
+              {vehicle.documentsFolder && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    startIcon={<FolderOpen />}
+                    endIcon={<OpenInNew />}
+                    onClick={() => window.open(vehicle.documentsFolder, '_blank')}
+                  >
+                    תיקיית מסמכים ב-Drive
+                  </Button>
+                </>
               )}
             </CardContent>
           </Card>

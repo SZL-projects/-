@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -16,123 +17,132 @@ import {
   IconButton,
   CircularProgress,
   Alert,
-  Snackbar,
+  Grid,
+  Card,
+  CardContent,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogContentText,
   DialogActions,
-  Card,
-  CardContent,
-  CardActions,
-  Stack,
+  Tabs,
+  Tab,
+  Badge,
   Divider,
-  useMediaQuery,
-  useTheme,
 } from '@mui/material';
 import {
   Search,
-  Add,
+  Visibility,
   Edit,
-  Delete,
-  Warning as WarningIcon,
-  Build as BuildIcon,
-  CheckCircle as CheckIcon,
+  Warning,
+  CheckCircle,
+  Build,
+  Cancel,
+  Refresh,
+  ErrorOutline,
+  TwoWheeler,
 } from '@mui/icons-material';
-import { faultsAPI } from '../services/api';
-import FaultDialog from '../components/FaultDialog';
+import { faultsAPI, ridersAPI, vehiclesAPI } from '../services/api';
 
 export default function Faults() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const navigate = useNavigate();
   const [faults, setFaults] = useState([]);
+  const [riders, setRiders] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterSeverity, setFilterSeverity] = useState('all');
+  const [filterCanRide, setFilterCanRide] = useState('all');
   const [error, setError] = useState('');
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingFault, setEditingFault] = useState(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [faultToDelete, setFaultToDelete] = useState(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [viewMode, setViewMode] = useState(0); // 0: הכל, 1: פתוחות, 2: קריטיות
+  const [selectedFault, setSelectedFault] = useState(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [stats, setStats] = useState({
+    total: 0,
+    open: 0,
+    inProgress: 0,
+    resolved: 0,
+    critical: 0,
+    cannotRide: 0,
+  });
 
   useEffect(() => {
-    loadFaults();
+    loadData();
   }, []);
 
-  const loadFaults = async () => {
+  useEffect(() => {
+    calculateStats();
+  }, [faults]);
+
+  const loadData = async () => {
     try {
       setLoading(true);
-      const response = await faultsAPI.getAll({ search: searchTerm });
-      setFaults(response.data.faults || []);
+      const [faultsRes, ridersRes, vehiclesRes] = await Promise.all([
+        faultsAPI.getAll().catch(() => ({ data: { faults: [] } })),
+        ridersAPI.getAll().catch(() => ({ data: { riders: [] } })),
+        vehiclesAPI.getAll().catch(() => ({ data: { vehicles: [] } })),
+      ]);
+
+      setFaults(faultsRes.data.faults || []);
+      setRiders(ridersRes.data.riders || []);
+      setVehicles(vehiclesRes.data.vehicles || []);
       setError('');
     } catch (err) {
-      setError('שגיאה בטעינת תקלות');
+      setError('שגיאה בטעינת הנתונים');
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSearch = () => {
-    loadFaults();
+  const calculateStats = () => {
+    setStats({
+      total: faults.length,
+      open: faults.filter(f => f.status === 'open').length,
+      inProgress: faults.filter(f => f.status === 'in_progress').length,
+      resolved: faults.filter(f => f.status === 'resolved' || f.status === 'closed').length,
+      critical: faults.filter(f => f.severity === 'critical' || f.severity === 'high').length,
+      cannotRide: faults.filter(f => f.canRide === false).length,
+    });
   };
 
-  const handleOpenDialog = (fault = null) => {
-    setEditingFault(fault);
-    setDialogOpen(true);
+  const handleViewDetails = (fault) => {
+    setSelectedFault(fault);
+    setDetailsDialogOpen(true);
   };
 
-  const handleCloseDialog = () => {
-    setDialogOpen(false);
-    setEditingFault(null);
-  };
-
-  const handleSaveFault = async (faultData) => {
+  const handleUpdateStatus = async (faultId, newStatus) => {
     try {
-      if (editingFault) {
-        await faultsAPI.update(editingFault.id, faultData);
-        showSnackbar('התקלה עודכנה בהצלחה', 'success');
-      } else {
-        await faultsAPI.create(faultData);
-        showSnackbar('התקלה נוספה בהצלחה', 'success');
-      }
-      handleCloseDialog();
-      loadFaults();
+      await faultsAPI.update(faultId, { status: newStatus });
+      await loadData();
     } catch (err) {
-      console.error('Error saving fault:', err);
-      showSnackbar(err.response?.data?.message || 'שגיאה בשמירת התקלה', 'error');
+      console.error('Error updating fault status:', err);
+      setError('שגיאה בעדכון הסטטוס');
     }
   };
 
-  const handleDeleteClick = (fault) => {
-    setFaultToDelete(fault);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!faultToDelete) return;
-
-    try {
-      await faultsAPI.delete(faultToDelete.id);
-      showSnackbar('התקלה נמחקה בהצלחה', 'success');
-      setDeleteDialogOpen(false);
-      setFaultToDelete(null);
-      loadFaults();
-    } catch (err) {
-      console.error('Error deleting fault:', err);
-      showSnackbar('שגיאה במחיקת התקלה', 'error');
-    }
-  };
-
-  const showSnackbar = (message, severity) => {
-    setSnackbar({ open: true, message, severity });
+  const formatDate = (timestamp) => {
+    if (!timestamp) return '-';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return new Intl.DateTimeFormat('he-IL', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date);
   };
 
   const getStatusChip = (status) => {
     const statusMap = {
-      open: { label: 'פתוחה', color: 'error', icon: <WarningIcon sx={{ fontSize: 16 }} /> },
-      in_progress: { label: 'בטיפול', color: 'warning', icon: <BuildIcon sx={{ fontSize: 16 }} /> },
-      resolved: { label: 'נפתרה', color: 'success', icon: <CheckIcon sx={{ fontSize: 16 }} /> },
+      open: { label: 'פתוחה', color: 'error', icon: <Warning /> },
+      in_progress: { label: 'בטיפול', color: 'warning', icon: <Build /> },
+      resolved: { label: 'נפתרה', color: 'success', icon: <CheckCircle /> },
+      closed: { label: 'סגורה', color: 'default', icon: <CheckCircle /> },
     };
 
     const { label, color, icon } = statusMap[status] || { label: status, color: 'default', icon: null };
@@ -142,36 +152,70 @@ export default function Faults() {
   const getSeverityChip = (severity) => {
     const severityMap = {
       critical: { label: 'קריטית', color: 'error' },
-      high: { label: 'גבוהה', color: 'warning' },
-      medium: { label: 'בינונית', color: 'info' },
-      low: { label: 'נמוכה', color: 'default' },
+      high: { label: 'גבוהה', color: 'error' },
+      medium: { label: 'בינונית', color: 'warning' },
+      low: { label: 'נמוכה', color: 'info' },
     };
 
     const { label, color } = severityMap[severity] || { label: severity, color: 'default' };
     return <Chip label={label} color={color} size="small" variant="outlined" />;
   };
 
+  const getCategoryLabel = (category) => {
+    const categories = {
+      engine: 'מנוע',
+      brakes: 'בלמים',
+      electrical: 'חשמל ותאורה',
+      tires: 'צמיגים',
+      bodywork: 'מרכב',
+      other: 'אחר',
+    };
+    return categories[category] || category;
+  };
+
+  const filteredFaults = faults.filter(fault => {
+    const matchesSearch = !searchTerm ||
+      fault.vehicleLicensePlate?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      fault.vehicleNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      fault.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      fault.description?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus = filterStatus === 'all' || fault.status === filterStatus;
+    const matchesSeverity = filterSeverity === 'all' || fault.severity === filterSeverity;
+    const matchesCanRide = filterCanRide === 'all' ||
+      (filterCanRide === 'yes' && fault.canRide === true) ||
+      (filterCanRide === 'no' && fault.canRide === false);
+
+    // סינון לפי טאב
+    let matchesTab = true;
+    if (viewMode === 1) { // פתוחות
+      matchesTab = fault.status === 'open' || fault.status === 'in_progress';
+    } else if (viewMode === 2) { // קריטיות
+      matchesTab = fault.severity === 'critical' || fault.severity === 'high' || fault.canRide === false;
+    }
+
+    return matchesSearch && matchesStatus && matchesSeverity && matchesCanRide && matchesTab;
+  });
+
   return (
     <Box>
-      <Box sx={{
-        display: 'flex',
-        flexDirection: { xs: 'column', sm: 'row' },
-        justifyContent: 'space-between',
-        alignItems: { xs: 'stretch', sm: 'center' },
-        mb: 3,
-        gap: 2
-      }}>
-        <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold">
-          ניהול תקלות
-        </Typography>
+      {/* Header */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box>
+          <Typography variant="h4" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Warning /> ניהול תקלות
+          </Typography>
+          <Typography variant="body2" color="textSecondary">
+            ניהול ומעקב אחר תקלות בכלים
+          </Typography>
+        </Box>
         <Button
-          variant="contained"
-          startIcon={<Add />}
-          size={isMobile ? 'medium' : 'large'}
-          onClick={() => handleOpenDialog()}
-          fullWidth={isMobile}
+          variant="outlined"
+          startIcon={<Refresh />}
+          onClick={loadData}
+          disabled={loading}
         >
-          תקלה חדשה
+          רענן
         </Button>
       </Box>
 
@@ -181,220 +225,406 @@ export default function Faults() {
         </Alert>
       )}
 
-      {/* חיפוש */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-          <TextField
-            fullWidth
-            placeholder="חפש לפי כלי, רוכב או תיאור..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search />
-                </InputAdornment>
-              ),
-            }}
-            dir="rtl"
-            size={isMobile ? 'small' : 'medium'}
+      {/* סטטיסטיקות */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={6} sm={4} md={2}>
+          <Card>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography color="textSecondary" variant="body2">סה"כ</Typography>
+              <Typography variant="h4" fontWeight="bold">{stats.total}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={6} sm={4} md={2}>
+          <Card sx={{ cursor: 'pointer' }} onClick={() => setViewMode(1)}>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography color="textSecondary" variant="body2">פתוחות</Typography>
+              <Typography variant="h4" fontWeight="bold" color="error.main">
+                {stats.open}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={6} sm={4} md={2}>
+          <Card>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography color="textSecondary" variant="body2">בטיפול</Typography>
+              <Typography variant="h4" fontWeight="bold" color="warning.main">
+                {stats.inProgress}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={6} sm={4} md={2}>
+          <Card>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography color="textSecondary" variant="body2">נפתרו</Typography>
+              <Typography variant="h4" fontWeight="bold" color="success.main">
+                {stats.resolved}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={6} sm={4} md={2}>
+          <Card sx={{ cursor: 'pointer' }} onClick={() => setViewMode(2)}>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography color="textSecondary" variant="body2">קריטיות</Typography>
+              <Typography variant="h4" fontWeight="bold" color="error.main">
+                {stats.critical}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={6} sm={4} md={2}>
+          <Card>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Typography color="textSecondary" variant="body2">לא ניתן לרכב</Typography>
+              <Typography variant="h4" fontWeight="bold" color="error.main">
+                {stats.cannotRide}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Tabs */}
+      <Paper sx={{ mb: 2 }}>
+        <Tabs value={viewMode} onChange={(e, v) => setViewMode(v)}>
+          <Tab label="כל התקלות" />
+          <Tab
+            label={
+              <Badge badgeContent={stats.open + stats.inProgress} color="error">
+                תקלות פתוחות
+              </Badge>
+            }
           />
-          <Button
-            variant="contained"
-            onClick={handleSearch}
-            sx={{ minWidth: { xs: '100%', sm: 120 } }}
-            fullWidth={isMobile}
-          >
-            חיפוש
-          </Button>
-        </Box>
+          <Tab
+            label={
+              <Badge badgeContent={stats.critical} color="error">
+                תקלות קריטיות
+              </Badge>
+            }
+          />
+        </Tabs>
       </Paper>
 
-      {/* תוכן תקלות - טבלה למסכים גדולים, כרטיסים למובייל */}
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress />
-        </Box>
-      ) : faults.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <WarningIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
-          <Typography color="textSecondary">
-            לא נמצאו תקלות
-          </Typography>
-        </Paper>
-      ) : isMobile ? (
-        // Mobile View - Cards
-        <Stack spacing={2}>
-          {faults.map((fault) => (
-            <Card key={fault.id} sx={{ dir: 'rtl' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
-                  <Typography variant="h6" fontWeight="bold">
-                    {fault.vehicle?.licensePlate || 'כלי לא ידוע'}
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.5, flexDirection: 'column' }}>
-                    {getStatusChip(fault.status)}
-                    {getSeverityChip(fault.severity)}
-                  </Box>
-                </Box>
+      {/* סינון וחיפוש */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField
+              fullWidth
+              placeholder="חפש לפי כלי, כותרת או תיאור..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth>
+              <InputLabel>סטטוס</InputLabel>
+              <Select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                label="סטטוס"
+              >
+                <MenuItem value="all">הכל</MenuItem>
+                <MenuItem value="open">פתוחה</MenuItem>
+                <MenuItem value="in_progress">בטיפול</MenuItem>
+                <MenuItem value="resolved">נפתרה</MenuItem>
+                <MenuItem value="closed">סגורה</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth>
+              <InputLabel>חומרה</InputLabel>
+              <Select
+                value={filterSeverity}
+                onChange={(e) => setFilterSeverity(e.target.value)}
+                label="חומרה"
+              >
+                <MenuItem value="all">הכל</MenuItem>
+                <MenuItem value="critical">קריטית</MenuItem>
+                <MenuItem value="high">גבוהה</MenuItem>
+                <MenuItem value="medium">בינונית</MenuItem>
+                <MenuItem value="low">נמוכה</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth>
+              <InputLabel>ניתן לרכב?</InputLabel>
+              <Select
+                value={filterCanRide}
+                onChange={(e) => setFilterCanRide(e.target.value)}
+                label="ניתן לרכב?"
+              >
+                <MenuItem value="all">הכל</MenuItem>
+                <MenuItem value="yes">כן</MenuItem>
+                <MenuItem value="no">לא</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+      </Paper>
 
-                <Stack spacing={1.5} sx={{ mb: 2 }}>
-                  <Typography variant="body2" fontWeight="500">
-                    {fault.description}
-                  </Typography>
-
-                  {fault.rider && (
-                    <Typography variant="body2" color="text.secondary">
-                      רוכב: {fault.rider.firstName} {fault.rider.lastName}
-                    </Typography>
-                  )}
-
-                  <Typography variant="caption" color="text.secondary">
-                    דווח: {fault.reportedDate ? new Date(fault.reportedDate).toLocaleDateString('he-IL') : '-'}
-                  </Typography>
-
-                  {fault.resolvedDate && (
-                    <Typography variant="caption" color="success.main">
-                      נפתר: {new Date(fault.resolvedDate).toLocaleDateString('he-IL')}
-                    </Typography>
-                  )}
-                </Stack>
-              </CardContent>
-
-              <Divider />
-
-              <CardActions sx={{ justifyContent: 'flex-end', px: 2 }}>
-                <IconButton
-                  size="small"
-                  color="secondary"
-                  onClick={() => handleOpenDialog(fault)}
-                >
-                  <Edit />
-                </IconButton>
-                <IconButton
-                  size="small"
-                  color="error"
-                  onClick={() => handleDeleteClick(fault)}
-                >
-                  <Delete />
-                </IconButton>
-              </CardActions>
-            </Card>
-          ))}
-        </Stack>
-      ) : (
-        // Desktop View - Table
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
+      {/* טבלת תקלות */}
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>כלי</TableCell>
+              <TableCell>כותרת</TableCell>
+              <TableCell>קטגוריה</TableCell>
+              <TableCell>חומרה</TableCell>
+              <TableCell>ניתן לרכב?</TableCell>
+              <TableCell>סטטוס</TableCell>
+              <TableCell>תאריך דיווח</TableCell>
+              <TableCell align="center">פעולות</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {loading ? (
               <TableRow>
-                <TableCell>כלי</TableCell>
-                <TableCell>רוכב</TableCell>
-                <TableCell>תיאור</TableCell>
-                <TableCell>חומרה</TableCell>
-                <TableCell>סטטוס</TableCell>
-                <TableCell>תאריך דיווח</TableCell>
-                <TableCell>תאריך פתרון</TableCell>
-                <TableCell align="center">פעולות</TableCell>
+                <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                  <CircularProgress />
+                </TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {faults.map((fault) => (
-                <TableRow key={fault.id} hover>
+            ) : filteredFaults.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} align="center">
+                  <Box sx={{ py: 4 }}>
+                    <Warning sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+                    <Typography color="textSecondary">
+                      לא נמצאו תקלות
+                    </Typography>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredFaults.map((fault) => (
+                <TableRow
+                  key={fault._id || fault.id}
+                  hover
+                  sx={{
+                    bgcolor: fault.canRide === false ? 'error.lighter' : 'inherit'
+                  }}
+                >
                   <TableCell>
                     <Typography variant="body1" fontWeight="500">
-                      {fault.vehicle?.licensePlate || '-'}
+                      {fault.vehicleLicensePlate || fault.vehicleNumber || '-'}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    {fault.rider ? `${fault.rider.firstName} ${fault.rider.lastName}` : '-'}
+                    <Typography variant="body2" fontWeight="500">
+                      {fault.title || fault.description?.substring(0, 50) || '-'}
+                    </Typography>
                   </TableCell>
-                  <TableCell>{fault.description}</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={getCategoryLabel(fault.category)}
+                      size="small"
+                      variant="outlined"
+                    />
+                  </TableCell>
                   <TableCell>{getSeverityChip(fault.severity)}</TableCell>
+                  <TableCell>
+                    {fault.canRide === true ? (
+                      <Chip icon={<CheckCircle />} label="כן" color="success" size="small" />
+                    ) : fault.canRide === false ? (
+                      <Chip icon={<Cancel />} label="לא" color="error" size="small" />
+                    ) : (
+                      <Chip label="לא ידוע" size="small" />
+                    )}
+                  </TableCell>
                   <TableCell>{getStatusChip(fault.status)}</TableCell>
                   <TableCell>
-                    {fault.reportedDate ? new Date(fault.reportedDate).toLocaleDateString('he-IL') : '-'}
-                  </TableCell>
-                  <TableCell>
-                    {fault.resolvedDate ? new Date(fault.resolvedDate).toLocaleDateString('he-IL') : '-'}
+                    {formatDate(fault.reportedDate || fault.createdAt)}
                   </TableCell>
                   <TableCell align="center">
                     <IconButton
-                      color="secondary"
+                      color="primary"
                       size="small"
-                      onClick={() => handleOpenDialog(fault)}
+                      onClick={() => handleViewDetails(fault)}
                     >
-                      <Edit />
+                      <Visibility />
                     </IconButton>
-                    <IconButton
-                      color="error"
-                      size="small"
-                      onClick={() => handleDeleteClick(fault)}
-                    >
-                      <Delete />
-                    </IconButton>
+                    {fault.status === 'open' && (
+                      <IconButton
+                        color="warning"
+                        size="small"
+                        onClick={() => handleUpdateStatus(fault._id || fault.id, 'in_progress')}
+                        title="העבר לטיפול"
+                      >
+                        <Build />
+                      </IconButton>
+                    )}
+                    {fault.status === 'in_progress' && (
+                      <IconButton
+                        color="success"
+                        size="small"
+                        onClick={() => handleUpdateStatus(fault._id || fault.id, 'resolved')}
+                        title="סמן כנפתר"
+                      >
+                        <CheckCircle />
+                      </IconButton>
+                    )}
                   </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-      {/* סטטיסטיקה */}
-      {!loading && faults.length > 0 && (
+      {!loading && filteredFaults.length > 0 && (
         <Box sx={{ mt: 2, textAlign: 'center' }}>
           <Typography variant="body2" color="textSecondary">
-            נמצאו {faults.length} תקלות
+            מציג {filteredFaults.length} מתוך {faults.length} תקלות
           </Typography>
         </Box>
       )}
 
-      {/* Fault Dialog */}
-      <FaultDialog
-        open={dialogOpen}
-        onClose={handleCloseDialog}
-        onSave={handleSaveFault}
-        fault={editingFault}
-      />
-
-      {/* Delete Confirmation Dialog */}
+      {/* Details Dialog */}
       <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
+        open={detailsDialogOpen}
+        onClose={() => setDetailsDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
         dir="rtl"
       >
-        <DialogTitle>אישור מחיקה</DialogTitle>
+        <DialogTitle>
+          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Warning /> פרטי תקלה
+          </Typography>
+        </DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            האם אתה בטוח שברצונך למחוק תקלה זו?
-            <br />
-            פעולה זו אינה הפיכה.
-          </DialogContentText>
+          {selectedFault && (
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              <Grid item xs={12} sm={6}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle2" color="textSecondary">כלי</Typography>
+                    <Typography variant="body1" fontWeight="500">
+                      {selectedFault.vehicleLicensePlate || selectedFault.vehicleNumber}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle2" color="textSecondary">תאריך דיווח</Typography>
+                    <Typography variant="body1" fontWeight="500">
+                      {formatDate(selectedFault.reportedDate || selectedFault.createdAt)}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid item xs={12}>
+                <Card variant="outlined" sx={{
+                  bgcolor: selectedFault.canRide === false ? 'error.light' : 'background.paper'
+                }}>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>פרטי תקלה</Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                      {getSeverityChip(selectedFault.severity)}
+                      <Chip label={getCategoryLabel(selectedFault.category)} color="primary" size="small" />
+                      {getStatusChip(selectedFault.status)}
+                      {selectedFault.canRide === true ? (
+                        <Chip icon={<CheckCircle />} label="ניתן לרכב" color="success" size="small" />
+                      ) : selectedFault.canRide === false ? (
+                        <Chip icon={<Cancel />} label="לא ניתן לרכב" color="error" size="small" />
+                      ) : null}
+                    </Box>
+                    <Typography variant="subtitle1" fontWeight="500" gutterBottom>
+                      {selectedFault.title}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      {selectedFault.description}
+                    </Typography>
+
+                    {selectedFault.location && (
+                      <>
+                        <Divider sx={{ my: 2 }} />
+                        <Typography variant="subtitle2">מיקום:</Typography>
+                        <Typography variant="body2">{selectedFault.location}</Typography>
+                      </>
+                    )}
+
+                    {selectedFault.currentKm && (
+                      <>
+                        <Divider sx={{ my: 2 }} />
+                        <Typography variant="subtitle2">קילומטראז':</Typography>
+                        <Typography variant="body2">{selectedFault.currentKm.toLocaleString()} ק"מ</Typography>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {selectedFault.canRide === false && (
+                <Grid item xs={12}>
+                  <Alert severity="error">
+                    <Typography variant="body2" fontWeight="500">
+                      <ErrorOutline sx={{ verticalAlign: 'middle', mr: 0.5 }} />
+                      שים לב: דווח שלא ניתן לרכב על כלי זה!
+                    </Typography>
+                  </Alert>
+                </Grid>
+              )}
+
+              <Grid item xs={12}>
+                <Divider />
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>פעולות זמינות:</Typography>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    {selectedFault.status === 'open' && (
+                      <Button
+                        variant="contained"
+                        color="warning"
+                        size="small"
+                        startIcon={<Build />}
+                        onClick={() => {
+                          handleUpdateStatus(selectedFault._id || selectedFault.id, 'in_progress');
+                          setDetailsDialogOpen(false);
+                        }}
+                      >
+                        העבר לטיפול
+                      </Button>
+                    )}
+                    {selectedFault.status === 'in_progress' && (
+                      <Button
+                        variant="contained"
+                        color="success"
+                        size="small"
+                        startIcon={<CheckCircle />}
+                        onClick={() => {
+                          handleUpdateStatus(selectedFault._id || selectedFault.id, 'resolved');
+                          setDetailsDialogOpen(false);
+                        }}
+                      >
+                        סמן כנפתר
+                      </Button>
+                    )}
+                  </Box>
+                </Box>
+              </Grid>
+            </Grid>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>ביטול</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
-            מחק
-          </Button>
+          <Button onClick={() => setDetailsDialogOpen(false)}>סגור</Button>
         </DialogActions>
       </Dialog>
-
-      {/* Snackbar */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          severity={snackbar.severity}
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }

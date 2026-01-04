@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Grid,
@@ -16,6 +17,9 @@ import {
   useMediaQuery,
   useTheme,
   Divider,
+  Button,
+  IconButton,
+  Tooltip as MuiTooltip,
 } from '@mui/material';
 import {
   TwoWheeler,
@@ -28,27 +32,40 @@ import {
   Notifications,
   CalendarToday,
   Speed,
+  Refresh,
+  ArrowForward,
+  EventAvailable,
+  MoneyOff,
+  ErrorOutline,
 } from '@mui/icons-material';
 import { ridersAPI, vehiclesAPI, tasksAPI, faultsAPI } from '../services/api';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useAuth } from '../contexts/AuthContext';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { hasRole } = useAuth();
 
   const [stats, setStats] = useState({
     totalRiders: 0,
     activeRiders: 0,
     totalVehicles: 0,
     activeVehicles: 0,
+    vehiclesWaitingForRider: 0,
     pendingTasks: 0,
     openFaults: 0,
+    criticalFaults: 0,
+    ridersWithoutMonthlyCheck: 0,
+    expiringInsurance: 0,
   });
   const [loading, setLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [criticalFaultsList, setCriticalFaultsList] = useState([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -68,14 +85,37 @@ export default function Dashboard() {
       const tasks = tasksRes.data.tasks || [];
       const faults = faultsRes.data.faults || [];
 
+      // חישוב תוקפי ביטוח שמסתיימים בחודש הקרוב
+      const now = new Date();
+      const oneMonthFromNow = new Date();
+      oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
+
+      const expiringInsurance = vehicles.filter(v => {
+        if (!v.insuranceExpiry) return false;
+        const expiryDate = new Date(v.insuranceExpiry);
+        return expiryDate >= now && expiryDate <= oneMonthFromNow;
+      }).length;
+
+      // תקלות קריטיות
+      const criticalFaults = faults.filter(f =>
+        (f.status === 'open' || f.status === 'in_progress') &&
+        (f.severity === 'critical' || f.canRide === false)
+      );
+
       setStats({
         totalRiders: riders.length,
-        activeRiders: riders.filter(r => r.riderStatus === 'active').length,
+        activeRiders: riders.filter(r => r.riderStatus === 'active' || r.status === 'active').length,
         totalVehicles: vehicles.length,
         activeVehicles: vehicles.filter(v => v.status === 'active').length,
+        vehiclesWaitingForRider: vehicles.filter(v => v.status === 'waiting_for_rider' || v.status === 'available').length,
         pendingTasks: tasks.filter(t => t.status === 'pending' || t.status === 'in_progress').length,
-        openFaults: faults.filter(f => f.status === 'open').length,
+        openFaults: faults.filter(f => f.status === 'open' || f.status === 'in_progress').length,
+        criticalFaults: criticalFaults.length,
+        ridersWithoutMonthlyCheck: 0, // TODO: יצטרך חישוב מול API בקרה חודשית
+        expiringInsurance,
       });
+
+      setCriticalFaultsList(criticalFaults.slice(0, 5));
 
       // Recent Activity (mock data - replace with real data)
       setRecentActivity([
@@ -87,14 +127,34 @@ export default function Dashboard() {
 
       // Alerts
       const newAlerts = [];
-      if (faults.filter(f => f.status === 'open' && f.severity === 'critical').length > 0) {
-        newAlerts.push({ severity: 'error', message: 'יש תקלות קריטיות הממתינות לטיפול' });
+      if (criticalFaults.length > 0) {
+        newAlerts.push({
+          severity: 'error',
+          message: `⚠️ ${criticalFaults.length} תקלות קריטיות הממתינות לטיפול!`,
+          action: 'faults'
+        });
       }
-      if (vehicles.filter(v => v.status === 'waiting_for_rider').length > 0) {
-        newAlerts.push({ severity: 'warning', message: `${vehicles.filter(v => v.status === 'waiting_for_rider').length} כלים ממתינים לרוכב` });
+      if (expiringInsurance > 0) {
+        newAlerts.push({
+          severity: 'warning',
+          message: `📋 ${expiringInsurance} כלים עם ביטוח שפוקע בחודש הקרוב`,
+          action: 'vehicles'
+        });
+      }
+      const waitingVehicles = vehicles.filter(v => v.status === 'waiting_for_rider' || v.status === 'available').length;
+      if (waitingVehicles > 0) {
+        newAlerts.push({
+          severity: 'info',
+          message: `🏍️ ${waitingVehicles} כלים זמינים ללא רוכב משויך`,
+          action: 'vehicles'
+        });
       }
       if (tasks.filter(t => t.status === 'pending').length > 5) {
-        newAlerts.push({ severity: 'info', message: 'יש מספר רב של משימות ממתינות' });
+        newAlerts.push({
+          severity: 'info',
+          message: `✅ ${tasks.filter(t => t.status === 'pending').length} משימות ממתינות לביצוע`,
+          action: 'tasks'
+        });
       }
       setAlerts(newAlerts);
     } catch (error) {
@@ -157,15 +217,40 @@ export default function Dashboard() {
 
   return (
     <Box>
-      <Typography variant={isMobile ? 'h5' : 'h4'} gutterBottom fontWeight="bold" sx={{ mb: 3 }}>
-        דשבורד ראשי
-      </Typography>
+      {/* Header with Refresh */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box>
+          <Typography variant={isMobile ? 'h5' : 'h4'} gutterBottom fontWeight="bold">
+            דשבורד ראשי
+          </Typography>
+          <Typography variant="body2" color="textSecondary">
+            עדכון אחרון: {new Date().toLocaleTimeString('he-IL')}
+          </Typography>
+        </Box>
+        <MuiTooltip title="רענן נתונים">
+          <IconButton onClick={loadDashboardData} disabled={loading}>
+            <Refresh />
+          </IconButton>
+        </MuiTooltip>
+      </Box>
 
       {/* Alerts */}
       {alerts.length > 0 && (
         <Box sx={{ mb: 3 }}>
           {alerts.map((alert, idx) => (
-            <Alert key={idx} severity={alert.severity} sx={{ mb: 1 }}>
+            <Alert
+              key={idx}
+              severity={alert.severity}
+              sx={{ mb: 1, cursor: alert.action ? 'pointer' : 'default' }}
+              onClick={() => alert.action && navigate(`/${alert.action}`)}
+              action={
+                alert.action && (
+                  <Button color="inherit" size="small" endIcon={<ArrowForward />}>
+                    מעבר
+                  </Button>
+                )
+              }
+            >
               {alert.message}
             </Alert>
           ))}
@@ -174,7 +259,7 @@ export default function Dashboard() {
 
       {/* Stats Cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={6} sm={6} md={4} lg={2}>
+        <Grid item xs={6} sm={6} md={4} lg={3}>
           <StatCard
             title="סה''כ רוכבים"
             value={stats.totalRiders}
@@ -183,7 +268,7 @@ export default function Dashboard() {
           />
         </Grid>
 
-        <Grid item xs={6} sm={6} md={4} lg={2}>
+        <Grid item xs={6} sm={6} md={4} lg={3}>
           <StatCard
             title="רוכבים פעילים"
             value={stats.activeRiders}
@@ -192,7 +277,7 @@ export default function Dashboard() {
           />
         </Grid>
 
-        <Grid item xs={6} sm={6} md={4} lg={2}>
+        <Grid item xs={6} sm={6} md={4} lg={3}>
           <StatCard
             title="סה''כ כלים"
             value={stats.totalVehicles}
@@ -201,16 +286,43 @@ export default function Dashboard() {
           />
         </Grid>
 
-        <Grid item xs={6} sm={6} md={4} lg={2}>
+        <Grid item xs={6} sm={6} md={4} lg={3}>
           <StatCard
             title="כלים פעילים"
             value={stats.activeVehicles}
-            icon={CheckCircle}
+            icon={Speed}
             color="#2196f3"
           />
         </Grid>
 
-        <Grid item xs={6} sm={6} md={4} lg={2}>
+        <Grid item xs={6} sm={6} md={4} lg={3}>
+          <StatCard
+            title="כלים ללא רוכב"
+            value={stats.vehiclesWaitingForRider}
+            icon={TwoWheeler}
+            color="#607d8b"
+          />
+        </Grid>
+
+        <Grid item xs={6} sm={6} md={4} lg={3}>
+          <StatCard
+            title="תקלות פתוחות"
+            value={stats.openFaults}
+            icon={Warning}
+            color="#ff9800"
+          />
+        </Grid>
+
+        <Grid item xs={6} sm={6} md={4} lg={3}>
+          <StatCard
+            title="תקלות קריטיות"
+            value={stats.criticalFaults}
+            icon={ErrorOutline}
+            color="#f44336"
+          />
+        </Grid>
+
+        <Grid item xs={6} sm={6} md={4} lg={3}>
           <StatCard
             title="משימות פתוחות"
             value={stats.pendingTasks}
@@ -219,14 +331,16 @@ export default function Dashboard() {
           />
         </Grid>
 
-        <Grid item xs={6} sm={6} md={4} lg={2}>
-          <StatCard
-            title="תקלות פתוחות"
-            value={stats.openFaults}
-            icon={Warning}
-            color="#f44336"
-          />
-        </Grid>
+        {stats.expiringInsurance > 0 && (
+          <Grid item xs={6} sm={6} md={4} lg={3}>
+            <StatCard
+              title="ביטוחים שפוקעים"
+              value={stats.expiringInsurance}
+              icon={EventAvailable}
+              color="#ff5722"
+            />
+          </Grid>
+        )}
       </Grid>
 
       {/* Charts and Activity */}
@@ -307,8 +421,58 @@ export default function Dashboard() {
           </Paper>
         </Grid>
 
+        {/* Critical Faults */}
+        {criticalFaultsList.length > 0 && (
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" fontWeight="bold" sx={{ color: 'error.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <ErrorOutline /> תקלות קריטיות
+                </Typography>
+                <Button
+                  size="small"
+                  onClick={() => navigate('/faults')}
+                  endIcon={<ArrowForward />}
+                >
+                  כל התקלות
+                </Button>
+              </Box>
+              <Divider sx={{ mb: 2 }} />
+              <List>
+                {criticalFaultsList.map((fault, idx) => (
+                  <ListItem
+                    key={fault._id || idx}
+                    sx={{
+                      bgcolor: 'error.light',
+                      color: 'error.contrastText',
+                      borderRadius: 1,
+                      mb: 1,
+                      cursor: 'pointer',
+                      '&:hover': { bgcolor: 'error.main' }
+                    }}
+                    onClick={() => navigate(`/faults`)}
+                  >
+                    <ListItemIcon>
+                      <Warning sx={{ color: 'error.contrastText' }} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={fault.description || 'תקלה ללא תיאור'}
+                      secondary={
+                        <Typography variant="caption" sx={{ color: 'error.contrastText', opacity: 0.9 }}>
+                          {fault.vehicleNumber || 'כלי לא ידוע'} •
+                          {fault.canRide === false ? ' לא ניתן לרכב' : ' קריטי'}
+                        </Typography>
+                      }
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          </Grid>
+        )}
+
         {/* Quick Actions */}
-        <Grid item xs={12} md={6} lg={6}>
+        <Grid item xs={12} md={6} lg={criticalFaultsList.length > 0 ? 6 : 12}>
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <Speed sx={{ mr: 1 }} />
@@ -318,42 +482,54 @@ export default function Dashboard() {
             </Box>
             <Divider sx={{ mb: 2 }} />
             <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <Card sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}>
-                  <CardContent sx={{ textAlign: 'center' }}>
-                    <TwoWheeler sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
-                    <Typography variant="body2">
-                      הוסף כלי חדש
+              <Grid item xs={6} sm={3} md={6} lg={3}>
+                <Card
+                  sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover', transform: 'translateY(-4px)' }, transition: 'all 0.2s' }}
+                  onClick={() => navigate('/vehicles')}
+                >
+                  <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                    <TwoWheeler sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
+                    <Typography variant="body2" fontWeight="500">
+                      ניהול כלים
                     </Typography>
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={6}>
-                <Card sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}>
-                  <CardContent sx={{ textAlign: 'center' }}>
-                    <Person sx={{ fontSize: 40, color: 'success.main', mb: 1 }} />
-                    <Typography variant="body2">
-                      הוסף רוכב חדש
+              <Grid item xs={6} sm={3} md={6} lg={3}>
+                <Card
+                  sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover', transform: 'translateY(-4px)' }, transition: 'all 0.2s' }}
+                  onClick={() => navigate('/riders')}
+                >
+                  <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                    <Person sx={{ fontSize: 48, color: 'success.main', mb: 1 }} />
+                    <Typography variant="body2" fontWeight="500">
+                      ניהול רוכבים
                     </Typography>
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={6}>
-                <Card sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}>
-                  <CardContent sx={{ textAlign: 'center' }}>
-                    <Assignment sx={{ fontSize: 40, color: 'warning.main', mb: 1 }} />
-                    <Typography variant="body2">
-                      צור משימה
+              <Grid item xs={6} sm={3} md={6} lg={3}>
+                <Card
+                  sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover', transform: 'translateY(-4px)' }, transition: 'all 0.2s' }}
+                  onClick={() => navigate('/tasks')}
+                >
+                  <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                    <Assignment sx={{ fontSize: 48, color: 'warning.main', mb: 1 }} />
+                    <Typography variant="body2" fontWeight="500">
+                      משימות
                     </Typography>
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={6}>
-                <Card sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}>
-                  <CardContent sx={{ textAlign: 'center' }}>
-                    <Warning sx={{ fontSize: 40, color: 'error.main', mb: 1 }} />
-                    <Typography variant="body2">
-                      דווח תקלה
+              <Grid item xs={6} sm={3} md={6} lg={3}>
+                <Card
+                  sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover', transform: 'translateY(-4px)' }, transition: 'all 0.2s' }}
+                  onClick={() => navigate('/monthly-checks')}
+                >
+                  <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                    <Build sx={{ fontSize: 48, color: 'info.main', mb: 1 }} />
+                    <Typography variant="body2" fontWeight="500">
+                      בקרה חודשית
                     </Typography>
                   </CardContent>
                 </Card>

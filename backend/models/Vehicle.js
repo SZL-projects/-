@@ -220,6 +220,29 @@ const vehicleSchema = new mongoose.Schema({
     notes: String
   }],
 
+  // קישורי Drive ומסמכים
+  driveLinks: [{
+    name: String,
+    title: String,
+    description: String,
+    url: {
+      type: String,
+      required: true
+    },
+    addedAt: {
+      type: Date,
+      default: Date.now
+    },
+    addedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
+  }],
+  documentsFolder: {
+    type: String, // קישור לתיקיית Drive הראשית של הכלי
+    trim: true
+  },
+
   // הערות
   notes: String,
 
@@ -247,5 +270,19 @@ const vehicleSchema = new mongoose.Schema({
 vehicleSchema.index({ licensePlate: 1 });
 vehicleSchema.index({ internalNumber: 1 });
 vehicleSchema.index({ status: 1 });
+
+// Virtual field for images (converts gallery to simple array of URLs/objects)
+vehicleSchema.virtual('images').get(function() {
+  if (!this.gallery || this.gallery.length === 0) return [];
+  return this.gallery.map(img => ({
+    url: `/uploads/${img.filename}`,
+    description: img.description,
+    category: img.category
+  }));
+});
+
+// Ensure virtuals are included in JSON output
+vehicleSchema.set('toJSON', { virtuals: true });
+vehicleSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('Vehicle', vehicleSchema);

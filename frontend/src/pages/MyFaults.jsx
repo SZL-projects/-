@@ -67,20 +67,48 @@ export default function MyFaults() {
     try {
       setLoading(true);
 
-      // בדיקה אם למשתמש יש riderId
-      if (!user?.riderId) {
-        setError('משתמש זה אינו משויך לרוכב');
+      let riderData = null;
+
+      // נסיון 1: אם למשתמש יש riderId - טען לפי ID
+      if (user?.riderId) {
+        try {
+          const riderResponse = await ridersAPI.getById(user.riderId);
+          riderData = riderResponse.data.rider;
+          setRider(riderData);
+        } catch (err) {
+          console.error('Error loading rider by ID:', err);
+        }
+      }
+
+      // נסיון 2: אם אין riderId, חפש לפי username או שם
+      if (!riderData && user?.username) {
+        try {
+          const ridersResponse = await ridersAPI.getAll();
+          const allRiders = ridersResponse.data.riders || ridersResponse.data;
+
+          const matchedRider = allRiders.find(r =>
+            (r.username && r.username.toLowerCase() === user.username.toLowerCase()) ||
+            (`${r.firstName} ${r.lastName}`.toLowerCase() === `${user.firstName} ${user.lastName}`.toLowerCase())
+          );
+
+          if (matchedRider) {
+            riderData = matchedRider;
+            setRider(matchedRider);
+          }
+        } catch (err) {
+          console.error('Error searching for rider:', err);
+        }
+      }
+
+      // אם לא נמצא רוכב - הצג שגיאה ידידותית
+      if (!riderData) {
+        setError('לא נמצא פרופיל רוכב למשתמש זה. אנא פנה למנהל המערכת.');
         setLoading(false);
         return;
       }
 
-      // טעינת פרטי הרוכב
-      const riderResponse = await ridersAPI.getById(user.riderId);
-      const riderData = riderResponse.data.rider;
-      setRider(riderData);
-
       // בדיקה אם הרוכב משויך לכלי
-      if (!riderData.isAssigned || !riderData.assignedVehicleId) {
+      if (!riderData.isAssigned && !riderData.assignedVehicleId) {
         setError('אינך משויך לכלי כרגע');
         setLoading(false);
         return;
@@ -184,14 +212,12 @@ export default function MyFaults() {
   if (error) {
     return (
       <Box>
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="warning" sx={{ mb: 3 }}>
           {error}
         </Alert>
-        {!user?.riderId && (
-          <Typography variant="body2" color="textSecondary">
-            אנא פנה למנהל המערכת לשיוך חשבון המשתמש לרוכב
-          </Typography>
-        )}
+        <Typography variant="body2" color="textSecondary">
+          אם אתה אמור להיות רוכב, אנא פנה למנהל המערכת לשיוך חשבון המשתמש לרוכב
+        </Typography>
       </Box>
     );
   }
