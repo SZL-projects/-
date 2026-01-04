@@ -20,6 +20,13 @@ try {
 
 const app = express();
 
+// אתחול Schedulers (רק אם לא ב-Vercel serverless)
+if (process.env.NODE_ENV !== 'production') {
+  const monthlyCheckScheduler = require('./schedulers/monthlyCheckScheduler');
+  // הפעלת הטיימר לבקרות חודשיות
+  monthlyCheckScheduler.start();
+}
+
 // Middleware בסיסי
 app.use(helmet()); // אבטחה
 app.use(cors()); // CORS
@@ -39,6 +46,25 @@ app.use('/api/vehicles', require('./routes/vehicles-firebase'));
 app.use('/api/tasks', require('./routes/tasks-firebase'));
 app.use('/api/faults', require('./routes/faults-firebase'));
 app.use('/api/monthly-checks', require('./routes/monthly-checks-firebase'));
+
+// נתיב להרצה ידנית של פתיחת בקרות חודשיות (למנהלי על בלבד)
+if (process.env.NODE_ENV !== 'production') {
+  app.post('/api/admin/trigger-monthly-checks', async (req, res) => {
+    try {
+      const monthlyCheckScheduler = require('./schedulers/monthlyCheckScheduler');
+      await monthlyCheckScheduler.runNow();
+      res.json({
+        success: true,
+        message: 'בקרות חודשיות נפתחו בהצלחה'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+}
 
 // נתיב בדיקת בריאות
 app.get('/health', (req, res) => {
