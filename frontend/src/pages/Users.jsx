@@ -146,16 +146,27 @@ export default function Users() {
     }
   };
 
-  const getRoleChip = (role) => {
+  const getRoleChips = (user) => {
     const roleMap = {
       super_admin: { label: 'מנהל על', color: 'error' },
-      admin: { label: 'מנהל', color: 'warning' },
-      user: { label: 'משתמש', color: 'primary' },
-      viewer: { label: 'צופה', color: 'default' },
+      manager: { label: 'מנהל', color: 'warning' },
+      secretary: { label: 'מזכירה', color: 'info' },
+      logistics: { label: 'לוגיסטיקה', color: 'primary' },
+      rider: { label: 'רוכב', color: 'success' },
+      regional_manager: { label: 'מנהל אזורי', color: 'secondary' },
     };
 
-    const { label, color } = roleMap[role] || { label: role, color: 'default' };
-    return <Chip label={label} color={color} size="small" />;
+    // תמיכה הן ב-roles חדש והן ב-role ישן
+    const userRoles = Array.isArray(user.roles) ? user.roles : [user.role || 'rider'];
+
+    return (
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+        {userRoles.map((role, index) => {
+          const { label, color } = roleMap[role] || { label: role, color: 'default' };
+          return <Chip key={index} label={label} color={color} size="small" />;
+        })}
+      </Box>
+    );
   };
 
   const getStatusChip = (isActive) => {
@@ -254,7 +265,7 @@ export default function Users() {
                     </Typography>
                   </TableCell>
                   <TableCell>{user.email}</TableCell>
-                  <TableCell>{getRoleChip(user.role)}</TableCell>
+                  <TableCell>{getRoleChips(user)}</TableCell>
                   <TableCell>{getStatusChip(user.isActive)}</TableCell>
                   <TableCell>
                     {user.createdAt ? new Date(user.createdAt).toLocaleDateString('he-IL') : '-'}
