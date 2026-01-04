@@ -308,17 +308,24 @@ export default function Layout() {
                       📊 ניהול
                     </Typography>
                   </ListItem>
-                  {managementMenuItems.map((item) => (
-                    <ListItem key={item.text} disablePadding>
-                      <ListItemButton
-                        selected={location.pathname === item.path}
-                        onClick={() => handleMenuClick(item.path)}
-                      >
-                        <ListItemIcon>{item.icon}</ListItemIcon>
-                        <ListItemText primary={item.text} />
-                      </ListItemButton>
-                    </ListItem>
-                  ))}
+                  {managementMenuItems.map((item) => {
+                    // אם הפריט מיועד רק לאדמין, בדוק אם המשתמש הוא super_admin
+                    if (item.adminOnly && !hasRole('super_admin')) {
+                      return null;
+                    }
+
+                    return (
+                      <ListItem key={item.text} disablePadding>
+                        <ListItemButton
+                          selected={location.pathname === item.path}
+                          onClick={() => handleMenuClick(item.path)}
+                        >
+                          <ListItemIcon>{item.icon}</ListItemIcon>
+                          <ListItemText primary={item.text} />
+                        </ListItemButton>
+                      </ListItem>
+                    );
+                  })}
                 </>
               )}
             </List>

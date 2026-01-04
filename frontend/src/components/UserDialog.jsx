@@ -20,7 +20,7 @@ import {
   Box,
   Autocomplete,
 } from '@mui/material';
-import { vehiclesAPI } from '../services/api';
+import { vehiclesAPI, ridersAPI } from '../services/api';
 
 const userRoles = [
   { value: 'super_admin', label: 'מנהל על' },
@@ -42,24 +42,30 @@ export default function UserDialog({ open, onClose, onSave, user }) {
     roles: ['rider'],
     isActive: true,
     vehicleAccess: [],
+    riderId: null, // שיוך לרוכב
   });
 
   const [errors, setErrors] = useState({});
   const [vehicles, setVehicles] = useState([]);
+  const [riders, setRiders] = useState([]);
 
-  // טעינת רשימת כלים
+  // טעינת רשימת כלים ורוכבים
   useEffect(() => {
-    const loadVehicles = async () => {
+    const loadData = async () => {
       try {
-        const response = await vehiclesAPI.getAll();
-        setVehicles(response.data.vehicles || []);
+        const [vehiclesResponse, ridersResponse] = await Promise.all([
+          vehiclesAPI.getAll(),
+          ridersAPI.getAll()
+        ]);
+        setVehicles(vehiclesResponse.data.vehicles || []);
+        setRiders(ridersResponse.data.riders || ridersResponse.data || []);
       } catch (err) {
-        console.error('Error loading vehicles:', err);
+        console.error('Error loading data:', err);
       }
     };
 
     if (open) {
-      loadVehicles();
+      loadData();
     }
   }, [open]);
 
@@ -78,6 +84,7 @@ export default function UserDialog({ open, onClose, onSave, user }) {
         roles: userRoles,
         isActive: user.isActive !== undefined ? user.isActive : true,
         vehicleAccess: user.vehicleAccess || [],
+        riderId: user.riderId || null,
       });
     } else {
       setFormData({
@@ -90,6 +97,7 @@ export default function UserDialog({ open, onClose, onSave, user }) {
         roles: ['rider'],
         isActive: true,
         vehicleAccess: [],
+        riderId: null,
       });
     }
     setErrors({});
@@ -268,6 +276,36 @@ export default function UserDialog({ open, onClose, onSave, user }) {
               )}
             </FormControl>
           </Grid>
+
+          {/* שיוך לרוכב - רק אם יש תפקיד 'rider' */}
+          {formData.roles.includes('rider') && (
+            <Grid item xs={12}>
+              <Autocomplete
+                options={riders}
+                getOptionLabel={(option) =>
+                  `${option.firstName || ''} ${option.lastName || ''} ${option.idNumber ? `(ת.ז: ${option.idNumber})` : ''}`
+                }
+                value={riders.find(r => (r._id || r.id) === formData.riderId) || null}
+                onChange={(event, newValue) => {
+                  setFormData({
+                    ...formData,
+                    riderId: newValue ? (newValue._id || newValue.id) : null,
+                  });
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="שיוך לרוכב (אופציונלי)"
+                    helperText="חבר משתמש זה לפרופיל רוכב קיים במערכת"
+                  />
+                )}
+                noOptionsText="לא נמצאו רוכבים"
+                isOptionEqualToValue={(option, value) =>
+                  (option._id || option.id) === (value._id || value.id)
+                }
+              />
+            </Grid>
+          )}
 
           <Grid item xs={12}>
             <Autocomplete
