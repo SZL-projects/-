@@ -144,6 +144,27 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
     }
   };
 
+  const handleShowAllToRiders = async () => {
+    if (!window.confirm('האם להציג את כל הקבצים בקטגוריה זו לרוכבים?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // עדכון כל הקבצים בקטגוריה הנוכחית להיות גלויים
+      for (const file of files) {
+        await vehiclesAPI.updateFileVisibility(vehicleId, file.id, true);
+      }
+      showSnackbar(`${files.length} קבצים הוגדרו כגלויים לרוכבים`, 'success');
+      loadFiles();
+    } catch (error) {
+      console.error('Error showing all files to riders:', error);
+      showSnackbar('שגיאה בעדכון נראות קבצים', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const showSnackbar = (message, severity) => {
     setSnackbar({ open: true, message, severity });
   };
@@ -187,7 +208,7 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
           ))}
         </Tabs>
 
-        <Box sx={{ mb: 2 }}>
+        <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           <Input
             type="file"
             onChange={handleFileUpload}
@@ -204,6 +225,19 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
               {uploading ? 'מעלה...' : 'העלה קובץ'}
             </Button>
           </label>
+
+          {/* כפתור הצג הכל לרוכבים - רק בביטוחים נוכחיים */}
+          {currentTab === 0 && files.length > 0 && (
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<Visibility />}
+              onClick={handleShowAllToRiders}
+              disabled={loading}
+            >
+              הצג הכל לרוכבים
+            </Button>
+          )}
         </Box>
 
         {loading ? (
