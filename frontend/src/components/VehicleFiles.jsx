@@ -257,57 +257,56 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
                     secondary={`${formatFileSize(file.size)} • ${new Date(file.createdTime).toLocaleDateString('he-IL')}`}
                   />
                   <ListItemSecondaryAction>
-                    {/* כפתור צפייה */}
-                    <Tooltip title="פתח בחלון חדש">
-                      <IconButton
-                        edge="end"
-                        component="a"
-                        href={file.webViewLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        sx={{ mr: 1 }}
-                      >
-                        <InsertDriveFile />
-                      </IconButton>
-                    </Tooltip>
-
-                    {/* כפתור נראות - רק בביטוחים נוכחיים */}
-                    {isInsuranceTab && (
-                      <Tooltip title={isVisible ? 'הסתר מרוכבים' : 'הצג לרוכבים'}>
+                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                      {/* כפתור צפייה */}
+                      <Tooltip title="פתח בחלון חדש">
                         <IconButton
-                          edge="end"
-                          onClick={() => handleToggleVisibility(file.id, isVisible)}
-                          sx={{ mr: 1 }}
+                          size="small"
+                          component="a"
+                          href={file.webViewLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
                         >
-                          {isVisible ? <Visibility color="primary" /> : <VisibilityOff color="disabled" />}
+                          <InsertDriveFile fontSize="small" />
                         </IconButton>
                       </Tooltip>
-                    )}
 
-                    {/* כפתור ארכיון - רק בביטוחים נוכחיים */}
-                    {isInsuranceTab && (
-                      <Tooltip title="העבר לארכיון">
+                      {/* כפתור נראות - רק בביטוחים נוכחיים */}
+                      {isInsuranceTab && (
+                        <Tooltip title={isVisible ? 'הסתר מרוכבים' : 'הצג לרוכבים'}>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleToggleVisibility(file.id, isVisible)}
+                          >
+                            {isVisible ? <Visibility fontSize="small" color="primary" /> : <VisibilityOff fontSize="small" color="disabled" />}
+                          </IconButton>
+                        </Tooltip>
+                      )}
+
+                      {/* כפתור ארכיון - רק בביטוחים נוכחיים */}
+                      {isInsuranceTab && (
+                        <Tooltip title="העבר לארכיון">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleMoveToArchive(file.id)}
+                            color="warning"
+                          >
+                            <Archive fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+
+                      {/* כפתור מחיקה */}
+                      <Tooltip title="מחק קובץ">
                         <IconButton
-                          edge="end"
-                          onClick={() => handleMoveToArchive(file.id)}
-                          sx={{ mr: 1 }}
-                          color="warning"
+                          size="small"
+                          onClick={() => handleDeleteFile(file.id)}
+                          color="error"
                         >
-                          <Archive />
+                          <Delete fontSize="small" />
                         </IconButton>
                       </Tooltip>
-                    )}
-
-                    {/* כפתור מחיקה */}
-                    <Tooltip title="מחק קובץ">
-                      <IconButton
-                        edge="end"
-                        onClick={() => handleDeleteFile(file.id)}
-                        color="error"
-                      >
-                        <Delete />
-                      </IconButton>
-                    </Tooltip>
+                    </Box>
                   </ListItemSecondaryAction>
                 </ListItem>
               );

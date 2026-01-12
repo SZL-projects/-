@@ -494,6 +494,7 @@ export default function MyVehicle() {
                         borderColor: 'divider',
                         borderRadius: 1,
                         mb: 1,
+                        '&:hover': { bgcolor: 'action.hover' },
                       }}
                     >
                       <ListItemIcon>
@@ -503,13 +504,16 @@ export default function MyVehicle() {
                         primary={file.name}
                         secondary={`${new Date(file.createdTime).toLocaleDateString('he-IL')} • ${(file.size / 1024).toFixed(1)} KB`}
                       />
-                      <Button
-                        size="small"
-                        startIcon={<Download />}
-                        onClick={() => window.open(file.webViewLink, '_blank')}
-                      >
-                        צפה
-                      </Button>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<Download />}
+                          onClick={() => window.open(file.webViewLink, '_blank')}
+                        >
+                          צפה והורד
+                        </Button>
+                      </Box>
                     </ListItem>
                   ))}
                 </List>
