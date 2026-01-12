@@ -1,8 +1,8 @@
 // Vercel Serverless Function - /api/drive (OAuth2 flow)
 const { google } = require('googleapis');
-const { initFirebase } = require('./_utils/firebase');
-const { authenticateToken, checkAuthorization } = require('./_utils/auth');
-const googleDriveService = require('./services/googleDriveService');
+const { initFirebase } = require('../_utils/firebase');
+const { authenticateToken, checkAuthorization } = require('../_utils/auth');
+const googleDriveService = require('../services/googleDriveService');
 
 // OAuth2 client configuration
 const getOAuth2Client = () => {
