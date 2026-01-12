@@ -1,6 +1,6 @@
 // Vercel Serverless Function - /api/faults
-const { initFirebase, extractIdFromUrl } = require('../_utils/firebase');
-const { authenticateToken, checkAuthorization } = require('../_utils/auth');
+const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
+const { authenticateToken, checkAuthorization } = require('./_utils/auth');
 
 module.exports = async (req, res) => {
   // CORS Headers
