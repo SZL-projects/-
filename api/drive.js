@@ -24,6 +24,17 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
+  // Parse body for POST requests
+  if (req.method === 'POST' && !req.body) {
+    const getRawBody = require('raw-body');
+    try {
+      const rawBody = await getRawBody(req);
+      req.body = JSON.parse(rawBody.toString());
+    } catch (e) {
+      req.body = {};
+    }
+  }
+
   try {
     const { db } = initFirebase();
     const url = req.url.split('?')[0];

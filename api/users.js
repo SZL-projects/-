@@ -16,6 +16,17 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
+  // Parse body for POST/PUT/PATCH requests
+  if (['POST', 'PUT', 'PATCH'].includes(req.method) && !req.body) {
+    const getRawBody = require('raw-body');
+    try {
+      const rawBody = await getRawBody(req);
+      req.body = JSON.parse(rawBody.toString());
+    } catch (e) {
+      req.body = {};
+    }
+  }
+
   try {
     console.log('👥 Users Request:', {
       method: req.method,
