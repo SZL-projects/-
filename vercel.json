@@ -1,14 +1,4 @@
 {
-  "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/dist",
-  "installCommand": "npm install",
-  "rewrites": [
-    { "source": "/api/auth/(.*)", "destination": "/api/auth" },
-    { "source": "/api/drive/(.*)", "destination": "/api/drive" },
-    { "source": "/api/vehicles/(.*)", "destination": "/api/vehicles" },
-    { "source": "/api/users/(.*)", "destination": "/api/users" },
-    { "source": "/api/riders/(.*)", "destination": "/api/riders" },
-    { "source": "/api/tasks/(.*)", "destination": "/api/tasks" },
-    { "source": "/api/faults/(.*)", "destination": "/api/faults" }
-  ]
+  "buildCommand": "cd frontend && npm install && npm run build && mkdir -p public && cp -r frontend/dist/* public/",
+  "installCommand": "npm install"
 }
