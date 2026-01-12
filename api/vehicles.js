@@ -242,7 +242,31 @@ module.exports = async (req, res) => {
       const files = await googleDriveService.listFiles(folderId);
       console.log('📄 Files from Drive:', files.length);
 
-      // שליפת מטא-דאטה על הקבצים מ-Firestore (visibility settings)
+      // בדיקת תפקיד משתמש
+      const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
+      const isAdminOrManager = userRoles.some(role =>
+        ['super_admin', 'manager', 'secretary'].includes(role)
+      );
+
+      console.log('👤 User check:', { userRoles, isAdminOrManager, viewAsRider });
+
+      // אם viewAsRider=true - רוכב רואה הכל בתיקייה הנוכחית (ביטוחים נוכחיים)
+      // קבצים בארכיון (ביטוחים ישנים) לא נטענים כלל מהקומפוננט MyVehicle
+      if (viewAsRider === 'true') {
+        console.log('🔵 Rider view mode - showing ALL files from current folder');
+        const filesWithMetadata = files.map(file => ({
+          ...file,
+          visibleToRider: true // כל הקבצים בתיקייה הנוכחית גלויים לרוכבים
+        }));
+
+        console.log('✅ Returning', filesWithMetadata.length, 'files for rider');
+        return res.json({
+          success: true,
+          files: filesWithMetadata
+        });
+      }
+
+      // מצב מנהל - טוען מטא-דאטה מ-Firestore לניהול נראות
       let filesWithMetadata = [];
       if (vehicleId) {
         const vehicleRef = db.collection('vehicles').doc(vehicleId);
@@ -268,19 +292,10 @@ module.exports = async (req, res) => {
         filesWithMetadata = files.map(file => ({ ...file, visibleToRider: true }));
       }
 
-      // סינון לפי תפקיד משתמש והקשר התצוגה
-      const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
-      const isAdminOrManager = userRoles.some(role =>
-        ['super_admin', 'manager', 'secretary'].includes(role)
-      );
-
-      console.log('👤 User check:', { userRoles, isAdminOrManager, viewAsRider, filesBeforeFilter: filesWithMetadata.length });
-
-      // אם viewAsRider=true (צפייה כרוכב) - תמיד הצג רק קבצים גלויים, גם למנהלים
-      // אחרת - מנהלים רואים הכל, רוכבים רק גלויים
-      const filteredFiles = (viewAsRider === 'true' || !isAdminOrManager)
-        ? filesWithMetadata.filter(f => f.visibleToRider)
-        : filesWithMetadata;
+      // מנהלים רואים הכל, רוכבים רק גלויים
+      const filteredFiles = isAdminOrManager
+        ? filesWithMetadata
+        : filesWithMetadata.filter(f => f.visibleToRider);
 
       console.log('✅ Files after filter:', filteredFiles.length);
       console.log('📋 Sample file visibility:', filteredFiles.slice(0, 2).map(f => ({ name: f.name, visibleToRider: f.visibleToRider })));
