@@ -3,33 +3,12 @@
   "outputDirectory": "frontend/dist",
   "installCommand": "npm install",
   "rewrites": [
-    {
-      "source": "/api/auth/:path*",
-      "destination": "/api/auth"
-    },
-    {
-      "source": "/api/drive/:path*",
-      "destination": "/api/drive"
-    },
-    {
-      "source": "/api/vehicles/:path*",
-      "destination": "/api/vehicles"
-    },
-    {
-      "source": "/api/users/:path*",
-      "destination": "/api/users"
-    },
-    {
-      "source": "/api/riders/:path*",
-      "destination": "/api/riders"
-    },
-    {
-      "source": "/api/tasks/:path*",
-      "destination": "/api/tasks"
-    },
-    {
-      "source": "/api/faults/:path*",
-      "destination": "/api/faults"
-    }
+    { "source": "/api/auth/(.*)", "destination": "/api/auth" },
+    { "source": "/api/drive/(.*)", "destination": "/api/drive" },
+    { "source": "/api/vehicles/(.*)", "destination": "/api/vehicles" },
+    { "source": "/api/users/(.*)", "destination": "/api/users" },
+    { "source": "/api/riders/(.*)", "destination": "/api/riders" },
+    { "source": "/api/tasks/(.*)", "destination": "/api/tasks" },
+    { "source": "/api/faults/(.*)", "destination": "/api/faults" }
   ]
 }
