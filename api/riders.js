@@ -114,7 +114,15 @@ module.exports = async (req, res) => {
       if (region) {
         query = query.where('region.district', '==', region);
       }
-      if (user.role === 'rider' && user.riderId) {
+
+      // סינון לפי תפקיד - רוכב רואה רק את עצמו
+      const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
+      const isRider = userRoles.includes('rider');
+      const isAdminOrManager = userRoles.some(role =>
+        ['super_admin', 'manager', 'secretary'].includes(role)
+      );
+
+      if (isRider && !isAdminOrManager && user.riderId) {
         query = query.where('__name__', '==', user.riderId);
       }
 

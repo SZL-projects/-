@@ -99,6 +99,30 @@ module.exports = async (req, res) => {
         query = query.where('vehicleId', '==', vehicleId);
       }
 
+      // סינון לפי תפקיד - רוכב רואה רק משימות של הכלי שלו
+      const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
+      const isAdminOrManager = userRoles.some(role =>
+        ['super_admin', 'manager', 'secretary'].includes(role)
+      );
+
+      if (!isAdminOrManager && user.riderId) {
+        // נמצא את הרוכב כדי לקבל את assignedVehicleId
+        const riderSnapshot = await db.collection('riders').doc(user.riderId).get();
+        if (riderSnapshot.exists) {
+          const riderData = riderSnapshot.data();
+          if (riderData.assignedVehicleId) {
+            query = query.where('vehicleId', '==', riderData.assignedVehicleId);
+          } else {
+            // אין כלי משויך - מחזיר מערך ריק
+            return res.status(200).json({
+              success: true,
+              count: 0,
+              tasks: []
+            });
+          }
+        }
+      }
+
       const snapshot = await query.limit(parseInt(limit)).get();
       let tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 

@@ -378,6 +378,31 @@ module.exports = async (req, res) => {
       const snapshot = await query.get();
       let vehicles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
+      // סינון לפי תפקיד משתמש
+      const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
+      const isAdminOrManager = userRoles.some(role =>
+        ['super_admin', 'manager', 'secretary'].includes(role)
+      );
+
+      // אם המשתמש הוא רוכב (לא מנהל) - הצג רק את הכלי המשויך אליו
+      if (!isAdminOrManager && user.riderId) {
+        // נמצא את הרוכב כדי לקבל את assignedVehicleId
+        const riderSnapshot = await db.collection('riders').doc(user.riderId).get();
+        if (riderSnapshot.exists) {
+          const riderData = riderSnapshot.data();
+          if (riderData.assignedVehicleId) {
+            // הצג רק את הכלי המשויך
+            vehicles = vehicles.filter(v => v.id === riderData.assignedVehicleId);
+          } else {
+            // אין כלי משויך - מערך ריק
+            vehicles = [];
+          }
+        } else {
+          // רוכב לא נמצא - מערך ריק
+          vehicles = [];
+        }
+      }
+
       if (search) {
         const searchLower = search.toLowerCase();
         vehicles = vehicles.filter(vehicle =>
