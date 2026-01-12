@@ -1,4 +1,12 @@
 {
   "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/dist"
+  "outputDirectory": "frontend/dist",
+  "rewrites": [
+    { "source": "/api/vehicles/:path*", "destination": "/api/vehicles" },
+    { "source": "/api/users/:path*", "destination": "/api/users" },
+    { "source": "/api/riders/:path*", "destination": "/api/riders" },
+    { "source": "/api/tasks/:path*", "destination": "/api/tasks" },
+    { "source": "/api/faults/:path*", "destination": "/api/faults" },
+    { "source": "/api/drive/:path*", "destination": "/api/drive" }
+  ]
 }
