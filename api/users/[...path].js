@@ -1,9 +1,9 @@
 // Vercel Serverless Function - /api/users (all user management endpoints)
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const { initFirebase } = require('./_utils/firebase');
-const { authenticateToken, checkAuthorization } = require('./_utils/auth');
-const { sendLoginCredentials } = require('./_utils/emailService');
+const { initFirebase } = require('../_utils/firebase');
+const { authenticateToken, checkAuthorization } = require('../_utils/auth');
+const { sendLoginCredentials } = require('../_utils/emailService');
 
 module.exports = async (req, res) => {
   // CORS Headers
