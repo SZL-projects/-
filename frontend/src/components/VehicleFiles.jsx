@@ -16,6 +16,7 @@ import {
   CircularProgress,
   Alert,
   Snackbar,
+  Tooltip,
 } from '@mui/material';
 import {
   CloudUpload,
@@ -24,15 +25,19 @@ import {
   Image,
   PictureAsPdf,
   Description,
+  Archive,
+  Visibility,
+  VisibilityOff,
 } from '@mui/icons-material';
 import { vehiclesAPI } from '../services/api';
 
 const categories = [
-  { id: 'insurance', label: 'ביטוחים', folderKey: 'insuranceFolderId' },
+  { id: 'insurance', label: 'ביטוחים נוכחיים', folderKey: 'insuranceFolderId' },
+  { id: 'archive', label: 'ביטוחים ישנים', folderKey: 'archiveFolderId' },
   { id: 'photos', label: 'תמונות כלי', folderKey: 'photosFolderId' },
 ];
 
-export default function VehicleFiles({ vehicleNumber, vehicleFolderData }) {
+export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicleId }) {
   const [currentTab, setCurrentTab] = useState(0);
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -57,7 +62,8 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData }) {
 
     setLoading(true);
     try {
-      const response = await vehiclesAPI.listFiles(folderId);
+      // העברת vehicleId כדי לקבל גם את מטא-דאטה של הקבצים (visibility)
+      const response = await vehiclesAPI.listFiles(folderId, vehicleId);
       setFiles(response.data.files || []);
     } catch (error) {
       console.error('Error loading files:', error);
@@ -107,6 +113,35 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData }) {
     } catch (error) {
       console.error('Error deleting file:', error);
       showSnackbar('שגיאה במחיקת קובץ', 'error');
+    }
+  };
+
+  const handleToggleVisibility = async (fileId, currentVisibility) => {
+    try {
+      await vehiclesAPI.updateFileVisibility(vehicleId, fileId, !currentVisibility);
+      showSnackbar(
+        !currentVisibility ? 'הקובץ כעת גלוי לרוכבים' : 'הקובץ כעת מוסתר מרוכבים',
+        'success'
+      );
+      loadFiles();
+    } catch (error) {
+      console.error('Error updating file visibility:', error);
+      showSnackbar('שגיאה בעדכון נראות הקובץ', 'error');
+    }
+  };
+
+  const handleMoveToArchive = async (fileId) => {
+    if (!window.confirm('האם להעביר קובץ זה לארכיון?')) {
+      return;
+    }
+
+    try {
+      await vehiclesAPI.moveToArchive(vehicleId, fileId);
+      showSnackbar('הקובץ הועבר לארכיון בהצלחה', 'success');
+      loadFiles();
+    } catch (error) {
+      console.error('Error moving file to archive:', error);
+      showSnackbar('שגיאה בהעברת קובץ לארכיון', 'error');
     }
   };
 
@@ -180,44 +215,103 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData }) {
           <Alert severity="info">אין קבצים בקטגוריה זו</Alert>
         ) : (
           <List>
-            {files.map((file) => (
-              <ListItem
-                key={file.id}
-                sx={{
-                  border: '1px solid #e0e0e0',
-                  borderRadius: 1,
-                  mb: 1,
-                  '&:hover': { bgcolor: 'action.hover' },
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-                  {getFileIcon(file.mimeType)}
-                </Box>
-                <ListItemText
-                  primary={file.name}
-                  secondary={`${formatFileSize(file.size)} • ${new Date(file.createdTime).toLocaleDateString('he-IL')}`}
-                />
-                <ListItemSecondaryAction>
-                  <IconButton
-                    edge="end"
-                    component="a"
-                    href={file.webViewLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    sx={{ mr: 1 }}
-                  >
-                    <InsertDriveFile />
-                  </IconButton>
-                  <IconButton
-                    edge="end"
-                    onClick={() => handleDeleteFile(file.id)}
-                    color="error"
-                  >
-                    <Delete />
-                  </IconButton>
-                </ListItemSecondaryAction>
-              </ListItem>
-            ))}
+            {files.map((file) => {
+              const isInsuranceTab = currentTab === 0; // ביטוחים נוכחיים
+              const isArchiveTab = currentTab === 1; // ביטוחים ישנים
+              const isVisible = file.visibleToRider !== false;
+
+              return (
+                <ListItem
+                  key={file.id}
+                  sx={{
+                    border: '1px solid #e0e0e0',
+                    borderRadius: 1,
+                    mb: 1,
+                    '&:hover': { bgcolor: 'action.hover' },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                    {getFileIcon(file.mimeType)}
+                  </Box>
+                  <ListItemText
+                    primary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <span>{file.name}</span>
+                        {!isVisible && (
+                          <Box
+                            component="span"
+                            sx={{
+                              fontSize: '0.75rem',
+                              bgcolor: 'warning.light',
+                              color: 'warning.dark',
+                              px: 1,
+                              py: 0.25,
+                              borderRadius: 1,
+                            }}
+                          >
+                            מוסתר
+                          </Box>
+                        )}
+                      </Box>
+                    }
+                    secondary={`${formatFileSize(file.size)} • ${new Date(file.createdTime).toLocaleDateString('he-IL')}`}
+                  />
+                  <ListItemSecondaryAction>
+                    {/* כפתור צפייה */}
+                    <Tooltip title="פתח בחלון חדש">
+                      <IconButton
+                        edge="end"
+                        component="a"
+                        href={file.webViewLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{ mr: 1 }}
+                      >
+                        <InsertDriveFile />
+                      </IconButton>
+                    </Tooltip>
+
+                    {/* כפתור נראות - רק בביטוחים נוכחיים */}
+                    {isInsuranceTab && (
+                      <Tooltip title={isVisible ? 'הסתר מרוכבים' : 'הצג לרוכבים'}>
+                        <IconButton
+                          edge="end"
+                          onClick={() => handleToggleVisibility(file.id, isVisible)}
+                          sx={{ mr: 1 }}
+                        >
+                          {isVisible ? <Visibility color="primary" /> : <VisibilityOff color="disabled" />}
+                        </IconButton>
+                      </Tooltip>
+                    )}
+
+                    {/* כפתור ארכיון - רק בביטוחים נוכחיים */}
+                    {isInsuranceTab && (
+                      <Tooltip title="העבר לארכיון">
+                        <IconButton
+                          edge="end"
+                          onClick={() => handleMoveToArchive(file.id)}
+                          sx={{ mr: 1 }}
+                          color="warning"
+                        >
+                          <Archive />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+
+                    {/* כפתור מחיקה */}
+                    <Tooltip title="מחק קובץ">
+                      <IconButton
+                        edge="end"
+                        onClick={() => handleDeleteFile(file.id)}
+                        color="error"
+                      >
+                        <Delete />
+                      </IconButton>
+                    </Tooltip>
+                  </ListItemSecondaryAction>
+                </ListItem>
+              );
+            })}
           </List>
         )}
 

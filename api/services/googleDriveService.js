@@ -210,9 +210,13 @@ class GoogleDriveService {
       const mainFolder = await this.createFolder(vehicleIdentifier, this.rootFolderId);
       console.log(`Created main folder: ${mainFolder.name} (${mainFolder.id}) in root folder ${this.rootFolderId}`);
 
-      // תיקיית ביטוחים
-      const insuranceFolder = await this.createFolder('ביטוחים', mainFolder.id);
+      // תיקיית ביטוחים נוכחיים
+      const insuranceFolder = await this.createFolder('ביטוחים נוכחיים', mainFolder.id);
       console.log(`Created insurance folder: ${insuranceFolder.name} (${insuranceFolder.id})`);
+
+      // תיקיית ביטוחים ישנים (ארכיון)
+      const archiveFolder = await this.createFolder('ביטוחים ישנים', mainFolder.id);
+      console.log(`Created archive folder: ${archiveFolder.name} (${archiveFolder.id})`);
 
       // תיקיית תמונות
       const photosFolder = await this.createFolder('תמונות כלי', mainFolder.id);
@@ -223,6 +227,8 @@ class GoogleDriveService {
         mainFolderLink: mainFolder.webViewLink,
         insuranceFolderId: insuranceFolder.id,
         insuranceFolderLink: insuranceFolder.webViewLink,
+        archiveFolderId: archiveFolder.id,
+        archiveFolderLink: archiveFolder.webViewLink,
         photosFolderId: photosFolder.id,
         photosFolderLink: photosFolder.webViewLink
       };
@@ -353,6 +359,43 @@ class GoogleDriveService {
       return { success: true, message: 'File deleted successfully' };
     } catch (error) {
       console.error('Error deleting file:', error);
+      throw error;
+    }
+  }
+
+  // העברת קובץ לתיקייה אחרת
+  async moveFile(fileId, newParentFolderId) {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    if (!this.initialized) {
+      throw new Error('Google Drive service not initialized');
+    }
+
+    try {
+      // קבלת המידע הנוכחי של הקובץ כולל התיקייה הנוכחית
+      const file = await this.drive.files.get({
+        fileId: fileId,
+        fields: 'parents',
+        supportsAllDrives: true
+      });
+
+      const previousParents = file.data.parents?.join(',') || '';
+
+      // העברת הקובץ לתיקייה החדשה
+      const response = await this.drive.files.update({
+        fileId: fileId,
+        addParents: newParentFolderId,
+        removeParents: previousParents,
+        fields: 'id, name, parents, webViewLink',
+        supportsAllDrives: true
+      });
+
+      console.log(`File ${fileId} moved to folder ${newParentFolderId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error moving file:', error);
       throw error;
     }
   }

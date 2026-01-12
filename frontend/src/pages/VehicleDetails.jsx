@@ -263,6 +263,7 @@ export default function VehicleDetails() {
             <VehicleFiles
               vehicleNumber={vehicle.internalNumber || vehicle.licensePlate}
               vehicleFolderData={folderData}
+              vehicleId={id}
             />
           </Box>
         )}

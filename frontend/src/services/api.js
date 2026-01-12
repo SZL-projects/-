@@ -85,8 +85,13 @@ export const vehiclesAPI = {
       },
     });
   },
-  listFiles: (folderId) => api.get(`/vehicles/list-files?folderId=${folderId}`),
+  listFiles: (folderId, vehicleId = null) => {
+    const params = vehicleId ? `folderId=${folderId}&vehicleId=${vehicleId}` : `folderId=${folderId}`;
+    return api.get(`/vehicles/list-files?${params}`);
+  },
   deleteFile: (fileId) => api.delete(`/vehicles/delete-file?fileId=${fileId}`),
+  updateFileVisibility: (vehicleId, fileId, visibleToRider) => api.patch('/vehicles/update-file-visibility', { vehicleId, fileId, visibleToRider }),
+  moveToArchive: (vehicleId, fileId) => api.post('/vehicles/move-to-archive', { vehicleId, fileId }),
 };
 
 // Tasks API

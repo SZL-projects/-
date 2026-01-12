@@ -61,6 +61,9 @@ module.exports = async (req, res) => {
         const vehicleRef = db.collection('vehicles').doc(vehicleId);
         await vehicleRef.update({
           driveFolderData: folderData,
+          insuranceFolderId: folderData.insuranceFolderId,
+          archiveFolderId: folderData.archiveFolderId,
+          photosFolderId: folderData.photosFolderId,
           updatedBy: user.id,
           updatedAt: new Date()
         });
@@ -314,6 +317,49 @@ module.exports = async (req, res) => {
       return res.json({
         success: true,
         message: 'הגדרות הקובץ עודכנו בהצלחה'
+      });
+    }
+
+    // POST /api/vehicles/move-to-archive
+    if (url.endsWith('/move-to-archive') && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { vehicleId, fileId } = req.body;
+
+      if (!vehicleId || !fileId) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה כלי ומזהה קובץ הם שדות חובה'
+        });
+      }
+
+      // שליפת מידע הכלי כולל תיקיית הארכיון
+      const vehicleRef = db.collection('vehicles').doc(vehicleId);
+      const vehicleDoc = await vehicleRef.get();
+
+      if (!vehicleDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'כלי לא נמצא'
+        });
+      }
+
+      const vehicleData = vehicleDoc.data();
+      const archiveFolderId = vehicleData.archiveFolderId;
+
+      if (!archiveFolderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'תיקיית ארכיון לא קיימת עבור כלי זה'
+        });
+      }
+
+      // העברת הקובץ לתיקיית הארכיון
+      await googleDriveService.moveFile(fileId, archiveFolderId);
+
+      return res.json({
+        success: true,
+        message: 'הקובץ הועבר לארכיון בהצלחה'
       });
     }
 

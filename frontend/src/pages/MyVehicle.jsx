@@ -30,6 +30,8 @@ import {
   FolderOpen,
   Image as ImageIcon,
   OpenInNew,
+  Description,
+  Download,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { vehiclesAPI, ridersAPI, faultsAPI } from '../services/api';
@@ -40,12 +42,27 @@ export default function MyVehicle() {
   const [vehicle, setVehicle] = useState(null);
   const [rider, setRider] = useState(null);
   const [recentFaults, setRecentFaults] = useState([]);
+  const [insuranceFiles, setInsuranceFiles] = useState([]);
+  const [filesLoading, setFilesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     loadMyVehicle();
   }, [user]);
+
+  const loadInsuranceFiles = async (folderId, vehicleId) => {
+    try {
+      setFilesLoading(true);
+      // קריאה ל-API עם vehicleId כדי לקבל רק קבצים גלויים לרוכבים
+      const response = await vehiclesAPI.listFiles(folderId, vehicleId);
+      setInsuranceFiles(response.data.files || []);
+    } catch (err) {
+      console.error('Error loading insurance files:', err);
+    } finally {
+      setFilesLoading(false);
+    }
+  };
 
   const loadMyVehicle = async () => {
     try {
@@ -112,7 +129,13 @@ export default function MyVehicle() {
 
       // טעינת פרטי הכלי
       const vehicleResponse = await vehiclesAPI.getById(vehicleId);
-      setVehicle(vehicleResponse.data.vehicle);
+      const vehicleData = vehicleResponse.data.vehicle;
+      setVehicle(vehicleData);
+
+      // טעינת קבצי ביטוח (אם יש תיקיית ביטוח)
+      if (vehicleData.insuranceFolderId) {
+        loadInsuranceFiles(vehicleData.insuranceFolderId, vehicleId);
+      }
 
       // טעינת תקלות אחרונות
       try {
@@ -448,64 +471,55 @@ export default function MyVehicle() {
           </Card>
         </Grid>
 
-        {/* קישורי Drive ומסמכים */}
+        {/* קבצי ביטוח */}
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <FolderOpen /> מסמכים וקישורים
+                <Description /> קבצי ביטוח
               </Typography>
               <Divider sx={{ my: 2 }} />
 
-              {vehicle.driveLinks && vehicle.driveLinks.length > 0 ? (
+              {filesLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                  <CircularProgress size={30} />
+                </Box>
+              ) : insuranceFiles.length > 0 ? (
                 <List>
-                  {vehicle.driveLinks.map((link, idx) => (
+                  {insuranceFiles.map((file) => (
                     <ListItem
-                      key={idx}
+                      key={file.id}
                       sx={{
                         border: '1px solid',
                         borderColor: 'divider',
                         borderRadius: 1,
                         mb: 1,
-                        cursor: 'pointer',
-                        '&:hover': { bgcolor: 'action.hover' }
                       }}
-                      onClick={() => window.open(link.url || link, '_blank')}
                     >
                       <ListItemIcon>
-                        <FolderOpen color="primary" />
+                        <Description color="primary" />
                       </ListItemIcon>
                       <ListItemText
-                        primary={link.name || link.title || `מסמך ${idx + 1}`}
-                        secondary={link.description || 'קישור למסמך'}
+                        primary={file.name}
+                        secondary={`${new Date(file.createdTime).toLocaleDateString('he-IL')} • ${(file.size / 1024).toFixed(1)} KB`}
                       />
-                      <OpenInNew fontSize="small" color="action" />
+                      <Button
+                        size="small"
+                        startIcon={<Download />}
+                        onClick={() => window.open(file.webViewLink, '_blank')}
+                      >
+                        צפה
+                      </Button>
                     </ListItem>
                   ))}
                 </List>
               ) : (
                 <Box sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
-                  <FolderOpen sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} />
+                  <Description sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} />
                   <Typography variant="body2">
-                    אין מסמכים זמינים
+                    אין קבצי ביטוח זמינים
                   </Typography>
                 </Box>
-              )}
-
-              {/* קישור למסמכים נוספים אם קיים */}
-              {vehicle.documentsFolder && (
-                <>
-                  <Divider sx={{ my: 2 }} />
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    startIcon={<FolderOpen />}
-                    endIcon={<OpenInNew />}
-                    onClick={() => window.open(vehicle.documentsFolder, '_blank')}
-                  >
-                    תיקיית מסמכים ב-Drive
-                  </Button>
-                </>
               )}
             </CardContent>
           </Card>
