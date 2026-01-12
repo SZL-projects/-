@@ -225,7 +225,7 @@ module.exports = async (req, res) => {
 
     // GET /api/vehicles/list-files
     if (url.endsWith('/list-files') && req.method === 'GET') {
-      const { folderId } = req.query;
+      const { folderId, vehicleId } = req.query;
 
       if (!folderId) {
         return res.status(400).json({
@@ -236,9 +236,84 @@ module.exports = async (req, res) => {
 
       const files = await googleDriveService.listFiles(folderId);
 
+      // שליפת מטא-דאטה על הקבצים מ-Firestore (visibility settings)
+      let filesWithMetadata = [];
+      if (vehicleId) {
+        const vehicleRef = db.collection('vehicles').doc(vehicleId);
+        const vehicleDoc = await vehicleRef.get();
+        const vehicleData = vehicleDoc.exists ? vehicleDoc.data() : {};
+        const fileSettings = vehicleData.fileSettings || {};
+
+        // הוספת מטא-דאטה לכל קובץ
+        filesWithMetadata = files.map(file => ({
+          ...file,
+          visibleToRider: fileSettings[file.id]?.visibleToRider !== false // ברירת מחדל: גלוי
+        }));
+      } else {
+        // אם אין vehicleId - כל הקבצים גלויים (למנהלים)
+        filesWithMetadata = files.map(file => ({ ...file, visibleToRider: true }));
+      }
+
+      // סינון לפי תפקיד משתמש
+      const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
+      const isAdminOrManager = userRoles.some(role =>
+        ['super_admin', 'manager', 'secretary'].includes(role)
+      );
+
+      // אם המשתמש הוא רוכב - הצג רק קבצים גלויים
+      const filteredFiles = isAdminOrManager
+        ? filesWithMetadata
+        : filesWithMetadata.filter(f => f.visibleToRider);
+
       return res.json({
         success: true,
-        files
+        files: filteredFiles
+      });
+    }
+
+    // PATCH /api/vehicles/update-file-visibility
+    if (url.endsWith('/update-file-visibility') && req.method === 'PATCH') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { vehicleId, fileId, visibleToRider } = req.body;
+
+      if (!vehicleId || !fileId || visibleToRider === undefined) {
+        return res.status(400).json({
+          success: false,
+          message: 'חסרים פרמטרים: vehicleId, fileId, visibleToRider'
+        });
+      }
+
+      const vehicleRef = db.collection('vehicles').doc(vehicleId);
+      const vehicleDoc = await vehicleRef.get();
+
+      if (!vehicleDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'כלי לא נמצא'
+        });
+      }
+
+      const vehicleData = vehicleDoc.data();
+      const fileSettings = vehicleData.fileSettings || {};
+
+      // עדכון הגדרות הקובץ
+      fileSettings[fileId] = {
+        ...fileSettings[fileId],
+        visibleToRider,
+        updatedBy: user.id,
+        updatedAt: new Date()
+      };
+
+      await vehicleRef.update({
+        fileSettings,
+        updatedBy: user.id,
+        updatedAt: new Date()
+      });
+
+      return res.json({
+        success: true,
+        message: 'הגדרות הקובץ עודכנו בהצלחה'
       });
     }
 
