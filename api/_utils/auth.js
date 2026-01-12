@@ -50,8 +50,14 @@ async function authenticateToken(req, db) {
 
 // בדיקת הרשאות
 function checkAuthorization(user, allowedRoles) {
-  if (!allowedRoles.includes(user.role)) {
-    throw new Error(`Role ${user.role} is not authorized for this action`);
+  // תמיכה בשני פורמטים: role (בודד) ו-roles (מערך)
+  const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
+
+  // בדיקה אם למשתמש יש לפחות אחד מהתפקידים המותרים
+  const hasPermission = userRoles.some(role => allowedRoles.includes(role));
+
+  if (!hasPermission) {
+    throw new Error(`User roles [${userRoles.join(', ')}] not authorized for this action. Required: [${allowedRoles.join(', ')}]`);
   }
   return true;
 }
