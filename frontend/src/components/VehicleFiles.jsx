@@ -8,7 +8,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemSecondaryAction,
   IconButton,
   Tab,
   Tabs,
@@ -229,34 +228,7 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
                     mb: 1,
                     '&:hover': { bgcolor: 'action.hover' },
                   }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-                    {getFileIcon(file.mimeType)}
-                  </Box>
-                  <ListItemText
-                    primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <span>{file.name}</span>
-                        {!isVisible && (
-                          <Box
-                            component="span"
-                            sx={{
-                              fontSize: '0.75rem',
-                              bgcolor: 'warning.light',
-                              color: 'warning.dark',
-                              px: 1,
-                              py: 0.25,
-                              borderRadius: 1,
-                            }}
-                          >
-                            מוסתר
-                          </Box>
-                        )}
-                      </Box>
-                    }
-                    secondary={`${formatFileSize(file.size)} • ${new Date(file.createdTime).toLocaleDateString('he-IL')}`}
-                  />
-                  <ListItemSecondaryAction>
+                  secondaryAction={
                     <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
                       {/* כפתור צפייה */}
                       <Tooltip title="פתח בחלון חדש">
@@ -307,7 +279,34 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
                         </IconButton>
                       </Tooltip>
                     </Box>
-                  </ListItemSecondaryAction>
+                  }
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                    {getFileIcon(file.mimeType)}
+                  </Box>
+                  <ListItemText
+                    primary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <span>{file.name}</span>
+                        {!isVisible && (
+                          <Box
+                            component="span"
+                            sx={{
+                              fontSize: '0.75rem',
+                              bgcolor: 'warning.light',
+                              color: 'warning.dark',
+                              px: 1,
+                              py: 0.25,
+                              borderRadius: 1,
+                            }}
+                          >
+                            מוסתר
+                          </Box>
+                        )}
+                      </Box>
+                    }
+                    secondary={`${formatFileSize(file.size)} • ${new Date(file.createdTime).toLocaleDateString('he-IL')}`}
+                  />
                 </ListItem>
               );
             })}
