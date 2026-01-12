@@ -1,11 +1,11 @@
 // Vercel Serverless Function - /api/auth (all auth endpoints)
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const { initFirebase } = require('./_utils/firebase');
-const { getSignedJwtToken, authenticateToken } = require('./_utils/auth');
+const { initFirebase } = require('../_utils/firebase');
+const { getSignedJwtToken, authenticateToken } = require('../_utils/auth');
 // שימוש ב-SMTP כרגע - לשימוש ב-Gmail API צריך Domain-Wide Delegation
-// כשתהיה גישת אדמין, החלף ל: const { sendPasswordResetEmail } = require('./_utils/gmailService');
-const { sendPasswordResetEmail } = require('./_utils/emailService');
+// כשתהיה גישת אדמין, החלף ל: const { sendPasswordResetEmail } = require('../_utils/gmailService');
+const { sendPasswordResetEmail } = require('../_utils/emailService');
 
 module.exports = async (req, res) => {
   // CORS Headers
