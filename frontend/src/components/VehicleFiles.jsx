@@ -222,10 +222,14 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
               return (
                 <ListItem
                   key={file.id}
+                  disablePadding
                   sx={{
                     border: '1px solid #e0e0e0',
                     borderRadius: 1,
                     mb: 1,
+                    pl: 2,
+                    pr: 2,
+                    py: 1,
                     '&:hover': { bgcolor: 'action.hover' },
                   }}
                   secondaryAction={
