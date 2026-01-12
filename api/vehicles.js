@@ -230,6 +230,8 @@ module.exports = async (req, res) => {
     if (url.endsWith('/list-files') && req.method === 'GET') {
       const { folderId, vehicleId } = req.query;
 
+      console.log('📁 List files request:', { folderId, vehicleId, userId: user.id, userRoles: user.roles || user.role });
+
       if (!folderId) {
         return res.status(400).json({
           success: false,
@@ -238,6 +240,7 @@ module.exports = async (req, res) => {
       }
 
       const files = await googleDriveService.listFiles(folderId);
+      console.log('📄 Files from Drive:', files.length);
 
       // שליפת מטא-דאטה על הקבצים מ-Firestore (visibility settings)
       let filesWithMetadata = [];
@@ -271,10 +274,15 @@ module.exports = async (req, res) => {
         ['super_admin', 'manager', 'secretary'].includes(role)
       );
 
+      console.log('👤 User check:', { userRoles, isAdminOrManager, filesBeforeFilter: filesWithMetadata.length });
+
       // אם המשתמש הוא רוכב - הצג רק קבצים גלויים
       const filteredFiles = isAdminOrManager
         ? filesWithMetadata
         : filesWithMetadata.filter(f => f.visibleToRider);
+
+      console.log('✅ Files after filter:', filteredFiles.length);
+      console.log('📋 Sample file visibility:', filteredFiles.slice(0, 2).map(f => ({ name: f.name, visibleToRider: f.visibleToRider })));
 
       return res.json({
         success: true,
