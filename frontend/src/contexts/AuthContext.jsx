@@ -14,7 +14,23 @@ export const AuthProvider = ({ children }) => {
 
     if (token && savedUser && savedUser !== 'undefined') {
       try {
-        setUser(JSON.parse(savedUser));
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+
+        // אם אין roles במשתמש השמור - רענן מהשרת
+        if (!parsedUser.roles) {
+          console.log('User missing roles field, refreshing from server...');
+          authAPI.me()
+            .then(response => {
+              const updatedUser = response.data.user;
+              const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
+              storage.setItem('user', JSON.stringify(updatedUser));
+              setUser(updatedUser);
+            })
+            .catch(error => {
+              console.error('Error refreshing user data:', error);
+            });
+        }
       } catch (error) {
         console.error('Error parsing saved user:', error);
         // ניקוי localStorage/sessionStorage אם יש בעיה
