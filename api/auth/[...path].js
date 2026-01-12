@@ -118,7 +118,9 @@ module.exports = async (req, res) => {
           email: userData.email,
           firstName: userData.firstName,
           lastName: userData.lastName,
-          role: userData.role
+          role: userData.role,
+          roles: userData.roles || [userData.role], // תמיכה במערך תפקידים
+          riderId: userData.riderId // מזהה רוכב אם קיים
         }
       });
     }
@@ -175,7 +177,9 @@ module.exports = async (req, res) => {
           email: email.toLowerCase(),
           firstName,
           lastName,
-          role: role || 'rider'
+          role: role || 'rider',
+          roles: [role || 'rider'], // תמיכה במערך תפקידים
+          riderId: null // משתמש חדש אין לו riderId עדיין
         }
       });
     }
@@ -193,6 +197,8 @@ module.exports = async (req, res) => {
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
+          roles: user.roles || [user.role], // תמיכה במערך תפקידים
+          riderId: user.riderId, // מזהה רוכב אם קיים
           isActive: user.isActive
         }
       });
