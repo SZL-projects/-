@@ -85,8 +85,10 @@ export const vehiclesAPI = {
       },
     });
   },
-  listFiles: (folderId, vehicleId = null) => {
-    const params = vehicleId ? `folderId=${folderId}&vehicleId=${vehicleId}` : `folderId=${folderId}`;
+  listFiles: (folderId, vehicleId = null, viewAsRider = false) => {
+    let params = `folderId=${folderId}`;
+    if (vehicleId) params += `&vehicleId=${vehicleId}`;
+    if (viewAsRider) params += `&viewAsRider=true`;
     return api.get(`/vehicles/list-files?${params}`);
   },
   deleteFile: (fileId) => api.delete(`/vehicles/delete-file?fileId=${fileId}`),

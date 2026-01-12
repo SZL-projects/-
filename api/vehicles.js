@@ -228,9 +228,9 @@ module.exports = async (req, res) => {
 
     // GET /api/vehicles/list-files
     if (url.endsWith('/list-files') && req.method === 'GET') {
-      const { folderId, vehicleId } = req.query;
+      const { folderId, vehicleId, viewAsRider } = req.query;
 
-      console.log('📁 List files request:', { folderId, vehicleId, userId: user.id, userRoles: user.roles || user.role });
+      console.log('📁 List files request:', { folderId, vehicleId, viewAsRider, userId: user.id, userRoles: user.roles || user.role });
 
       if (!folderId) {
         return res.status(400).json({
@@ -268,18 +268,19 @@ module.exports = async (req, res) => {
         filesWithMetadata = files.map(file => ({ ...file, visibleToRider: true }));
       }
 
-      // סינון לפי תפקיד משתמש
+      // סינון לפי תפקיד משתמש והקשר התצוגה
       const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
       const isAdminOrManager = userRoles.some(role =>
         ['super_admin', 'manager', 'secretary'].includes(role)
       );
 
-      console.log('👤 User check:', { userRoles, isAdminOrManager, filesBeforeFilter: filesWithMetadata.length });
+      console.log('👤 User check:', { userRoles, isAdminOrManager, viewAsRider, filesBeforeFilter: filesWithMetadata.length });
 
-      // אם המשתמש הוא רוכב - הצג רק קבצים גלויים
-      const filteredFiles = isAdminOrManager
-        ? filesWithMetadata
-        : filesWithMetadata.filter(f => f.visibleToRider);
+      // אם viewAsRider=true (צפייה כרוכב) - תמיד הצג רק קבצים גלויים, גם למנהלים
+      // אחרת - מנהלים רואים הכל, רוכבים רק גלויים
+      const filteredFiles = (viewAsRider === 'true' || !isAdminOrManager)
+        ? filesWithMetadata.filter(f => f.visibleToRider)
+        : filesWithMetadata;
 
       console.log('✅ Files after filter:', filteredFiles.length);
       console.log('📋 Sample file visibility:', filteredFiles.slice(0, 2).map(f => ({ name: f.name, visibleToRider: f.visibleToRider })));
