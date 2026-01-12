@@ -12,8 +12,17 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     const savedUser = localStorage.getItem('user') || sessionStorage.getItem('user');
 
-    if (token && savedUser) {
-      setUser(JSON.parse(savedUser));
+    if (token && savedUser && savedUser !== 'undefined') {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (error) {
+        console.error('Error parsing saved user:', error);
+        // ניקוי localStorage/sessionStorage אם יש בעיה
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+      }
     }
     setLoading(false);
   }, []);
