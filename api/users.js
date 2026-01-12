@@ -135,6 +135,16 @@ module.exports = async (req, res) => {
 
       // PUT - update user
       if (req.method === 'PUT') {
+        const existingUserData = doc.data();
+
+        // הגנה על משתמש ראשי - אסור לעדכן
+        if (existingUserData.email === 'b0583639333@gmail.com') {
+          return res.status(403).json({
+            success: false,
+            message: 'לא ניתן לערוך את המשתמש הראשי'
+          });
+        }
+
         const updateData = { ...req.body };
 
         // אם יש סיסמה חדשה - להצפין
@@ -163,6 +173,16 @@ module.exports = async (req, res) => {
       // DELETE user
       if (req.method === 'DELETE') {
         checkAuthorization(user, ['super_admin']); // רק super_admin יכול למחוק
+
+        const existingUserData = doc.data();
+
+        // הגנה על משתמש ראשי - אסור למחוק
+        if (existingUserData.email === 'b0583639333@gmail.com') {
+          return res.status(403).json({
+            success: false,
+            message: 'לא ניתן למחוק את המשתמש הראשי'
+          });
+        }
 
         await userRef.delete();
 

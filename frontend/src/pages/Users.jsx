@@ -283,7 +283,8 @@ export default function Users() {
                       color="secondary"
                       size="small"
                       onClick={() => handleOpenDialog(user)}
-                      title="ערוך משתמש"
+                      disabled={user.email === 'b0583639333@gmail.com'}
+                      title={user.email === 'b0583639333@gmail.com' ? 'לא ניתן לערוך משתמש ראשי' : 'ערוך משתמש'}
                     >
                       <Edit />
                     </IconButton>
@@ -291,8 +292,8 @@ export default function Users() {
                       color="error"
                       size="small"
                       onClick={() => handleDeleteClick(user)}
-                      disabled={user.role === 'super_admin'}
-                      title="מחק משתמש"
+                      disabled={user.email === 'b0583639333@gmail.com'}
+                      title={user.email === 'b0583639333@gmail.com' ? 'לא ניתן למחוק משתמש ראשי' : 'מחק משתמש'}
                     >
                       <Delete />
                     </IconButton>
