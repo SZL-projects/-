@@ -228,7 +228,7 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
                     borderRadius: 1,
                     mb: 1,
                     pl: 2,
-                    pr: 2,
+                    pr: isInsuranceTab ? '220px' : '100px', // מקום לכפתורים
                     py: 1,
                     '&:hover': { bgcolor: 'action.hover' },
                   }}

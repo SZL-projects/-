@@ -248,10 +248,18 @@ module.exports = async (req, res) => {
         const fileSettings = vehicleData.fileSettings || {};
 
         // הוספת מטא-דאטה לכל קובץ
-        filesWithMetadata = files.map(file => ({
-          ...file,
-          visibleToRider: fileSettings[file.id]?.visibleToRider !== false // ברירת מחדל: גלוי
-        }));
+        filesWithMetadata = files.map(file => {
+          // אם יש הגדרה מפורשת לקובץ - השתמש בה, אחרת ברירת מחדל היא גלוי
+          const hasExplicitSetting = fileSettings[file.id] !== undefined;
+          const visibleToRider = hasExplicitSetting
+            ? fileSettings[file.id].visibleToRider
+            : true; // ברירת מחדל: גלוי
+
+          return {
+            ...file,
+            visibleToRider
+          };
+        });
       } else {
         // אם אין vehicleId - כל הקבצים גלויים (למנהלים)
         filesWithMetadata = files.map(file => ({ ...file, visibleToRider: true }));
