@@ -79,11 +79,43 @@ export default function VehicleDetails() {
 
     setCreatingFolders(true);
     try {
-      // מחיקת התיקייה הראשית (זה ימחק גם את כל תתי-התיקיות)
-      await vehiclesAPI.deleteFile(folderData.mainFolderId);
+      // מחיקת כל תת-התיקיות אחת אחת
+      const foldersToDelete = [
+        folderData.insuranceFolderId,
+        folderData.archiveFolderId,
+        folderData.photosFolderId
+      ].filter(Boolean); // מסנן רק IDs שקיימים
+
+      console.log('Deleting sub-folders:', foldersToDelete);
+
+      // מחיקת כל תת-תיקייה
+      for (const folderId of foldersToDelete) {
+        try {
+          await vehiclesAPI.deleteFile(folderId);
+          console.log('✅ Deleted folder:', folderId);
+        } catch (err) {
+          console.warn('⚠️ Failed to delete folder:', folderId, err.message);
+          // ממשיכים גם אם נכשל
+        }
+      }
+
+      // מחיקת התיקייה הראשית
+      if (folderData.mainFolderId) {
+        try {
+          await vehiclesAPI.deleteFile(folderData.mainFolderId);
+          console.log('✅ Deleted main folder');
+        } catch (err) {
+          console.warn('⚠️ Failed to delete main folder:', err.message);
+        }
+      }
 
       // עדכון הכלי - הסרת נתוני התיקיות
-      await vehiclesAPI.update(id, { driveFolderData: null });
+      await vehiclesAPI.update(id, {
+        driveFolderData: null,
+        insuranceFolderId: null,
+        archiveFolderId: null,
+        photosFolderId: null
+      });
 
       setFolderData(null);
       showSnackbar('מבנה התיקיות נמחק בהצלחה', 'success');

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ניקוי קבצים כפולים</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    button {
+      background: #1976d2;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #1565c0;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .danger {
+      background: #d32f2f;
+    }
+    .danger:hover {
+      background: #c62828;
+    }
+    .success {
+      background: #388e3c;
+    }
+    .success:hover {
+      background: #2e7d32;
+    }
+    #log {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 15px;
+      margin-top: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+    h1 {
+      color: #1976d2;
+    }
+    .warning {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 20px 0;
+      color: #856404;
+    }
+    .info {
+      background: #d1ecf1;
+      border: 1px solid #17a2b8;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 20px 0;
+      color: #0c5460;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧹 ניקוי קבצים כפולים - רכב 405</h1>
+
+    <div class="warning">
+      <strong>⚠️ שים לב:</strong><br>
+      כלי זה יתקן את הבעיה שבה קבצים מופיעים גם בביטוחים נוכחיים וגם בישנים.<br>
+      הקבצים ישארו רק בביטוחים נוכחיים.
+    </div>
+
+    <div class="info">
+      <strong>ℹ️ מה זה יעשה?</strong><br>
+      1. יבדוק אילו קבצים מופיעים בשתי התיקיות<br>
+      2. יסיר את הקישור של הקבצים מתיקיית "ביטוחים ישנים"<br>
+      3. הקבצים ישארו רק בתיקיית "ביטוחים נוכחיים"
+    </div>
+
+    <div style="margin: 20px 0;">
+      <button onclick="step1_listFiles()">שלב 1: הצג קבצים</button>
+      <button onclick="step2_fixDuplicates()" class="success">שלב 2: תקן כפילויות</button>
+      <button onclick="step3_clearArchive()" class="danger">שלב 3: נקה ארכיון (אופציונלי)</button>
+    </div>
+
+    <div id="log">לחץ על "שלב 1" כדי להתחיל...</div>
+  </div>
+
+  <script>
+    const API_URL = window.location.origin.includes('localhost')
+      ? 'http://localhost:5000/api'
+      : '/api';
+
+    function log(message) {
+      const logDiv = document.getElementById('log');
+      const timestamp = new Date().toLocaleTimeString('he-IL');
+      logDiv.textContent += `[${timestamp}] ${message}\n`;
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('log').textContent = '';
+    }
+
+    async function getToken() {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!token) {
+        alert('לא נמצא token - אנא התחבר למערכת תחילה');
+        throw new Error('No token found');
+      }
+      return token;
+    }
+
+    async function getVehicleId() {
+      const token = await getToken();
+      log('🔍 מחפש רכב 405...');
+
+      const response = await fetch(`${API_URL}/vehicles?search=405`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const data = await response.json();
+      const vehicle = data.vehicles.find(v => v.internalNumber === '405' || v.licensePlate === '405');
+
+      if (!vehicle) {
+        alert('רכב 405 לא נמצא!');
+        throw new Error('Vehicle 405 not found');
+      }
+
+      log(`✅ נמצא רכב: ${vehicle.internalNumber} (${vehicle.licensePlate})`);
+      return vehicle.id;
+    }
+
+    async function step1_listFiles() {
+      try {
+        clearLog();
+        log('📋 שלב 1: בודק קבצים...\n');
+
+        const vehicleId = await getVehicleId();
+        const token = await getToken();
+
+        const response = await fetch(`${API_URL}/cleanup-duplicate-files`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            vehicleId: vehicleId,
+            action: 'list'
+          })
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.message);
+        }
+
+        log(`\n📊 תוצאות:`);
+        log(`ביטוחים נוכחיים: ${result.data.insuranceCount} קבצים`);
+        log(`ביטוחים ישנים: ${result.data.archiveCount} קבצים\n`);
+
+        if (result.data.insuranceFiles.length > 0) {
+          log('📁 קבצים בביטוחים נוכחיים:');
+          result.data.insuranceFiles.forEach(f => log(`  - ${f.name}`));
+        }
+
+        if (result.data.archiveFiles.length > 0) {
+          log('\n📁 קבצים בביטוחים ישנים:');
+          result.data.archiveFiles.forEach(f => log(`  - ${f.name}`));
+        }
+
+        log('\n✅ סיום שלב 1');
+        log('\nלחץ על "שלב 2" כדי לתקן כפילויות...');
+
+      } catch (error) {
+        log(`\n❌ שגיאה: ${error.message}`);
+        console.error(error);
+      }
+    }
+
+    async function step2_fixDuplicates() {
+      try {
+        if (!confirm('האם אתה בטוח? זה יסיר קבצים כפולים מתיקיית הארכיון')) {
+          return;
+        }
+
+        clearLog();
+        log('🔧 שלב 2: מתקן כפילויות...\n');
+
+        const vehicleId = await getVehicleId();
+        const token = await getToken();
+
+        const response = await fetch(`${API_URL}/cleanup-duplicate-files`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            vehicleId: vehicleId,
+            action: 'remove-duplicates'
+          })
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.message);
+        }
+
+        log(`\n✅ ${result.message}`);
+        log(`נמצאו כפילויות: ${result.data.duplicatesFound}`);
+        log(`תוקנו: ${result.data.fixedCount}`);
+
+        if (result.data.results.length > 0) {
+          log('\n📋 קבצים שתוקנו:');
+          result.data.results.forEach(r => log(`  ✅ ${r.name}`));
+        }
+
+        log('\n🎉 התיקון הושלם בהצלחה!');
+        log('עכשיו הקבצים נמצאים רק בביטוחים נוכחיים.');
+
+      } catch (error) {
+        log(`\n❌ שגיאה: ${error.message}`);
+        console.error(error);
+      }
+    }
+
+    async function step3_clearArchive() {
+      try {
+        if (!confirm('⚠️ זה ימחק את כל הקבצים מתיקיית הארכיון! האם אתה בטוח?')) {
+          return;
+        }
+
+        clearLog();
+        log('🗑️ שלב 3: מנקה ארכיון...\n');
+
+        const vehicleId = await getVehicleId();
+        const token = await getToken();
+
+        const response = await fetch(`${API_URL}/cleanup-duplicate-files`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            vehicleId: vehicleId,
+            action: 'clear-archive'
+          })
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.message);
+        }
+
+        log(`\n✅ ${result.message}`);
+        log(`נמחקו: ${result.data.deleted} קבצים`);
+        log(`נכשלו: ${result.data.failed} קבצים`);
+
+        if (result.data.results.length > 0) {
+          log('\n📋 פירוט:');
+          result.data.results.forEach(r => {
+            const icon = r.status === 'deleted' ? '✅' : '❌';
+            log(`  ${icon} ${r.name}`);
+          });
+        }
+
+        log('\n🎉 הניקוי הושלם!');
+
+      } catch (error) {
+        log(`\n❌ שגיאה: ${error.message}`);
+        console.error(error);
+      }
+    }
+  </script>
+</body>
+</html>

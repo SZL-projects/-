@@ -340,8 +340,8 @@ class GoogleDriveService {
     }
   }
 
-  // מחיקת קובץ
-  async deleteFile(fileId) {
+  // מחיקת קובץ או תיקייה (מטפל ב-multiple parents)
+  async deleteFile(fileId, recursive = false) {
     if (!this.initialized) {
       await this.initialize();
     }
@@ -351,12 +351,68 @@ class GoogleDriveService {
     }
 
     try {
+      // אם recursive=true, נמחק קודם את כל הקבצים בתוך התיקייה
+      if (recursive) {
+        console.log(`🗑️ Starting recursive delete for folder: ${fileId}`);
+
+        // קבלת כל הקבצים והתיקיות בתוך התיקייה הזו
+        const files = await this.listFiles(fileId);
+
+        console.log(`Found ${files.length} items to delete`);
+
+        // מחיקת כל קובץ/תיקייה רקורסיבית
+        for (const file of files) {
+          try {
+            // בדיקה אם זו תיקייה
+            const fileInfo = await this.drive.files.get({
+              fileId: file.id,
+              fields: 'mimeType, parents',
+              supportsAllDrives: true
+            });
+
+            const isFolder = fileInfo.data.mimeType === 'application/vnd.google-apps.folder';
+
+            if (isFolder) {
+              // תיקייה - מחיקה רקורסיבית
+              await this.deleteFile(file.id, true);
+            } else {
+              // קובץ - בדיקה אם יש לו multiple parents
+              const parents = fileInfo.data.parents || [];
+
+              if (parents.length > 1) {
+                // יש יותר מ-parent אחד - נסיר רק את הקישור לתיקייה הזו
+                console.log(`File ${file.name} has multiple parents, removing link only`);
+                await this.drive.files.update({
+                  fileId: file.id,
+                  removeParents: fileId,
+                  fields: 'id, name, parents',
+                  supportsAllDrives: true
+                });
+              } else {
+                // parent יחיד - מחיקה מלאה
+                await this.drive.files.delete({
+                  fileId: file.id,
+                  supportsAllDrives: true
+                });
+              }
+            }
+
+            console.log(`✅ Deleted: ${file.name}`);
+          } catch (err) {
+            console.error(`❌ Failed to delete ${file.name}:`, err.message);
+            // ממשיכים למחוק את השאר גם אם נכשל אחד
+          }
+        }
+      }
+
+      // מחיקת התיקייה/קובץ עצמו
       await this.drive.files.delete({
         fileId: fileId,
         supportsAllDrives: true
       });
 
-      return { success: true, message: 'File deleted successfully' };
+      console.log(`✅ Deleted folder/file: ${fileId}`);
+      return { success: true, message: 'File/folder deleted successfully' };
     } catch (error) {
       console.error('Error deleting file:', error);
       throw error;
