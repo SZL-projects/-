@@ -399,7 +399,7 @@ module.exports = async (req, res) => {
     if (url.endsWith('/delete-file') && req.method === 'DELETE') {
       checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
 
-      const { fileId } = req.query;
+      const { fileId, recursive } = req.query;
 
       if (!fileId) {
         return res.status(400).json({
@@ -408,11 +408,13 @@ module.exports = async (req, res) => {
         });
       }
 
-      await googleDriveService.deleteFile(fileId);
+      // תמיכה במחיקה רקורסיבית של תיקיות
+      const isRecursive = recursive === 'true';
+      await googleDriveService.deleteFile(fileId, isRecursive);
 
       return res.json({
         success: true,
-        message: 'קובץ נמחק בהצלחה'
+        message: isRecursive ? 'תיקייה נמחקה בהצלחה (כולל תוכן)' : 'קובץ נמחק בהצלחה'
       });
     }
 

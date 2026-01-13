@@ -91,7 +91,7 @@ export const vehiclesAPI = {
     if (viewAsRider) params += `&viewAsRider=true`;
     return api.get(`/vehicles/list-files?${params}`);
   },
-  deleteFile: (fileId) => api.delete(`/vehicles/delete-file?fileId=${fileId}`),
+  deleteFile: (fileId, recursive = false) => api.delete(`/vehicles/delete-file?fileId=${fileId}${recursive ? '&recursive=true' : ''}`),
   updateFileVisibility: (vehicleId, fileId, visibleToRider) => api.patch('/vehicles/update-file-visibility', { vehicleId, fileId, visibleToRider }),
   moveToArchive: (vehicleId, fileId) => api.post('/vehicles/move-to-archive', { vehicleId, fileId }),
 };

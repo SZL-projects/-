@@ -88,22 +88,22 @@ export default function VehicleDetails() {
 
       console.log('Deleting sub-folders:', foldersToDelete);
 
-      // מחיקת כל תת-תיקייה
+      // מחיקת כל תת-תיקייה (רקורסיבית - כולל כל הקבצים בתוכה)
       for (const folderId of foldersToDelete) {
         try {
-          await vehiclesAPI.deleteFile(folderId);
-          console.log('✅ Deleted folder:', folderId);
+          await vehiclesAPI.deleteFile(folderId, true); // recursive=true
+          console.log('✅ Deleted folder recursively:', folderId);
         } catch (err) {
           console.warn('⚠️ Failed to delete folder:', folderId, err.message);
           // ממשיכים גם אם נכשל
         }
       }
 
-      // מחיקת התיקייה הראשית
+      // מחיקת התיקייה הראשית (רקורסיבית)
       if (folderData.mainFolderId) {
         try {
-          await vehiclesAPI.deleteFile(folderData.mainFolderId);
-          console.log('✅ Deleted main folder');
+          await vehiclesAPI.deleteFile(folderData.mainFolderId, true); // recursive=true
+          console.log('✅ Deleted main folder recursively');
         } catch (err) {
           console.warn('⚠️ Failed to delete main folder:', err.message);
         }
