@@ -22,23 +22,41 @@ module.exports = async (req, res) => {
     checkAuthorization(user, ['super_admin']);
 
     if (req.method === 'POST') {
-      const { vehicleId, insuranceFolderId, archiveFolderId, photosFolderId } = req.body;
+      const { vehicleId, licensePlate, internalNumber, insuranceFolderId, archiveFolderId, photosFolderId } = req.body;
 
-      if (!vehicleId) {
+      let vehicleRef;
+      let vehicleDoc;
+
+      // Find vehicle by ID, licensePlate, or internalNumber
+      if (vehicleId) {
+        vehicleRef = db.collection('vehicles').doc(vehicleId);
+        vehicleDoc = await vehicleRef.get();
+      } else if (licensePlate || internalNumber) {
+        const vehiclesSnapshot = await db.collection('vehicles').get();
+        const vehicles = vehiclesSnapshot.docs;
+
+        const foundVehicle = vehicles.find(doc => {
+          const data = doc.data();
+          if (licensePlate && data.licensePlate === licensePlate) return true;
+          if (internalNumber && data.internalNumber === internalNumber) return true;
+          return false;
+        });
+
+        if (foundVehicle) {
+          vehicleRef = foundVehicle.ref;
+          vehicleDoc = foundVehicle;
+        }
+      } else {
         return res.status(400).json({
           success: false,
-          message: 'vehicleId is required'
+          message: 'vehicleId, licensePlate, or internalNumber is required'
         });
       }
 
-      // Get vehicle
-      const vehicleRef = db.collection('vehicles').doc(vehicleId);
-      const vehicleDoc = await vehicleRef.get();
-
-      if (!vehicleDoc.exists) {
+      if (!vehicleDoc || !vehicleDoc.exists) {
         return res.status(404).json({
           success: false,
-          message: `Vehicle ${vehicleId} not found`
+          message: `Vehicle not found`
         });
       }
 
