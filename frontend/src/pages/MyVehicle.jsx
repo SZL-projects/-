@@ -54,14 +54,15 @@ export default function MyVehicle() {
   const loadInsuranceFiles = async (folderId, vehicleId) => {
     try {
       setFilesLoading(true);
-      console.log('🔵 MyVehicle - Calling API with:', { folderId, vehicleId, viewAsRider: true });
-      // קריאה ל-API עם vehicleId ו-viewAsRider כדי לקבל רק קבצים גלויים לרוכבים
+      console.log('🔵🔵🔵 MyVehicle LOADING FILES - folderId:', folderId, 'vehicleId:', vehicleId);
+      // רוכבים רואים את כל הקבצים בתיקיית הביטוחים הנוכחיים
       const response = await vehiclesAPI.listFiles(folderId, vehicleId, true);
-      console.log('🟢 MyVehicle - Got files from API:', response.data.files?.length, 'files');
-      console.log('📄 Files details:', response.data.files?.map(f => ({ name: f.name, visibleToRider: f.visibleToRider })));
+      console.log('🟢🟢🟢 GOT FILES FROM API:', response.data.files?.length, 'files');
+      console.log('📄📄📄 Files:', response.data.files?.map(f => f.name));
       setInsuranceFiles(response.data.files || []);
     } catch (err) {
-      console.error('🔴 Error loading insurance files:', err);
+      console.error('🔴🔴🔴 ERROR loading files:', err);
+      console.error('Error details:', err.response?.data || err.message);
     } finally {
       setFilesLoading(false);
     }
