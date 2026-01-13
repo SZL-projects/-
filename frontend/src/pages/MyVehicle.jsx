@@ -37,6 +37,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { vehiclesAPI, ridersAPI, faultsAPI } from '../services/api';
 
 export default function MyVehicle() {
+  // 🚨🚨🚨 VERSION CHECK - אם אתה רואה את זה הקוד החדש נטען! 🚨🚨🚨
+  console.log('🚨🚨🚨 MyVehicle PAGE LOADED - VERSION 2.0.0 🚨🚨🚨');
+  console.log('Current time:', new Date().toLocaleTimeString('he-IL'));
+
   const navigate = useNavigate();
   const { user } = useAuth();
   const [vehicle, setVehicle] = useState(null);
@@ -48,6 +52,7 @@ export default function MyVehicle() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    console.log('🔥 useEffect triggered - starting loadMyVehicle');
     loadMyVehicle();
   }, [user]);
 
