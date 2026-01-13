@@ -141,9 +141,16 @@ export default function MyVehicle() {
       const vehicleData = vehicleResponse.data.vehicle;
       setVehicle(vehicleData);
 
+      console.log('🚗 Vehicle Data:', vehicleData);
+      console.log('📁 insuranceFolderId:', vehicleData.insuranceFolderId);
+      console.log('📁 Has insurance folder?', !!vehicleData.insuranceFolderId);
+
       // טעינת קבצי ביטוח (אם יש תיקיית ביטוח)
       if (vehicleData.insuranceFolderId) {
+        console.log('✅ Calling loadInsuranceFiles with:', vehicleData.insuranceFolderId, vehicleId);
         loadInsuranceFiles(vehicleData.insuranceFolderId, vehicleId);
+      } else {
+        console.log('❌ NO insuranceFolderId - cannot load files!');
       }
 
       // טעינת תקלות אחרונות
