@@ -25,8 +25,6 @@ import {
   PictureAsPdf,
   Description,
   Archive,
-  Visibility,
-  VisibilityOff,
 } from '@mui/icons-material';
 import { vehiclesAPI } from '../services/api';
 
@@ -115,19 +113,8 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
     }
   };
 
-  const handleToggleVisibility = async (fileId, currentVisibility) => {
-    try {
-      await vehiclesAPI.updateFileVisibility(vehicleId, fileId, !currentVisibility);
-      showSnackbar(
-        !currentVisibility ? 'הקובץ כעת גלוי לרוכבים' : 'הקובץ כעת מוסתר מרוכבים',
-        'success'
-      );
-      loadFiles();
-    } catch (error) {
-      console.error('Error updating file visibility:', error);
-      showSnackbar('שגיאה בעדכון נראות הקובץ', 'error');
-    }
-  };
+  // נראות מבוססת תיקייה בלבד - קבצים בביטוחים נוכחיים גלויים אוטומטית
+  // כפתורי נראות ו"הצג הכל" הוסרו לפי בקשת המשתמש
 
   const handleMoveToArchive = async (fileId) => {
     if (!window.confirm('האם להעביר קובץ זה לארכיון?')) {
@@ -144,26 +131,6 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
     }
   };
 
-  const handleShowAllToRiders = async () => {
-    if (!window.confirm('האם להציג את כל הקבצים בקטגוריה זו לרוכבים?')) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      // עדכון כל הקבצים בקטגוריה הנוכחית להיות גלויים
-      for (const file of files) {
-        await vehiclesAPI.updateFileVisibility(vehicleId, file.id, true);
-      }
-      showSnackbar(`${files.length} קבצים הוגדרו כגלויים לרוכבים`, 'success');
-      loadFiles();
-    } catch (error) {
-      console.error('Error showing all files to riders:', error);
-      showSnackbar('שגיאה בעדכון נראות קבצים', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const showSnackbar = (message, severity) => {
     setSnackbar({ open: true, message, severity });
@@ -226,18 +193,7 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
             </Button>
           </label>
 
-          {/* כפתור הצג הכל לרוכבים - רק בביטוחים נוכחיים */}
-          {currentTab === 0 && files.length > 0 && (
-            <Button
-              variant="outlined"
-              color="primary"
-              startIcon={<Visibility />}
-              onClick={handleShowAllToRiders}
-              disabled={loading}
-            >
-              הצג הכל לרוכבים
-            </Button>
-          )}
+          {/* כפתור "הצג הכל לרוכבים" הוסר - נראות אוטומטית לפי תיקייה */}
         </Box>
 
         {loading ? (
@@ -251,7 +207,6 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
             {files.map((file) => {
               const isInsuranceTab = currentTab === 0; // ביטוחים נוכחיים
               const isArchiveTab = currentTab === 1; // ביטוחים ישנים
-              const isVisible = file.visibleToRider !== false;
 
               return (
                 <ListItem
@@ -262,7 +217,7 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
                     borderRadius: 1,
                     mb: 1,
                     pl: 2,
-                    pr: isInsuranceTab ? '220px' : '100px', // מקום לכפתורים
+                    pr: isInsuranceTab ? '150px' : '100px', // מקום לכפתורים (פחות בגלל הסרת כפתורי נראות)
                     py: 1,
                     '&:hover': { bgcolor: 'action.hover' },
                   }}
@@ -281,17 +236,7 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
                         </IconButton>
                       </Tooltip>
 
-                      {/* כפתור נראות - רק בביטוחים נוכחיים */}
-                      {isInsuranceTab && (
-                        <Tooltip title={isVisible ? 'הסתר מרוכבים' : 'הצג לרוכבים'}>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleToggleVisibility(file.id, isVisible)}
-                          >
-                            {isVisible ? <Visibility fontSize="small" color="primary" /> : <VisibilityOff fontSize="small" color="disabled" />}
-                          </IconButton>
-                        </Tooltip>
-                      )}
+                      {/* כפתור נראות הוסר - נראות אוטומטית לפי תיקייה */}
 
                       {/* כפתור ארכיון - רק בביטוחים נוכחיים */}
                       {isInsuranceTab && (
@@ -323,26 +268,7 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
                     {getFileIcon(file.mimeType)}
                   </Box>
                   <ListItemText
-                    primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <span>{file.name}</span>
-                        {!isVisible && (
-                          <Box
-                            component="span"
-                            sx={{
-                              fontSize: '0.75rem',
-                              bgcolor: 'warning.light',
-                              color: 'warning.dark',
-                              px: 1,
-                              py: 0.25,
-                              borderRadius: 1,
-                            }}
-                          >
-                            מוסתר
-                          </Box>
-                        )}
-                      </Box>
-                    }
+                    primary={file.name}
                     secondary={`${formatFileSize(file.size)} • ${new Date(file.createdTime).toLocaleDateString('he-IL')}`}
                   />
                 </ListItem>
