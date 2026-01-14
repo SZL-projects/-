@@ -518,7 +518,9 @@ module.exports = async (req, res) => {
 
     // Collection operations
     if (req.method === 'GET') {
-      const { search, status, type, page = 1, limit = 50 } = req.query;
+      const { search, status, type, page = 1, limit = 20 } = req.query;
+      const limitNum = Math.min(parseInt(limit), 100); // מקסימום 100 לבקשה
+      const pageNum = parseInt(page);
 
       let query = db.collection('vehicles');
 
@@ -529,9 +531,6 @@ module.exports = async (req, res) => {
       if (type) {
         query = query.where('type', '==', type);
       }
-
-      const snapshot = await query.get();
-      let vehicles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
       // סינון לפי תפקיד משתמש
       const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
@@ -546,37 +545,79 @@ module.exports = async (req, res) => {
         if (riderSnapshot.exists) {
           const riderData = riderSnapshot.data();
           if (riderData.assignedVehicleId) {
-            // הצג רק את הכלי המשויך
-            vehicles = vehicles.filter(v => v.id === riderData.assignedVehicleId);
-          } else {
-            // אין כלי משויך - מערך ריק
-            vehicles = [];
+            // רוכב עם כלי משויך - החזר רק את הכלי הזה
+            const vehicleDoc = await db.collection('vehicles').doc(riderData.assignedVehicleId).get();
+            if (vehicleDoc.exists) {
+              return res.status(200).json({
+                success: true,
+                count: 1,
+                totalPages: 1,
+                currentPage: 1,
+                vehicles: [{ id: vehicleDoc.id, ...vehicleDoc.data() }]
+              });
+            }
           }
-        } else {
-          // רוכב לא נמצא - מערך ריק
-          vehicles = [];
         }
+        // אין כלי משויך או רוכב לא נמצא - החזר מערך ריק
+        return res.status(200).json({
+          success: true,
+          count: 0,
+          totalPages: 0,
+          currentPage: 1,
+          vehicles: []
+        });
       }
 
-      if (search) {
-        const searchLower = search.toLowerCase();
-        vehicles = vehicles.filter(vehicle =>
-          vehicle.licensePlate?.toLowerCase().includes(searchLower) ||
-          vehicle.internalNumber?.toLowerCase().includes(searchLower) ||
-          vehicle.manufacturer?.toLowerCase().includes(searchLower) ||
-          vehicle.model?.toLowerCase().includes(searchLower)
-        );
+      // אופטימיזציה: אם אין חיפוש, השתמש ב-Firestore pagination אמיתי
+      if (!search) {
+        // מיון לפי createdAt
+        query = query.orderBy('createdAt', 'desc');
+
+        // דילוג על תוצאות קודמות
+        if (pageNum > 1) {
+          const skipCount = (pageNum - 1) * limitNum;
+          query = query.offset(skipCount);
+        }
+
+        query = query.limit(limitNum);
+
+        const snapshot = await query.get();
+        const vehicles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // ספירה כוללת
+        const countSnapshot = await db.collection('vehicles').count().get();
+        const totalCount = countSnapshot.data().count;
+
+        return res.status(200).json({
+          success: true,
+          count: totalCount,
+          totalPages: Math.ceil(totalCount / limitNum),
+          currentPage: pageNum,
+          vehicles: vehicles
+        });
       }
 
-      const startIndex = (page - 1) * limit;
-      const endIndex = page * limit;
+      // אם יש חיפוש - טען הכל וסנן
+      const snapshot = await query.get();
+      let vehicles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      const searchLower = search.toLowerCase();
+      vehicles = vehicles.filter(vehicle =>
+        vehicle.licensePlate?.toLowerCase().includes(searchLower) ||
+        vehicle.internalNumber?.toLowerCase().includes(searchLower) ||
+        vehicle.manufacturer?.toLowerCase().includes(searchLower) ||
+        vehicle.model?.toLowerCase().includes(searchLower)
+      );
+
+      const startIndex = (pageNum - 1) * limitNum;
+      const endIndex = pageNum * limitNum;
       const paginatedVehicles = vehicles.slice(startIndex, endIndex);
 
       return res.status(200).json({
         success: true,
         count: vehicles.length,
-        totalPages: Math.ceil(vehicles.length / limit),
-        currentPage: parseInt(page),
+        totalPages: Math.ceil(vehicles.length / limitNum),
+        currentPage: pageNum,
         vehicles: paginatedVehicles
       });
     }

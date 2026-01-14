@@ -82,7 +82,9 @@ module.exports = async (req, res) => {
 
     // Collection operations
     if (req.method === 'GET') {
-      const { search, severity, status, vehicleId, riderId, page = 1, limit = 100 } = req.query;
+      const { search, severity, status, vehicleId, riderId, page = 1, limit = 20 } = req.query;
+      const limitNum = Math.min(parseInt(limit), 100); // מקסימום 100 לבקשה
+      const pageNum = parseInt(page);
 
       let query = db.collection('faults');
 
@@ -117,27 +119,63 @@ module.exports = async (req, res) => {
             return res.status(200).json({
               success: true,
               count: 0,
+              totalPages: 0,
+              currentPage: 1,
               faults: []
             });
           }
         }
       }
 
-      const snapshot = await query.limit(parseInt(limit)).get();
+      // אופטימיזציה: אם אין חיפוש, השתמש ב-Firestore pagination אמיתי
+      if (!search) {
+        // מיון לפי תאריך דיווח (תקלות חדשות ראשונות)
+        query = query.orderBy('createdAt', 'desc');
+
+        // דילוג על תוצאות קודמות
+        if (pageNum > 1) {
+          const skipCount = (pageNum - 1) * limitNum;
+          query = query.offset(skipCount);
+        }
+
+        query = query.limit(limitNum);
+
+        const snapshot = await query.get();
+        const faults = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // ספירה כוללת
+        const countSnapshot = await db.collection('faults').count().get();
+        const totalCount = countSnapshot.data().count;
+
+        return res.status(200).json({
+          success: true,
+          count: totalCount,
+          totalPages: Math.ceil(totalCount / limitNum),
+          currentPage: pageNum,
+          faults: faults
+        });
+      }
+
+      // אם יש חיפוש - טען הכל וסנן
+      const snapshot = await query.get();
       let faults = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      if (search) {
-        const searchLower = search.toLowerCase();
-        faults = faults.filter(fault =>
-          fault.description?.toLowerCase().includes(searchLower) ||
-          fault.faultType?.toLowerCase().includes(searchLower)
-        );
-      }
+      const searchLower = search.toLowerCase();
+      faults = faults.filter(fault =>
+        fault.description?.toLowerCase().includes(searchLower) ||
+        fault.faultType?.toLowerCase().includes(searchLower)
+      );
+
+      const startIndex = (pageNum - 1) * limitNum;
+      const endIndex = pageNum * limitNum;
+      const paginatedFaults = faults.slice(startIndex, endIndex);
 
       return res.status(200).json({
         success: true,
         count: faults.length,
-        faults
+        totalPages: Math.ceil(faults.length / limitNum),
+        currentPage: pageNum,
+        faults: paginatedFaults
       });
     }
 

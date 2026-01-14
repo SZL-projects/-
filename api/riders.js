@@ -101,7 +101,9 @@ module.exports = async (req, res) => {
     // Collection operations (GET/POST /api/riders)
     // GET - list riders
     if (req.method === 'GET') {
-      const { search, riderStatus, assignmentStatus, region, page = 1, limit = 50 } = req.query;
+      const { search, riderStatus, assignmentStatus, region, page = 1, limit = 20 } = req.query;
+      const limitNum = Math.min(parseInt(limit), 100); // מקסימום 100 לבקשה
+      const pageNum = parseInt(page);
 
       let query = db.collection('riders');
 
@@ -126,28 +128,56 @@ module.exports = async (req, res) => {
         query = query.where('__name__', '==', user.riderId);
       }
 
+      // אופטימיזציה: אם אין חיפוש, השתמש ב-Firestore pagination אמיתי
+      if (!search) {
+        // מיון לפי createdAt (חשוב ל-pagination יעיל)
+        query = query.orderBy('createdAt', 'desc');
+
+        // אם זה לא עמוד ראשון, טען רק את הכמות הנדרשת מהתחלה ודלג
+        if (pageNum > 1) {
+          const skipCount = (pageNum - 1) * limitNum;
+          query = query.offset(skipCount);
+        }
+
+        query = query.limit(limitNum);
+
+        const snapshot = await query.get();
+        const riders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // טעינת הספירה הכוללת בנפרד (יעיל יותר)
+        const countSnapshot = await db.collection('riders').count().get();
+        const totalCount = countSnapshot.data().count;
+
+        return res.status(200).json({
+          success: true,
+          count: totalCount,
+          totalPages: Math.ceil(totalCount / limitNum),
+          currentPage: pageNum,
+          riders: riders
+        });
+      }
+
+      // אם יש חיפוש - נאלצים לטעון הכל ולסנן (Firestore לא תומך בחיפוש טקסט מלא)
       const snapshot = await query.get();
       let riders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      if (search) {
-        const searchLower = search.toLowerCase();
-        riders = riders.filter(rider =>
-          rider.firstName?.toLowerCase().includes(searchLower) ||
-          rider.lastName?.toLowerCase().includes(searchLower) ||
-          rider.idNumber?.includes(search) ||
-          rider.phone?.includes(search)
-        );
-      }
+      const searchLower = search.toLowerCase();
+      riders = riders.filter(rider =>
+        rider.firstName?.toLowerCase().includes(searchLower) ||
+        rider.lastName?.toLowerCase().includes(searchLower) ||
+        rider.idNumber?.includes(search) ||
+        rider.phone?.includes(search)
+      );
 
-      const startIndex = (page - 1) * limit;
-      const endIndex = page * limit;
+      const startIndex = (pageNum - 1) * limitNum;
+      const endIndex = pageNum * limitNum;
       const paginatedRiders = riders.slice(startIndex, endIndex);
 
       return res.status(200).json({
         success: true,
         count: riders.length,
-        totalPages: Math.ceil(riders.length / limit),
-        currentPage: parseInt(page),
+        totalPages: Math.ceil(riders.length / limitNum),
+        currentPage: pageNum,
         riders: paginatedRiders
       });
     }
