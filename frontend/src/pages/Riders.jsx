@@ -44,6 +44,7 @@ import {
 } from '@mui/icons-material';
 import { ridersAPI } from '../services/api';
 import RiderDialog from '../components/RiderDialog';
+import { useDebounce } from '../hooks/useDebounce';
 
 export default function Riders() {
   const navigate = useNavigate();
@@ -52,6 +53,7 @@ export default function Riders() {
   const [riders, setRiders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [error, setError] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRider, setEditingRider] = useState(null);
@@ -61,12 +63,12 @@ export default function Riders() {
 
   useEffect(() => {
     loadRiders();
-  }, []);
+  }, [debouncedSearchTerm]); // שינוי: מאזין ל-debouncedSearchTerm במקום טעינה ראשונית
 
   const loadRiders = async () => {
     try {
       setLoading(true);
-      const response = await ridersAPI.getAll({ search: searchTerm });
+      const response = await ridersAPI.getAll({ search: debouncedSearchTerm });
       setRiders(response.data.riders || []);
       setError('');
     } catch (err) {
@@ -76,10 +78,6 @@ export default function Riders() {
       setLoading(false);
     }
   };
-
-  const handleSearch = useCallback(() => {
-    loadRiders();
-  }, [searchTerm]);
 
   const handleOpenDialog = useCallback((rider = null) => {
     setEditingRider(rider);
