@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -65,23 +65,12 @@ export default function MonthlyChecks() {
   const [viewMode, setViewMode] = useState(0); // 0: כל הבקרות, 1: רוכבים ללא בקרה
   const [selectedCheck, setSelectedCheck] = useState(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [stats, setStats] = useState({
-    total: 0,
-    thisMonth: 0,
-    pending: 0,
-    completed: 0,
-    ridersWithoutCheck: 0,
-  });
 
   useEffect(() => {
     loadData();
   }, []);
 
-  useEffect(() => {
-    calculateStats();
-  }, [checks, riders]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [checksRes, ridersRes, vehiclesRes] = await Promise.all([
@@ -100,9 +89,10 @@ export default function MonthlyChecks() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const calculateStats = () => {
+  // אופטימיזציה: חישוב סטטיסטיקות עם useMemo במקום useEffect
+  const stats = useMemo(() => {
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -120,16 +110,17 @@ export default function MonthlyChecks() {
       rider => !ridersWithCheckThisMonth.has(rider._id || rider.id)
     );
 
-    setStats({
+    return {
       total: checks.length,
       thisMonth: thisMonthChecks.length,
       pending: checks.filter(c => c.status === 'pending').length,
       completed: checks.filter(c => c.status === 'completed' || c.status === 'passed').length,
       ridersWithoutCheck: ridersWithoutCheck.length,
-    });
-  };
+    };
+  }, [checks, riders]);
 
-  const getRidersWithoutCheck = () => {
+  // אופטימיזציה: חישוב רוכבים ללא בקרה עם useMemo
+  const ridersWithoutCheck = useMemo(() => {
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -171,7 +162,7 @@ export default function MonthlyChecks() {
         daysSinceLastCheck,
       };
     });
-  };
+  }, [checks, riders]);
 
   const getColorByDays = (days) => {
     if (!days) return 'default';
@@ -202,24 +193,25 @@ export default function MonthlyChecks() {
     return <Chip label={label} color={color} size="small" icon={icon} />;
   };
 
-  const handleViewDetails = (check) => {
+  const handleViewDetails = useCallback((check) => {
     setSelectedCheck(check);
     setDetailsDialogOpen(true);
-  };
+  }, []);
 
-  const filteredChecks = checks.filter(check => {
-    const matchesSearch = !searchTerm ||
-      check.vehicleLicensePlate?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      check.vehiclePlate?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      check.riderName?.toLowerCase().includes(searchTerm.toLowerCase());
+  // אופטימיזציה: חישוב בקרות מסוננות עם useMemo
+  const filteredChecks = useMemo(() => {
+    return checks.filter(check => {
+      const matchesSearch = !searchTerm ||
+        check.vehicleLicensePlate?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        check.vehiclePlate?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        check.riderName?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = filterStatus === 'all' || check.status === filterStatus;
-    const matchesRider = filterRider === 'all' || check.riderId === filterRider;
+      const matchesStatus = filterStatus === 'all' || check.status === filterStatus;
+      const matchesRider = filterRider === 'all' || check.riderId === filterRider;
 
-    return matchesSearch && matchesStatus && matchesRider;
-  });
-
-  const ridersWithoutCheck = getRidersWithoutCheck();
+      return matchesSearch && matchesStatus && matchesRider;
+    });
+  }, [checks, searchTerm, filterStatus, filterRider]);
 
   return (
     <Box>

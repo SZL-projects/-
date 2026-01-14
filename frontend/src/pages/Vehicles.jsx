@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -45,6 +45,7 @@ import {
 } from '@mui/icons-material';
 import { vehiclesAPI } from '../services/api';
 import VehicleDialog from '../components/VehicleDialog';
+import { useDebounce } from '../hooks/useDebounce';
 
 export default function Vehicles() {
   const navigate = useNavigate();
@@ -53,6 +54,7 @@ export default function Vehicles() {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [error, setError] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState(null);
@@ -62,12 +64,12 @@ export default function Vehicles() {
 
   useEffect(() => {
     loadVehicles();
-  }, []);
+  }, [debouncedSearchTerm]);
 
   const loadVehicles = async () => {
     try {
       setLoading(true);
-      const response = await vehiclesAPI.getAll({ search: searchTerm });
+      const response = await vehiclesAPI.getAll({ search: debouncedSearchTerm });
       setVehicles(response.data.vehicles || []);
       setError('');
     } catch (err) {
@@ -78,19 +80,15 @@ export default function Vehicles() {
     }
   };
 
-  const handleSearch = () => {
-    loadVehicles();
-  };
-
-  const handleOpenDialog = (vehicle = null) => {
+  const handleOpenDialog = useCallback((vehicle = null) => {
     setEditingVehicle(vehicle);
     setDialogOpen(true);
-  };
+  }, []);
 
-  const handleCloseDialog = () => {
+  const handleCloseDialog = useCallback(() => {
     setDialogOpen(false);
     setEditingVehicle(null);
-  };
+  }, []);
 
   const handleSaveVehicle = async (vehicleData) => {
     try {
@@ -183,32 +181,21 @@ export default function Vehicles() {
 
       {/* חיפוש */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-          <TextField
-            fullWidth
-            placeholder="חפש לפי מספר רישוי, מספר פנימי או דגם..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search />
-                </InputAdornment>
-              ),
-            }}
-            dir="rtl"
-            size={isMobile ? 'small' : 'medium'}
-          />
-          <Button
-            variant="contained"
-            onClick={handleSearch}
-            sx={{ minWidth: { xs: '100%', sm: 120 } }}
-            fullWidth={isMobile}
-          >
-            חיפוש
-          </Button>
-        </Box>
+        <TextField
+          fullWidth
+          placeholder="חפש לפי מספר רישוי, מספר פנימי או דגם..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search />
+              </InputAdornment>
+            ),
+          }}
+          dir="rtl"
+          size={isMobile ? 'small' : 'medium'}
+        />
       </Paper>
 
       {/* תוכן כלים - טבלה למסכים גדולים, כרטיסים למובייל */}
