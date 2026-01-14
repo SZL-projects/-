@@ -37,10 +37,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { vehiclesAPI, ridersAPI, faultsAPI } from '../services/api';
 
 export default function MyVehicle() {
-  // 🚨🚨🚨 VERSION CHECK - אם אתה רואה את זה הקוד החדש נטען! 🚨🚨🚨
-  console.log('🚨🚨🚨 MyVehicle PAGE LOADED - VERSION 2.0.0 🚨🚨🚨');
-  console.log('Current time:', new Date().toLocaleTimeString('he-IL'));
-
   const navigate = useNavigate();
   const { user } = useAuth();
   const [vehicle, setVehicle] = useState(null);
@@ -52,22 +48,17 @@ export default function MyVehicle() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    console.log('🔥 useEffect triggered - starting loadMyVehicle');
     loadMyVehicle();
   }, [user]);
 
   const loadInsuranceFiles = async (folderId, vehicleId) => {
     try {
       setFilesLoading(true);
-      console.log('🔵🔵🔵 MyVehicle LOADING FILES - folderId:', folderId, 'vehicleId:', vehicleId);
       // רוכבים רואים את כל הקבצים בתיקיית הביטוחים הנוכחיים
       const response = await vehiclesAPI.listFiles(folderId, vehicleId, true);
-      console.log('🟢🟢🟢 GOT FILES FROM API:', response.data.files?.length, 'files');
-      console.log('📄📄📄 Files:', response.data.files?.map(f => f.name));
       setInsuranceFiles(response.data.files || []);
     } catch (err) {
-      console.error('🔴🔴🔴 ERROR loading files:', err);
-      console.error('Error details:', err.response?.data || err.message);
+      console.error('ERROR loading files:', err);
     } finally {
       setFilesLoading(false);
     }
@@ -141,16 +132,9 @@ export default function MyVehicle() {
       const vehicleData = vehicleResponse.data.vehicle;
       setVehicle(vehicleData);
 
-      console.log('🚗 Vehicle Data:', vehicleData);
-      console.log('📁 insuranceFolderId:', vehicleData.insuranceFolderId);
-      console.log('📁 Has insurance folder?', !!vehicleData.insuranceFolderId);
-
       // טעינת קבצי ביטוח (אם יש תיקיית ביטוח)
       if (vehicleData.insuranceFolderId) {
-        console.log('✅ Calling loadInsuranceFiles with:', vehicleData.insuranceFolderId, vehicleId);
         loadInsuranceFiles(vehicleData.insuranceFolderId, vehicleId);
-      } else {
-        console.log('❌ NO insuranceFolderId - cannot load files!');
       }
 
       // טעינת תקלות אחרונות

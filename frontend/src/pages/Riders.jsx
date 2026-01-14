@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -77,21 +77,21 @@ export default function Riders() {
     }
   };
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     loadRiders();
-  };
+  }, [searchTerm]);
 
-  const handleOpenDialog = (rider = null) => {
+  const handleOpenDialog = useCallback((rider = null) => {
     setEditingRider(rider);
     setDialogOpen(true);
-  };
+  }, []);
 
-  const handleCloseDialog = () => {
+  const handleCloseDialog = useCallback(() => {
     setDialogOpen(false);
     setEditingRider(null);
-  };
+  }, []);
 
-  const handleSaveRider = async (riderData) => {
+  const handleSaveRider = useCallback(async (riderData) => {
     try {
       if (editingRider) {
         await ridersAPI.update(editingRider.id, riderData);
