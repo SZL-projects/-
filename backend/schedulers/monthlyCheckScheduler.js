@@ -1,13 +1,15 @@
 const cron = require('node-cron');
 const { db } = require('../config/firebase');
 const COLLECTIONS = require('../config/collections');
+const emailService = require('../services/emailService');
 
 /**
  * Scheduler לפתיחת בקרות חודשיות אוטומטית
  *
- * פועל ב-1 לכל חודש בשעה 00:00
+ * פועל ב-1 לכל חודש בשעה 09:00 (שעון ישראל)
  * עובר על כל הרוכבים הפעילים עם כלי משויך
  * יוצר בקרה חודשית חדשה עם סטטוס 'pending'
+ * שולח מייל הודעה לרוכב
  */
 
 class MonthlyCheckScheduler {
@@ -61,6 +63,19 @@ class MonthlyCheckScheduler {
 
       const docRef = await this.monthlyChecksCollection.add(checkData);
       console.log(`✅ בקרה חודשית נוצרה עבור ${rider.firstName} ${rider.lastName} (${vehicle.licensePlate})`);
+
+      // שליחת מייל הודעה לרוכב
+      try {
+        if (rider.email) {
+          await emailService.sendMonthlyCheckReminder(rider, vehicle);
+          console.log(`📧 מייל הודעה נשלח ל-${rider.email}`);
+        } else {
+          console.log(`⚠️ אין כתובת מייל עבור ${rider.firstName} ${rider.lastName}`);
+        }
+      } catch (emailError) {
+        console.error(`❌ שגיאה בשליחת מייל ל-${rider.email}:`, emailError.message);
+        // ממשיכים גם אם שליחת המייל נכשלה
+      }
 
       return { id: docRef.id, ...checkData };
     } catch (error) {
@@ -153,11 +168,11 @@ class MonthlyCheckScheduler {
 
   /**
    * הפעלת ה-Scheduler
-   * רץ ב-1 לכל חודש בשעה 00:00
+   * רץ ב-1 לכל חודש בשעה 09:00
    */
   start() {
-    // Cron expression: '0 0 1 * *' = דקה 0, שעה 0, יום 1 בחודש
-    this.job = cron.schedule('0 0 1 * *', () => {
+    // Cron expression: '0 9 1 * *' = דקה 0, שעה 9, יום 1 בחודש
+    this.job = cron.schedule('0 9 1 * *', () => {
       console.log('⏰ Cron job triggered - פותח בקרות חודשיות...');
       this.openMonthlyChecks();
     }, {
@@ -165,7 +180,7 @@ class MonthlyCheckScheduler {
       timezone: "Asia/Jerusalem" // אזור זמן ישראל
     });
 
-    console.log('✅ Monthly Check Scheduler started - יפעל ב-1 לכל חודש בחצות');
+    console.log('✅ Monthly Check Scheduler started - יפעל ב-1 לכל חודש בשעה 09:00 בבוקר');
 
     // אם NODE_ENV=development, אפשר להריץ מייד לבדיקה
     if (process.env.ENABLE_SCHEDULER_ON_START === 'true') {

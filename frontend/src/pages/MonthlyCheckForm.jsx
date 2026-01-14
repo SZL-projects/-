@@ -54,12 +54,19 @@ export default function MonthlyCheckForm() {
     currentKm: '',
 
     // בדיקות חובה (לכל כלי)
-    oilCheck: '', // תקין/לא תקין/לא ניתן לבדוק
+    oilCheck: '', // תקין/נמוך/לא תקין
     waterCheck: '', // רלוונטי רק לקטנועים
     tirePressureFront: '',
     tirePressureRear: '',
 
-    // בדיקות נוספות
+    // בדיקות נוספות - קטנועים
+    boxScrewsTightening: '', // בוצע/לא בוצע (קטנועים)
+    boxRailLubrication: '', // בוצע/לא בוצע (קטנועים)
+
+    // בדיקות נוספות - אופנועים
+    chainLubrication: '', // בוצע/לא בוצע (אופנועים)
+
+    // בדיקות נוספות - כלליות
     brakesCondition: 'good', // good/fair/poor
     lightsCondition: 'good',
     mirrorsCondition: 'good',
@@ -180,7 +187,23 @@ export default function MonthlyCheckForm() {
         }
         // בדיקת מים רלוונטית רק לקטנועים
         if (vehicle?.type === 'scooter' && !formData.waterCheck) {
-          setError('נא לבדוק את רמת המים (קטנוע)');
+          setError('נא לבדוק את רמת המים');
+          return false;
+        }
+        // בדיקות ספציפיות לקטנועים
+        if (vehicle?.type === 'scooter') {
+          if (!formData.boxScrewsTightening) {
+            setError('נא לסמן האם בוצע חיזוק ברגי ארגז');
+            return false;
+          }
+          if (!formData.boxRailLubrication) {
+            setError('נא לסמן האם בוצע שימון מסילות ארגז');
+            return false;
+          }
+        }
+        // בדיקות ספציפיות לאופנועים
+        if (vehicle?.type === 'motorcycle' && !formData.chainLubrication) {
+          setError('נא לסמן האם בוצע שימון שרשרת');
           return false;
         }
         if (!formData.tirePressureFront || !formData.tirePressureRear) {
@@ -225,6 +248,11 @@ export default function MonthlyCheckForm() {
           waterCheck: formData.waterCheck,
           tirePressureFront: parseFloat(formData.tirePressureFront),
           tirePressureRear: parseFloat(formData.tirePressureRear),
+          // בדיקות ספציפיות לסוג כלי
+          boxScrewsTightening: formData.boxScrewsTightening,
+          boxRailLubrication: formData.boxRailLubrication,
+          chainLubrication: formData.chainLubrication,
+          // בדיקות כלליות
           brakesCondition: formData.brakesCondition,
           lightsCondition: formData.lightsCondition,
           mirrorsCondition: formData.mirrorsCondition,
@@ -374,8 +402,8 @@ export default function MonthlyCheckForm() {
                     onChange={handleChange('oilCheck')}
                   >
                     <FormControlLabel value="ok" control={<Radio />} label="תקין" />
-                    <FormControlLabel value="low" control={<Radio />} label="נמוך - צריך השלמה" />
-                    <FormControlLabel value="cannot_check" control={<Radio />} label="לא ניתן לבדוק" />
+                    <FormControlLabel value="low" control={<Radio />} label="נמוך" />
+                    <FormControlLabel value="not_ok" control={<Radio />} label="לא תקין" />
                   </RadioGroup>
                 </FormControl>
               </Grid>
@@ -385,7 +413,7 @@ export default function MonthlyCheckForm() {
                 <Grid item xs={12}>
                   <FormControl component="fieldset" fullWidth>
                     <FormLabel component="legend" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                      <LocalGasStation /> רמת מים (קטנוע)
+                      <LocalGasStation /> מים (עפ"י הוראות הכלי)
                     </FormLabel>
                     <RadioGroup
                       row
@@ -393,8 +421,68 @@ export default function MonthlyCheckForm() {
                       onChange={handleChange('waterCheck')}
                     >
                       <FormControlLabel value="ok" control={<Radio />} label="תקין" />
-                      <FormControlLabel value="low" control={<Radio />} label="נמוך - צריך השלמה" />
-                      <FormControlLabel value="cannot_check" control={<Radio />} label="לא ניתן לבדוק" />
+                      <FormControlLabel value="low" control={<Radio />} label="נמוך" />
+                      <FormControlLabel value="not_ok" control={<Radio />} label="לא תקין" />
+                    </RadioGroup>
+                  </FormControl>
+                </Grid>
+              )}
+
+              <Grid item xs={12}>
+                <Divider />
+              </Grid>
+
+              {/* בדיקות ספציפיות לקטנועים */}
+              {vehicle?.type === 'scooter' && (
+                <>
+                  <Grid item xs={12}>
+                    <FormControl component="fieldset" fullWidth>
+                      <FormLabel component="legend" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Build /> חיזוק ברגי ארגז
+                      </FormLabel>
+                      <RadioGroup
+                        row
+                        value={formData.boxScrewsTightening}
+                        onChange={handleChange('boxScrewsTightening')}
+                      >
+                        <FormControlLabel value="done" control={<Radio />} label="בוצע" />
+                        <FormControlLabel value="not_done" control={<Radio />} label="לא בוצע" />
+                      </RadioGroup>
+                    </FormControl>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <FormControl component="fieldset" fullWidth>
+                      <FormLabel component="legend" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Build /> שימון מסילות ארגז
+                      </FormLabel>
+                      <RadioGroup
+                        row
+                        value={formData.boxRailLubrication}
+                        onChange={handleChange('boxRailLubrication')}
+                      >
+                        <FormControlLabel value="done" control={<Radio />} label="בוצע" />
+                        <FormControlLabel value="not_done" control={<Radio />} label="לא בוצע" />
+                      </RadioGroup>
+                    </FormControl>
+                  </Grid>
+                </>
+              )}
+
+              {/* בדיקות ספציפיות לאופנועים */}
+              {vehicle?.type === 'motorcycle' && (
+                <Grid item xs={12}>
+                  <FormControl component="fieldset" fullWidth>
+                    <FormLabel component="legend" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Build /> שימון שרשרת
+                    </FormLabel>
+                    <RadioGroup
+                      row
+                      value={formData.chainLubrication}
+                      onChange={handleChange('chainLubrication')}
+                    >
+                      <FormControlLabel value="done" control={<Radio />} label="בוצע" />
+                      <FormControlLabel value="not_done" control={<Radio />} label="לא בוצע" />
                     </RadioGroup>
                   </FormControl>
                 </Grid>
@@ -553,13 +641,31 @@ export default function MonthlyCheckForm() {
                     <Typography variant="h6" gutterBottom>בדיקות חובה</Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
                       <Chip
-                        label={`שמן: ${formData.oilCheck === 'ok' ? 'תקין' : formData.oilCheck === 'low' ? 'נמוך' : 'לא ניתן לבדוק'}`}
-                        color={formData.oilCheck === 'ok' ? 'success' : formData.oilCheck === 'low' ? 'warning' : 'default'}
+                        label={`שמן: ${formData.oilCheck === 'ok' ? 'תקין' : formData.oilCheck === 'low' ? 'נמוך' : 'לא תקין'}`}
+                        color={formData.oilCheck === 'ok' ? 'success' : formData.oilCheck === 'low' ? 'warning' : 'error'}
                       />
                       {vehicle?.type === 'scooter' && formData.waterCheck && (
                         <Chip
-                          label={`מים: ${formData.waterCheck === 'ok' ? 'תקין' : formData.waterCheck === 'low' ? 'נמוך' : 'לא ניתן לבדוק'}`}
-                          color={formData.waterCheck === 'ok' ? 'success' : formData.waterCheck === 'low' ? 'warning' : 'default'}
+                          label={`מים: ${formData.waterCheck === 'ok' ? 'תקין' : formData.waterCheck === 'low' ? 'נמוך' : 'לא תקין'}`}
+                          color={formData.waterCheck === 'ok' ? 'success' : formData.waterCheck === 'low' ? 'warning' : 'error'}
+                        />
+                      )}
+                      {vehicle?.type === 'scooter' && formData.boxScrewsTightening && (
+                        <Chip
+                          label={`ברגי ארגז: ${formData.boxScrewsTightening === 'done' ? 'בוצע' : 'לא בוצע'}`}
+                          color={formData.boxScrewsTightening === 'done' ? 'success' : 'warning'}
+                        />
+                      )}
+                      {vehicle?.type === 'scooter' && formData.boxRailLubrication && (
+                        <Chip
+                          label={`מסילות ארגז: ${formData.boxRailLubrication === 'done' ? 'בוצע' : 'לא בוצע'}`}
+                          color={formData.boxRailLubrication === 'done' ? 'success' : 'warning'}
+                        />
+                      )}
+                      {vehicle?.type === 'motorcycle' && formData.chainLubrication && (
+                        <Chip
+                          label={`שרשרת: ${formData.chainLubrication === 'done' ? 'בוצע' : 'לא בוצע'}`}
+                          color={formData.chainLubrication === 'done' ? 'success' : 'warning'}
                         />
                       )}
                       <Chip label={`צמיג קדמי: ${formData.tirePressureFront} PSI`} />

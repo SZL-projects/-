@@ -23,8 +23,11 @@ const app = express();
 // אתחול Schedulers (רק אם לא ב-Vercel serverless)
 if (process.env.NODE_ENV !== 'production') {
   const monthlyCheckScheduler = require('./schedulers/monthlyCheckScheduler');
-  // הפעלת הטיימר לבקרות חודשיות
+  const dailyReminderScheduler = require('./schedulers/dailyReminderScheduler');
+
+  // הפעלת הטיימרים
   monthlyCheckScheduler.start();
+  dailyReminderScheduler.start();
 }
 
 // Middleware בסיסי
@@ -47,7 +50,7 @@ app.use('/api/tasks', require('./routes/tasks-firebase'));
 app.use('/api/faults', require('./routes/faults-firebase'));
 app.use('/api/monthly-checks', require('./routes/monthly-checks-firebase'));
 
-// נתיב להרצה ידנית של פתיחת בקרות חודשיות (למנהלי על בלבד)
+// נתיבים להרצה ידנית של משימות (למנהלי על בלבד)
 if (process.env.NODE_ENV !== 'production') {
   app.post('/api/admin/trigger-monthly-checks', async (req, res) => {
     try {
@@ -56,6 +59,22 @@ if (process.env.NODE_ENV !== 'production') {
       res.json({
         success: true,
         message: 'בקרות חודשיות נפתחו בהצלחה'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+
+  app.post('/api/admin/trigger-daily-reminders', async (req, res) => {
+    try {
+      const dailyReminderScheduler = require('./schedulers/dailyReminderScheduler');
+      await dailyReminderScheduler.runNow();
+      res.json({
+        success: true,
+        message: 'תזכורות יומיות נשלחו בהצלחה'
       });
     } catch (error) {
       res.status(500).json({
