@@ -51,6 +51,7 @@ import {
   Refresh,
   Send as SendIcon,
   FilterList,
+  AddTask,
 } from '@mui/icons-material';
 import { monthlyChecksAPI, ridersAPI, vehiclesAPI } from '../services/api';
 
@@ -69,6 +70,9 @@ export default function MonthlyChecks() {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [sendingNotification, setSendingNotification] = useState(null); // ID של בקרה ששולחים לה הודעה
+  const [openChecksDialogOpen, setOpenChecksDialogOpen] = useState(false);
+  const [selectedRiders, setSelectedRiders] = useState([]);
+  const [openingChecks, setOpeningChecks] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -269,6 +273,75 @@ export default function MonthlyChecks() {
     await loadData();
   }, [checks, loadData]);
 
+  // רשימת רוכבים זכאים לבקרה (פעילים עם כלי משויך)
+  const eligibleRiders = useMemo(() => {
+    const activeRiders = riders.filter(r => r.riderStatus === 'active' || r.status === 'active');
+    return activeRiders.map(rider => {
+      const assignedVehicle = vehicles.find(v => v.assignedTo === (rider._id || rider.id));
+      return {
+        ...rider,
+        assignedVehicle,
+        isEligible: !!assignedVehicle // רק רוכבים עם כלי משויך
+      };
+    }).filter(r => r.isEligible);
+  }, [riders, vehicles]);
+
+  const handleOpenChecksDialog = useCallback(() => {
+    setSelectedRiders(eligibleRiders.map(r => r._id || r.id)); // בחירת כולם כברירת מחדל
+    setOpenChecksDialogOpen(true);
+  }, [eligibleRiders]);
+
+  const handleToggleRider = useCallback((riderId) => {
+    setSelectedRiders(prev =>
+      prev.includes(riderId)
+        ? prev.filter(id => id !== riderId)
+        : [...prev, riderId]
+    );
+  }, []);
+
+  const handleToggleAll = useCallback(() => {
+    if (selectedRiders.length === eligibleRiders.length) {
+      setSelectedRiders([]);
+    } else {
+      setSelectedRiders(eligibleRiders.map(r => r._id || r.id));
+    }
+  }, [selectedRiders, eligibleRiders]);
+
+  const handleOpenChecks = useCallback(async () => {
+    if (selectedRiders.length === 0) {
+      setSnackbar({ open: true, message: 'נא לבחור לפחות רוכב אחד', severity: 'warning' });
+      return;
+    }
+
+    setOpeningChecks(true);
+    try {
+      const response = await monthlyChecksAPI.create({
+        riderIds: selectedRiders,
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear()
+      });
+
+      setSnackbar({
+        open: true,
+        message: `${selectedRiders.length} בקרות חודשיות נפתחו בהצלחה`,
+        severity: 'success'
+      });
+
+      setOpenChecksDialogOpen(false);
+      setSelectedRiders([]);
+      await loadData();
+    } catch (error) {
+      console.error('Error opening checks:', error);
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || 'שגיאה בפתיחת בקרות',
+        severity: 'error'
+      });
+    } finally {
+      setOpeningChecks(false);
+    }
+  }, [selectedRiders, loadData]);
+
 
   // אופטימיזציה: חישוב בקרות מסוננות עם useMemo
   const filteredChecks = useMemo(() => {
@@ -298,6 +371,14 @@ export default function MonthlyChecks() {
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddTask />}
+            onClick={handleOpenChecksDialog}
+          >
+            פתח בקרות חודשיות
+          </Button>
           <Button
             variant="contained"
             color="secondary"
@@ -745,6 +826,107 @@ export default function MonthlyChecks() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDetailsDialogOpen(false)}>סגור</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog לפתיחת בקרות חודשיות */}
+      <Dialog
+        open={openChecksDialogOpen}
+        onClose={() => setOpenChecksDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+        dir="rtl"
+      >
+        <DialogTitle>
+          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AddTask /> פתיחת בקרות חודשיות
+          </Typography>
+          <Typography variant="body2" color="textSecondary">
+            בחר רוכבים לפתיחת בקרה חודשית - {new Date().toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="body1" fontWeight="500">
+                נבחרו {selectedRiders.length} מתוך {eligibleRiders.length} רוכבים
+              </Typography>
+              <Button
+                size="small"
+                onClick={handleToggleAll}
+                startIcon={<CheckCircle />}
+              >
+                {selectedRiders.length === eligibleRiders.length ? 'בטל הכל' : 'בחר הכל'}
+              </Button>
+            </Box>
+
+            {eligibleRiders.length === 0 ? (
+              <Alert severity="info">
+                אין רוכבים פעילים עם כלי משויך
+              </Alert>
+            ) : (
+              <List sx={{ maxHeight: 400, overflow: 'auto' }}>
+                {eligibleRiders.map((rider) => (
+                  <ListItem
+                    key={rider._id || rider.id}
+                    sx={{
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 1,
+                      mb: 1,
+                      cursor: 'pointer',
+                      '&:hover': { bgcolor: 'action.hover' },
+                      bgcolor: selectedRiders.includes(rider._id || rider.id) ? 'action.selected' : 'background.paper'
+                    }}
+                    onClick={() => handleToggleRider(rider._id || rider.id)}
+                  >
+                    <ListItemIcon>
+                      <input
+                        type="checkbox"
+                        checked={selectedRiders.includes(rider._id || rider.id)}
+                        onChange={() => handleToggleRider(rider._id || rider.id)}
+                        style={{ width: 20, height: 20, cursor: 'pointer' }}
+                      />
+                    </ListItemIcon>
+                    <ListItemIcon>
+                      <Person color="primary" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={
+                        <Typography variant="body1" fontWeight="500">
+                          {rider.firstName} {rider.lastName}
+                        </Typography>
+                      }
+                      secondary={
+                        <>
+                          <Typography variant="body2" component="span">
+                            כלי: {rider.assignedVehicle?.licensePlate}
+                          </Typography>
+                          <Typography variant="body2" component="span" sx={{ ml: 2 }}>
+                            • {rider.assignedVehicle?.manufacturer} {rider.assignedVehicle?.model}
+                          </Typography>
+                        </>
+                      }
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenChecksDialogOpen(false)}>
+            ביטול
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleOpenChecks}
+            disabled={openingChecks || selectedRiders.length === 0}
+            startIcon={openingChecks ? <CircularProgress size={20} /> : <AddTask />}
+          >
+            {openingChecks ? 'פותח בקרות...' : `פתח ${selectedRiders.length} בקרות`}
+          </Button>
         </DialogActions>
       </Dialog>
 

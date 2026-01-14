@@ -77,16 +77,116 @@ router.get('/:id', async (req, res) => {
 });
 
 // @route   POST /api/monthly-checks
-// @desc    יצירת בקרה חודשית חדשה
-// @access  Private
+// @desc    יצירת בקרה חודשית חדשה או בקרות מרובות
+// @access  Private (למנהלים ומעלה ליצירה מרובה)
 router.post('/', async (req, res) => {
   try {
-    const check = await MonthlyCheckModel.create(req.body, req.user.id);
+    // אם מתקבל riderIds - זה יצירה מרובה (רק למנהלים)
+    if (req.body.riderIds && Array.isArray(req.body.riderIds)) {
+      // בדיקת הרשאות - רק מנהל ומעלה
+      if (req.user.role !== 'manager' && req.user.role !== 'super_admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'אין הרשאה לפתיחת בקרות מרובות'
+        });
+      }
 
-    res.status(201).json({
-      success: true,
-      monthlyCheck: check
-    });
+      const { riderIds, month, year } = req.body;
+      const createdChecks = [];
+      const errors = [];
+
+      // פתיחת בקרות לכל הרוכבים הנבחרים
+      for (const riderId of riderIds) {
+        try {
+          // מציאת הרוכב
+          const riderDoc = await db.collection(COLLECTIONS.RIDERS).doc(riderId).get();
+          if (!riderDoc.exists) {
+            errors.push({ riderId, error: 'רוכב לא נמצא' });
+            continue;
+          }
+          const rider = { id: riderDoc.id, ...riderDoc.data() };
+
+          // מציאת הכלי המשויך
+          const vehiclesSnapshot = await db.collection(COLLECTIONS.VEHICLES)
+            .where('assignedTo', '==', riderId)
+            .limit(1)
+            .get();
+
+          if (vehiclesSnapshot.empty) {
+            errors.push({ riderId, error: 'לרוכב אין כלי משויך' });
+            continue;
+          }
+
+          const vehicleDoc = vehiclesSnapshot.docs[0];
+          const vehicle = { id: vehicleDoc.id, ...vehicleDoc.data() };
+
+          // בדיקה אם כבר קיימת בקרה לחודש זה
+          const now = new Date();
+          const checkMonth = month || now.getMonth() + 1;
+          const checkYear = year || now.getFullYear();
+          const monthStart = new Date(checkYear, checkMonth - 1, 1);
+          const monthEnd = new Date(checkYear, checkMonth, 0, 23, 59, 59);
+
+          const existingCheckSnapshot = await db.collection(COLLECTIONS.MONTHLY_CHECKS)
+            .where('riderId', '==', riderId)
+            .where('vehicleId', '==', vehicle.id)
+            .where('checkDate', '>=', monthStart)
+            .where('checkDate', '<=', monthEnd)
+            .limit(1)
+            .get();
+
+          if (!existingCheckSnapshot.empty) {
+            errors.push({ riderId, error: 'כבר קיימת בקרה לחודש זה' });
+            continue;
+          }
+
+          // יצירת בקרה חודשית
+          const checkData = {
+            riderId: rider.id,
+            riderName: `${rider.firstName} ${rider.lastName}`,
+            vehicleId: vehicle.id,
+            vehicleLicensePlate: vehicle.licensePlate,
+            vehiclePlate: vehicle.licensePlate,
+            checkDate: new Date(checkYear, checkMonth - 1, 1),
+            status: 'pending',
+            checkResults: {},
+            createdAt: new Date(),
+            createdBy: req.user.id,
+            updatedAt: new Date(),
+            updatedBy: req.user.id
+          };
+
+          const docRef = await db.collection(COLLECTIONS.MONTHLY_CHECKS).add(checkData);
+          createdChecks.push({ id: docRef.id, ...checkData });
+
+          // שליחת מייל הודעה לרוכב
+          try {
+            if (rider.email) {
+              await emailService.sendMonthlyCheckReminder(rider, vehicle);
+            }
+          } catch (emailError) {
+            console.error(`שגיאה בשליחת מייל ל-${rider.email}:`, emailError.message);
+          }
+        } catch (error) {
+          errors.push({ riderId, error: error.message });
+        }
+      }
+
+      res.status(201).json({
+        success: true,
+        message: `נוצרו ${createdChecks.length} בקרות חודשיות`,
+        checks: createdChecks,
+        errors: errors.length > 0 ? errors : undefined
+      });
+    } else {
+      // יצירה בודדת (רוכב יוצר לעצמו)
+      const check = await MonthlyCheckModel.create(req.body, req.user.id);
+
+      res.status(201).json({
+        success: true,
+        monthlyCheck: check
+      });
+    }
   } catch (error) {
     res.status(500).json({
       success: false,
