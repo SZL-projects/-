@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -85,31 +85,55 @@ export default function Dashboard() {
       const tasks = tasksRes.data.tasks || [];
       const faults = faultsRes.data.faults || [];
 
-      // חישוב תוקפי ביטוח שמסתיימים בחודש הקרוב
+      // אופטימיזציה: חישובים בלולאה אחת במקום filter מרובים
       const now = new Date();
       const oneMonthFromNow = new Date();
       oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
 
-      const expiringInsurance = vehicles.filter(v => {
-        if (!v.insuranceExpiry) return false;
-        const expiryDate = new Date(v.insuranceExpiry);
-        return expiryDate >= now && expiryDate <= oneMonthFromNow;
-      }).length;
+      // חישוב כל הסטטיסטיקות במעבר אחד
+      let activeRiders = 0;
+      let activeVehicles = 0;
+      let vehiclesWaitingForRider = 0;
+      let expiringInsurance = 0;
+      let pendingTasks = 0;
+      let openFaults = 0;
+      const criticalFaults = [];
 
-      // תקלות קריטיות
-      const criticalFaults = faults.filter(f =>
-        (f.status === 'open' || f.status === 'in_progress') &&
-        (f.severity === 'critical' || f.canRide === false)
-      );
+      riders.forEach(r => {
+        if (r.riderStatus === 'active' || r.status === 'active') activeRiders++;
+      });
+
+      vehicles.forEach(v => {
+        if (v.status === 'active') activeVehicles++;
+        if (v.status === 'waiting_for_rider' || v.status === 'available') vehiclesWaitingForRider++;
+
+        if (v.insuranceExpiry) {
+          const expiryDate = new Date(v.insuranceExpiry);
+          if (expiryDate >= now && expiryDate <= oneMonthFromNow) expiringInsurance++;
+        }
+      });
+
+      tasks.forEach(t => {
+        if (t.status === 'pending' || t.status === 'in_progress') pendingTasks++;
+      });
+
+      faults.forEach(f => {
+        if (f.status === 'open' || f.status === 'in_progress') {
+          openFaults++;
+          if (f.severity === 'critical' || f.canRide === false) {
+            criticalFaults.push(f);
+          }
+        }
+      });
 
       setStats({
         totalRiders: riders.length,
-        activeRiders: riders.filter(r => r.riderStatus === 'active' || r.status === 'active').length,
+        activeRiders,
         totalVehicles: vehicles.length,
-        activeVehicles: vehicles.filter(v => v.status === 'active').length,
-        vehiclesWaitingForRider: vehicles.filter(v => v.status === 'waiting_for_rider' || v.status === 'available').length,
-        pendingTasks: tasks.filter(t => t.status === 'pending' || t.status === 'in_progress').length,
-        openFaults: faults.filter(f => f.status === 'open' || f.status === 'in_progress').length,
+        activeVehicles,
+        vehiclesWaitingForRider,
+        pendingTasks,
+        openFaults,
         criticalFaults: criticalFaults.length,
         ridersWithoutMonthlyCheck: 0, // TODO: יצטרך חישוב מול API בקרה חודשית
         expiringInsurance,
@@ -125,7 +149,7 @@ export default function Dashboard() {
         { id: 4, type: 'fault', text: 'תקלה דווחה', time: 'לפני 5 שעות' },
       ]);
 
-      // Alerts
+      // Alerts - משתמש בערכים שכבר חישבנו
       const newAlerts = [];
       if (criticalFaults.length > 0) {
         newAlerts.push({
@@ -141,18 +165,17 @@ export default function Dashboard() {
           action: 'vehicles'
         });
       }
-      const waitingVehicles = vehicles.filter(v => v.status === 'waiting_for_rider' || v.status === 'available').length;
-      if (waitingVehicles > 0) {
+      if (vehiclesWaitingForRider > 0) {
         newAlerts.push({
           severity: 'info',
-          message: `🏍️ ${waitingVehicles} כלים זמינים ללא רוכב משויך`,
+          message: `🏍️ ${vehiclesWaitingForRider} כלים זמינים ללא רוכב משויך`,
           action: 'vehicles'
         });
       }
-      if (tasks.filter(t => t.status === 'pending').length > 5) {
+      if (pendingTasks > 5) {
         newAlerts.push({
           severity: 'info',
-          message: `✅ ${tasks.filter(t => t.status === 'pending').length} משימות ממתינות לביצוע`,
+          message: `✅ ${pendingTasks} משימות ממתינות לביצוע`,
           action: 'tasks'
         });
       }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -173,29 +173,34 @@ export default function Faults() {
     return categories[category] || category;
   };
 
-  const filteredFaults = faults.filter(fault => {
-    const matchesSearch = !searchTerm ||
-      fault.vehicleLicensePlate?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      fault.vehicleNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      fault.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      fault.description?.toLowerCase().includes(searchTerm.toLowerCase());
+  // אופטימיזציה: useMemo למניעת סינון מיותר בכל render
+  const filteredFaults = useMemo(() => {
+    const searchLower = searchTerm.toLowerCase();
 
-    const matchesStatus = filterStatus === 'all' || fault.status === filterStatus;
-    const matchesSeverity = filterSeverity === 'all' || fault.severity === filterSeverity;
-    const matchesCanRide = filterCanRide === 'all' ||
-      (filterCanRide === 'yes' && fault.canRide === true) ||
-      (filterCanRide === 'no' && fault.canRide === false);
+    return faults.filter(fault => {
+      const matchesSearch = !searchTerm ||
+        fault.vehicleLicensePlate?.toLowerCase().includes(searchLower) ||
+        fault.vehicleNumber?.toLowerCase().includes(searchLower) ||
+        fault.title?.toLowerCase().includes(searchLower) ||
+        fault.description?.toLowerCase().includes(searchLower);
 
-    // סינון לפי טאב
-    let matchesTab = true;
-    if (viewMode === 1) { // פתוחות
-      matchesTab = fault.status === 'open' || fault.status === 'in_progress';
-    } else if (viewMode === 2) { // קריטיות
-      matchesTab = fault.severity === 'critical' || fault.severity === 'high' || fault.canRide === false;
-    }
+      const matchesStatus = filterStatus === 'all' || fault.status === filterStatus;
+      const matchesSeverity = filterSeverity === 'all' || fault.severity === filterSeverity;
+      const matchesCanRide = filterCanRide === 'all' ||
+        (filterCanRide === 'yes' && fault.canRide === true) ||
+        (filterCanRide === 'no' && fault.canRide === false);
 
-    return matchesSearch && matchesStatus && matchesSeverity && matchesCanRide && matchesTab;
-  });
+      // סינון לפי טאב
+      let matchesTab = true;
+      if (viewMode === 1) { // פתוחות
+        matchesTab = fault.status === 'open' || fault.status === 'in_progress';
+      } else if (viewMode === 2) { // קריטיות
+        matchesTab = fault.severity === 'critical' || fault.severity === 'high' || fault.canRide === false;
+      }
+
+      return matchesSearch && matchesStatus && matchesSeverity && matchesCanRide && matchesTab;
+    });
+  }, [faults, searchTerm, filterStatus, filterSeverity, filterCanRide, viewMode]);
 
   return (
     <Box>
