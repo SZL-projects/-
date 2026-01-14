@@ -160,13 +160,17 @@ export default function MonthlyChecks() {
         daysSinceLastCheck = Math.floor((now - lastCheckDate) / (1000 * 60 * 60 * 24));
       }
 
+      // מציאת הכלי המשויך לרוכב
+      const assignedVehicle = vehicles.find(v => v.assignedTo === (rider._id || rider.id));
+
       return {
         ...rider,
         lastCheckDate,
         daysSinceLastCheck,
+        assignedVehicle, // הכלי המשויך
       };
     });
-  }, [checks, riders]);
+  }, [checks, riders, vehicles]);
 
   const getColorByDays = (days) => {
     if (!days) return 'default';
@@ -608,8 +612,8 @@ export default function MonthlyChecks() {
                     secondary={
                       <>
                         <Typography variant="body2" component="span">
-                          {rider.assignmentStatus === 'assigned' ?
-                            `כלי: ${rider.assignedVehicleNumber || 'לא ידוע'}` :
+                          {rider.assignedVehicle ?
+                            `כלי: ${rider.assignedVehicle.licensePlate} (${rider.assignedVehicle.manufacturer} ${rider.assignedVehicle.model})` :
                             'ללא כלי משויך'}
                         </Typography>
                         {rider.lastCheckDate && (
