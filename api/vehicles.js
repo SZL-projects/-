@@ -424,8 +424,17 @@ module.exports = async (req, res) => {
     if (url.match(/\/[\w-]+\/assign$/) && req.method === 'POST') {
       checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
 
-      const vehicleId = url.split('/').filter(Boolean).slice(-2, -1)[0];
+      // Extract vehicleId from URL like /api/vehicles/abc123/assign or /vehicles/abc123/assign
+      const match = url.match(/\/vehicles\/([^/]+)\/assign$/);
+      const vehicleId = match ? match[1] : null;
       const { riderId } = req.body;
+
+      if (!vehicleId) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה כלי חסר מה-URL'
+        });
+      }
 
       if (!riderId) {
         return res.status(400).json({
@@ -493,7 +502,16 @@ module.exports = async (req, res) => {
     if (url.match(/\/[\w-]+\/unassign$/) && req.method === 'POST') {
       checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
 
-      const vehicleId = url.split('/').filter(Boolean).slice(-2, -1)[0];
+      // Extract vehicleId from URL like /api/vehicles/abc123/unassign or /vehicles/abc123/unassign
+      const match = url.match(/\/vehicles\/([^/]+)\/unassign$/);
+      const vehicleId = match ? match[1] : null;
+
+      if (!vehicleId) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה כלי חסר מה-URL'
+        });
+      }
 
       // בדיקה שהכלי קיים
       const vehicleDoc = await db.collection('vehicles').doc(vehicleId).get();
