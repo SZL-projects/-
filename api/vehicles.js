@@ -21,8 +21,10 @@ module.exports = async (req, res) => {
   if (['POST', 'PUT', 'PATCH'].includes(req.method) && !req.body && !req.headers['content-type']?.includes('multipart/form-data')) {
     try {
       const rawBody = await getRawBody(req);
-      req.body = JSON.parse(rawBody.toString());
+      const bodyText = rawBody.toString();
+      req.body = bodyText && bodyText.trim() !== '' ? JSON.parse(bodyText) : {};
     } catch (e) {
+      console.error('Body parsing error:', e.message);
       req.body = {};
     }
   }
@@ -500,13 +502,16 @@ module.exports = async (req, res) => {
 
     // POST /api/vehicles/:id/unassign - ביטול שיוך כלי מרוכב
     if (url.match(/\/[\w-]+\/unassign$/) && req.method === 'POST') {
+      console.log('[UNASSIGN] Request received - URL:', url);
       checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
 
       // Extract vehicleId from URL like /api/vehicles/abc123/unassign or /vehicles/abc123/unassign
       const match = url.match(/\/vehicles\/([^/]+)\/unassign$/);
       const vehicleId = match ? match[1] : null;
+      console.log('[UNASSIGN] Extracted vehicleId:', vehicleId);
 
       if (!vehicleId) {
+        console.log('[UNASSIGN] ERROR: No vehicleId found in URL');
         return res.status(400).json({
           success: false,
           message: 'מזהה כלי חסר מה-URL'
@@ -516,6 +521,7 @@ module.exports = async (req, res) => {
       // בדיקה שהכלי קיים
       const vehicleDoc = await db.collection('vehicles').doc(vehicleId).get();
       if (!vehicleDoc.exists) {
+        console.log('[UNASSIGN] ERROR: Vehicle not found');
         return res.status(404).json({
           success: false,
           message: 'כלי לא נמצא'
@@ -523,8 +529,10 @@ module.exports = async (req, res) => {
       }
 
       const vehicle = { id: vehicleDoc.id, ...vehicleDoc.data() };
+      console.log('[UNASSIGN] Vehicle found - assignedTo:', vehicle.assignedTo);
 
       if (!vehicle.assignedTo) {
+        console.log('[UNASSIGN] ERROR: Vehicle not assigned');
         return res.status(400).json({
           success: false,
           message: 'כלי לא משויך לרוכב'
@@ -532,6 +540,7 @@ module.exports = async (req, res) => {
       }
 
       const riderId = vehicle.assignedTo;
+      console.log('[UNASSIGN] Proceeding to unassign from rider:', riderId);
 
       // עדכון הכלי - הסרת שיוך
       await db.collection('vehicles').doc(vehicleId).update({
@@ -794,7 +803,7 @@ module.exports = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Vehicles error:', error);
+    console.error('Vehicles API error:', error.message, error.stack);
 
     if (error.message.includes('token') || error.message.includes('authorized')) {
       return res.status(401).json({
