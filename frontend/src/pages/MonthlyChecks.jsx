@@ -220,6 +220,52 @@ export default function MonthlyChecks() {
     }
   }, [loadData]);
 
+  const handleSendToAll = useCallback(async () => {
+    const pendingChecks = checks.filter(c => c.status === 'pending');
+
+    if (pendingChecks.length === 0) {
+      setSnackbar({ open: true, message: 'אין בקרות ממתינות לשליחה', severity: 'info' });
+      return;
+    }
+
+    if (!window.confirm(`האם לשלוח הודעה ל-${pendingChecks.length} רוכבים?`)) {
+      return;
+    }
+
+    setSendingNotification('all');
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const check of pendingChecks) {
+      try {
+        await monthlyChecksAPI.sendNotification(check._id || check.id);
+        successCount++;
+      } catch (error) {
+        console.error('Error sending to:', check.riderName, error);
+        errorCount++;
+      }
+    }
+
+    setSendingNotification(null);
+
+    if (errorCount === 0) {
+      setSnackbar({
+        open: true,
+        message: `הודעות נשלחו בהצלחה ל-${successCount} רוכבים`,
+        severity: 'success'
+      });
+    } else {
+      setSnackbar({
+        open: true,
+        message: `נשלחו ${successCount} הודעות, ${errorCount} נכשלו`,
+        severity: 'warning'
+      });
+    }
+
+    await loadData();
+  }, [checks, loadData]);
+
+
   // אופטימיזציה: חישוב בקרות מסוננות עם useMemo
   const filteredChecks = useMemo(() => {
     return checks.filter(check => {
@@ -247,14 +293,27 @@ export default function MonthlyChecks() {
             ניהול ומעקב אחר בקרות חודשיות
           </Typography>
         </Box>
-        <Button
-          variant="outlined"
-          startIcon={<Refresh />}
-          onClick={loadData}
-          disabled={loading}
-        >
-          רענן
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={sendingNotification === 'all' ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+            onClick={handleSendToAll}
+            disabled={sendingNotification === 'all' || stats.pending === 0}
+          >
+            <Badge badgeContent={stats.pending} color="error">
+              שלח הודעה לכל הממתינים
+            </Badge>
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<Refresh />}
+            onClick={loadData}
+            disabled={loading}
+          >
+            רענן
+          </Button>
+        </Box>
       </Box>
 
       {error && (
