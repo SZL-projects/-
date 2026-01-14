@@ -31,6 +31,7 @@ import {
   OpenInNew,
   Description,
   Visibility,
+  Download,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { vehiclesAPI, ridersAPI, faultsAPI } from '../services/api';
@@ -485,6 +486,21 @@ export default function MyVehicle() {
                           onClick={() => window.open(file.webViewLink, '_blank')}
                         >
                           צפייה
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<Download />}
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = `https://drive.google.com/uc?export=download&id=${file.id}`;
+                            link.download = file.name;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}
+                        >
+                          הורדה
                         </Button>
                       </Box>
                     </ListItem>
