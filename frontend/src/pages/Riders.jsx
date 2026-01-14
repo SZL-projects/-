@@ -104,7 +104,7 @@ export default function Riders() {
       console.error('Error saving rider:', err);
       showSnackbar('שגיאה בשמירת הרוכב', 'error');
     }
-  };
+  }, [editingRider, handleCloseDialog, loadRiders]);
 
   const handleDeleteClick = (rider) => {
     setRiderToDelete(rider);
