@@ -183,32 +183,21 @@ export default function Riders() {
 
       {/* חיפוש */}
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-          <TextField
-            fullWidth
-            placeholder="חפש לפי שם, ת''ז או טלפון..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search />
-                </InputAdornment>
-              ),
-            }}
-            dir="rtl"
-            size={isMobile ? 'small' : 'medium'}
-          />
-          <Button
-            variant="contained"
-            onClick={handleSearch}
-            sx={{ minWidth: { xs: '100%', sm: 120 } }}
-            fullWidth={isMobile}
-          >
-            חיפוש
-          </Button>
-        </Box>
+        <TextField
+          fullWidth
+          placeholder="חפש לפי שם, ת''ז או טלפון..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search />
+              </InputAdornment>
+            ),
+          }}
+          dir="rtl"
+          size={isMobile ? 'small' : 'medium'}
+        />
       </Paper>
 
       {/* תוכן רוכבים - טבלה למסכים גדולים, כרטיסים למובייל */}
