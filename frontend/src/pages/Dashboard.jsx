@@ -48,7 +48,14 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
+
+  // רוכבים עוברים אוטומטית לדף "הכלי שלי"
+  useEffect(() => {
+    if (user && user.role === 'rider') {
+      navigate('/my-vehicle', { replace: true });
+    }
+  }, [user, navigate]);
 
   const [stats, setStats] = useState({
     totalRiders: 0,

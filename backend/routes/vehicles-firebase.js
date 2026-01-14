@@ -345,4 +345,139 @@ router.delete('/delete-file', authorize('super_admin', 'manager', 'secretary'), 
   }
 });
 
+// @route   POST /api/vehicles/:id/assign
+// @desc    שיוך כלי לרוכב
+// @access  Private (מנהלים בלבד)
+router.post('/:id/assign', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+  try {
+    const { riderId } = req.body;
+    const vehicleId = req.params.id;
+
+    if (!riderId) {
+      return res.status(400).json({
+        success: false,
+        message: 'נא לספק מזהה רוכב'
+      });
+    }
+
+    // בדיקה שהכלי קיים
+    const vehicle = await VehicleModel.findById(vehicleId);
+    if (!vehicle) {
+      return res.status(404).json({
+        success: false,
+        message: 'כלי לא נמצא'
+      });
+    }
+
+    // בדיקה שהרוכב קיים
+    const { db } = require('../config/firebase');
+    const COLLECTIONS = require('../config/collections');
+    const riderDoc = await db.collection(COLLECTIONS.RIDERS).doc(riderId).get();
+    if (!riderDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        message: 'רוכב לא נמצא'
+      });
+    }
+
+    // בדיקה אם הכלי כבר משויך לרוכב אחר
+    if (vehicle.assignedTo && vehicle.assignedTo !== riderId) {
+      return res.status(400).json({
+        success: false,
+        message: 'כלי כבר משויך לרוכב אחר. יש לבטל את השיוך הקיים תחילה.'
+      });
+    }
+
+    // עדכון הכלי - הוספת שיוך
+    const updatedVehicle = await VehicleModel.update(vehicleId, {
+      assignedTo: riderId,
+      status: 'assigned',
+      assignedAt: new Date()
+    }, req.user.id);
+
+    // עדכון הרוכב - הוספת שיוך
+    await db.collection(COLLECTIONS.RIDERS).doc(riderId).update({
+      assignedVehicle: vehicleId,
+      assignmentStatus: 'assigned',
+      assignedAt: new Date(),
+      updatedAt: new Date(),
+      updatedBy: req.user.id
+    });
+
+    res.json({
+      success: true,
+      message: 'כלי שוייך בהצלחה לרוכב',
+      vehicle: updatedVehicle
+    });
+  } catch (error) {
+    console.error('Error assigning vehicle:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה בשיוך כלי'
+    });
+  }
+});
+
+// @route   POST /api/vehicles/:id/unassign
+// @desc    ביטול שיוך כלי מרוכב
+// @access  Private (מנהלים בלבד)
+router.post('/:id/unassign', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+  try {
+    const vehicleId = req.params.id;
+
+    // בדיקה שהכלי קיים
+    const vehicle = await VehicleModel.findById(vehicleId);
+    if (!vehicle) {
+      return res.status(404).json({
+        success: false,
+        message: 'כלי לא נמצא'
+      });
+    }
+
+    if (!vehicle.assignedTo) {
+      return res.status(400).json({
+        success: false,
+        message: 'כלי לא משויך לרוכב'
+      });
+    }
+
+    const riderId = vehicle.assignedTo;
+
+    // עדכון הכלי - הסרת שיוך
+    const updatedVehicle = await VehicleModel.update(vehicleId, {
+      assignedTo: null,
+      status: 'waiting_for_rider',
+      assignedAt: null,
+      unassignedAt: new Date()
+    }, req.user.id);
+
+    // עדכון הרוכב - הסרת שיוך
+    const { db } = require('../config/firebase');
+    const COLLECTIONS = require('../config/collections');
+
+    const riderDoc = await db.collection(COLLECTIONS.RIDERS).doc(riderId).get();
+    if (riderDoc.exists) {
+      await db.collection(COLLECTIONS.RIDERS).doc(riderId).update({
+        assignedVehicle: null,
+        assignmentStatus: 'unassigned',
+        assignedAt: null,
+        updatedAt: new Date(),
+        updatedBy: req.user.id
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'שיוך הכלי בוטל בהצלחה',
+      vehicle: updatedVehicle
+    });
+  } catch (error) {
+    console.error('Error unassigning vehicle:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה בביטול שיוך כלי'
+    });
+  }
+});
+
 module.exports = router;
