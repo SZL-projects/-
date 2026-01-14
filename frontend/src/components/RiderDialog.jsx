@@ -75,10 +75,8 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
             return true;
           }
           // אחרת, להציג רק כלים לא משויכים
-          // אם isAssigned לא קיים (undefined/null) - הכלי זמין (כלים ישנים)
-          // אם isAssigned הוא false - הכלי זמין
-          // אם assignedRider הוא null/undefined - הכלי זמין
-          const isVehicleAssigned = vehicle.isAssigned === true && vehicle.assignedRider != null;
+          // בודקים את השדה assignedTo - אם הוא ריק/null/undefined, הכלי זמין
+          const isVehicleAssigned = vehicle.assignedTo != null && vehicle.assignedTo !== '';
           return !isVehicleAssigned;
         });
 

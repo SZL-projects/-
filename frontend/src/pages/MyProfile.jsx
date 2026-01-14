@@ -101,7 +101,7 @@ export default function MyProfile() {
       }
 
       // טעינת פרטי הכלי אם משויך
-      if (riderData.isAssigned && riderData.assignedVehicleId) {
+      if (riderData.assignmentStatus === 'assigned' && riderData.assignedVehicleId) {
         try {
           const vehicleResponse = await vehiclesAPI.getById(riderData.assignedVehicleId);
           setVehicle(vehicleResponse.data.vehicle);
@@ -400,14 +400,14 @@ export default function MyProfile() {
                   </Typography>
                   <Box sx={{ mt: 0.5 }}>
                     <Chip
-                      label={rider.isAssigned ? 'משויך' : 'לא משויך'}
-                      color={rider.isAssigned ? 'primary' : 'default'}
+                      label={rider.assignmentStatus === 'assigned' ? 'משויך' : 'לא משויך'}
+                      color={rider.assignmentStatus === 'assigned' ? 'primary' : 'default'}
                       size="small"
                     />
                   </Box>
                 </Grid>
 
-                {rider.isAssigned && vehicle && (
+                {rider.assignmentStatus === 'assigned' && vehicle && (
                   <>
                     <Grid item xs={12}>
                       <Typography variant="body2" color="textSecondary">

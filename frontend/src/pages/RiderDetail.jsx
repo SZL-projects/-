@@ -129,7 +129,39 @@ export default function RiderDetail() {
 
   const handleSaveRider = async (riderData) => {
     try {
-      await ridersAPI.update(id, riderData);
+      // בדיקה אם השיוך לכלי השתנה
+      const oldVehicleId = rider.assignedVehicleId;
+      const newVehicleId = riderData.assignedVehicleId;
+      const oldAssignmentStatus = rider.assignmentStatus;
+      const newAssignmentStatus = riderData.assignmentStatus;
+
+      // עדכון פרטי הרוכב (ללא שדות השיוך)
+      const riderDataWithoutAssignment = { ...riderData };
+      delete riderDataWithoutAssignment.assignedVehicleId;
+      delete riderDataWithoutAssignment.assignmentStatus;
+
+      await ridersAPI.update(id, riderDataWithoutAssignment);
+
+      // טיפול בשינוי שיוך הכלי
+      if (newAssignmentStatus === 'assigned' && newVehicleId) {
+        // אם יש כלי ישן משויך - נבטל אותו
+        if (oldVehicleId && oldVehicleId !== newVehicleId) {
+          try {
+            await vehiclesAPI.unassign(oldVehicleId);
+          } catch (err) {
+            console.warn('Error unassigning old vehicle:', err);
+          }
+        }
+
+        // שיוך הכלי החדש (רק אם זה כלי שונה)
+        if (oldVehicleId !== newVehicleId) {
+          await vehiclesAPI.assign(newVehicleId, id);
+        }
+      } else if (newAssignmentStatus === 'unassigned' && oldVehicleId) {
+        // ביטול שיוך
+        await vehiclesAPI.unassign(oldVehicleId);
+      }
+
       showSnackbar('הרוכב עודכן בהצלחה', 'success');
       setEditDialogOpen(false);
       loadRider();
