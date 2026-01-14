@@ -135,6 +135,13 @@ export default function RiderDetail() {
       const oldAssignmentStatus = rider.assignmentStatus;
       const newAssignmentStatus = riderData.assignmentStatus;
 
+      console.log('Assignment change:', {
+        oldVehicleId,
+        newVehicleId,
+        oldAssignmentStatus,
+        newAssignmentStatus
+      });
+
       // עדכון פרטי הרוכב (ללא שדות השיוך)
       const riderDataWithoutAssignment = { ...riderData };
       delete riderDataWithoutAssignment.assignedVehicleId;
@@ -143,23 +150,30 @@ export default function RiderDetail() {
       await ridersAPI.update(id, riderDataWithoutAssignment);
 
       // טיפול בשינוי שיוך הכלי
-      if (newAssignmentStatus === 'assigned' && newVehicleId) {
-        // אם יש כלי ישן משויך - נבטל אותו
-        if (oldVehicleId && oldVehicleId !== newVehicleId) {
+      // מקרה 1: רוכב שהיה משויך ועכשיו לא משויך - לבטל שיוך
+      if (oldAssignmentStatus === 'assigned' && newAssignmentStatus === 'unassigned' && oldVehicleId) {
+        console.log('Unassigning vehicle:', oldVehicleId);
+        await vehiclesAPI.unassign(oldVehicleId);
+      }
+      // מקרה 2: רוכב שלא היה משויך ועכשיו משויך - לשייך
+      else if (oldAssignmentStatus === 'unassigned' && newAssignmentStatus === 'assigned' && newVehicleId) {
+        console.log('Assigning vehicle:', newVehicleId);
+        await vehiclesAPI.assign(newVehicleId, id);
+      }
+      // מקרה 3: רוכב משויך שמחליף כלי - לבטל את הישן ולשייך את החדש
+      else if (oldAssignmentStatus === 'assigned' && newAssignmentStatus === 'assigned' && oldVehicleId !== newVehicleId) {
+        if (oldVehicleId) {
+          console.log('Unassigning old vehicle:', oldVehicleId);
           try {
             await vehiclesAPI.unassign(oldVehicleId);
           } catch (err) {
             console.warn('Error unassigning old vehicle:', err);
           }
         }
-
-        // שיוך הכלי החדש (רק אם זה כלי שונה)
-        if (oldVehicleId !== newVehicleId) {
+        if (newVehicleId) {
+          console.log('Assigning new vehicle:', newVehicleId);
           await vehiclesAPI.assign(newVehicleId, id);
         }
-      } else if (newAssignmentStatus === 'unassigned' && oldVehicleId) {
-        // ביטול שיוך
-        await vehiclesAPI.unassign(oldVehicleId);
       }
 
       showSnackbar('הרוכב עודכן בהצלחה', 'success');
