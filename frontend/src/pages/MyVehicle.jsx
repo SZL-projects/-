@@ -28,10 +28,9 @@ import {
   Speed,
   LocalGasStation,
   FolderOpen,
-  Image as ImageIcon,
   OpenInNew,
   Description,
-  Download,
+  Visibility,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { vehiclesAPI, ridersAPI, faultsAPI } from '../services/api';
@@ -445,48 +444,6 @@ export default function MyVehicle() {
           </Card>
         </Grid>
 
-        {/* תמונות ומסמכים */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <ImageIcon /> תמונות הכלי
-              </Typography>
-              <Divider sx={{ my: 2 }} />
-
-              {vehicle.images && vehicle.images.length > 0 ? (
-                <Grid container spacing={2}>
-                  {vehicle.images.map((image, idx) => (
-                    <Grid item xs={6} sm={4} key={idx}>
-                      <Box
-                        component="img"
-                        src={image.url || image}
-                        alt={`תמונה ${idx + 1}`}
-                        sx={{
-                          width: '100%',
-                          height: 120,
-                          objectFit: 'cover',
-                          borderRadius: 1,
-                          cursor: 'pointer',
-                          '&:hover': { opacity: 0.8 }
-                        }}
-                        onClick={() => window.open(image.url || image, '_blank')}
-                      />
-                    </Grid>
-                  ))}
-                </Grid>
-              ) : (
-                <Box sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
-                  <ImageIcon sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} />
-                  <Typography variant="body2">
-                    אין תמונות זמינות
-                  </Typography>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
         {/* קבצי ביטוח */}
         <Grid item xs={12} md={6}>
           <Card>
@@ -524,10 +481,10 @@ export default function MyVehicle() {
                         <Button
                           variant="outlined"
                           size="small"
-                          startIcon={<Download />}
+                          startIcon={<Visibility />}
                           onClick={() => window.open(file.webViewLink, '_blank')}
                         >
-                          צפה והורד
+                          צפייה
                         </Button>
                       </Box>
                     </ListItem>
