@@ -52,8 +52,14 @@ export default function Dashboard() {
 
   // רוכבים עוברים אוטומטית לדף "הכלי שלי"
   useEffect(() => {
-    if (user && user.role === 'rider') {
-      navigate('/my-vehicle', { replace: true });
+    if (user) {
+      // בדיקה אם למשתמש יש רק תפקיד רוכב (ללא תפקידים ניהוליים)
+      const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
+      const isOnlyRider = userRoles.length === 1 && userRoles[0] === 'rider';
+
+      if (isOnlyRider) {
+        navigate('/my-vehicle', { replace: true });
+      }
     }
   }, [user, navigate]);
 
