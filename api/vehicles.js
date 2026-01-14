@@ -418,6 +418,134 @@ module.exports = async (req, res) => {
       });
     }
 
+    // ==================== Vehicle Assignment Endpoints ====================
+
+    // POST /api/vehicles/:id/assign - שיוך כלי לרוכב
+    if (url.match(/\/[\w-]+\/assign$/) && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const vehicleId = url.split('/').filter(Boolean).slice(-2, -1)[0];
+      const { riderId } = req.body;
+
+      if (!riderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'נא לספק מזהה רוכב'
+        });
+      }
+
+      // בדיקה שהכלי קיים
+      const vehicleDoc = await db.collection('vehicles').doc(vehicleId).get();
+      if (!vehicleDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'כלי לא נמצא'
+        });
+      }
+
+      const vehicle = { id: vehicleDoc.id, ...vehicleDoc.data() };
+
+      // בדיקה שהרוכב קיים
+      const riderDoc = await db.collection('riders').doc(riderId).get();
+      if (!riderDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'רוכב לא נמצא'
+        });
+      }
+
+      // בדיקה אם הכלי כבר משויך לרוכב אחר
+      if (vehicle.assignedTo && vehicle.assignedTo !== riderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'כלי כבר משויך לרוכב אחר. יש לבטל את השיוך הקיים תחילה.'
+        });
+      }
+
+      // עדכון הכלי - הוספת שיוך
+      await db.collection('vehicles').doc(vehicleId).update({
+        assignedTo: riderId,
+        status: 'assigned',
+        assignedAt: new Date(),
+        updatedAt: new Date(),
+        updatedBy: user.id
+      });
+
+      // עדכון הרוכב - הוספת שיוך
+      await db.collection('riders').doc(riderId).update({
+        assignedVehicle: vehicleId,
+        assignmentStatus: 'assigned',
+        assignedAt: new Date(),
+        updatedAt: new Date(),
+        updatedBy: user.id
+      });
+
+      const updatedVehicle = await db.collection('vehicles').doc(vehicleId).get();
+
+      return res.json({
+        success: true,
+        message: 'כלי שוייך בהצלחה לרוכב',
+        vehicle: { id: updatedVehicle.id, ...updatedVehicle.data() }
+      });
+    }
+
+    // POST /api/vehicles/:id/unassign - ביטול שיוך כלי מרוכב
+    if (url.match(/\/[\w-]+\/unassign$/) && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const vehicleId = url.split('/').filter(Boolean).slice(-2, -1)[0];
+
+      // בדיקה שהכלי קיים
+      const vehicleDoc = await db.collection('vehicles').doc(vehicleId).get();
+      if (!vehicleDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'כלי לא נמצא'
+        });
+      }
+
+      const vehicle = { id: vehicleDoc.id, ...vehicleDoc.data() };
+
+      if (!vehicle.assignedTo) {
+        return res.status(400).json({
+          success: false,
+          message: 'כלי לא משויך לרוכב'
+        });
+      }
+
+      const riderId = vehicle.assignedTo;
+
+      // עדכון הכלי - הסרת שיוך
+      await db.collection('vehicles').doc(vehicleId).update({
+        assignedTo: null,
+        status: 'waiting_for_rider',
+        assignedAt: null,
+        unassignedAt: new Date(),
+        updatedAt: new Date(),
+        updatedBy: user.id
+      });
+
+      // עדכון הרוכב - הסרת שיוך
+      const riderDoc = await db.collection('riders').doc(riderId).get();
+      if (riderDoc.exists) {
+        await db.collection('riders').doc(riderId).update({
+          assignedVehicle: null,
+          assignmentStatus: 'unassigned',
+          assignedAt: null,
+          updatedAt: new Date(),
+          updatedBy: user.id
+        });
+      }
+
+      const updatedVehicle = await db.collection('vehicles').doc(vehicleId).get();
+
+      return res.json({
+        success: true,
+        message: 'שיוך הכלי בוטל בהצלחה',
+        vehicle: { id: updatedVehicle.id, ...updatedVehicle.data() }
+      });
+    }
+
     // ==================== Regular Vehicle Endpoints ====================
 
     // Extract ID from URL for regular vehicle operations
