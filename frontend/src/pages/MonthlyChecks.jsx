@@ -36,6 +36,7 @@ import {
   ListItemIcon,
   Divider,
   Badge,
+  Snackbar,
 } from '@mui/material';
 import {
   Search,
@@ -48,6 +49,7 @@ import {
   TwoWheeler,
   CalendarToday,
   Refresh,
+  Send as SendIcon,
   FilterList,
 } from '@mui/icons-material';
 import { monthlyChecksAPI, ridersAPI, vehiclesAPI } from '../services/api';
@@ -65,6 +67,8 @@ export default function MonthlyChecks() {
   const [viewMode, setViewMode] = useState(0); // 0: כל הבקרות, 1: רוכבים ללא בקרה
   const [selectedCheck, setSelectedCheck] = useState(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [sendingNotification, setSendingNotification] = useState(null); // ID של בקרה ששולחים לה הודעה
 
   useEffect(() => {
     loadData();
@@ -197,6 +201,24 @@ export default function MonthlyChecks() {
     setSelectedCheck(check);
     setDetailsDialogOpen(true);
   }, []);
+
+  const handleSendNotification = useCallback(async (checkId) => {
+    try {
+      setSendingNotification(checkId);
+      await monthlyChecksAPI.sendNotification(checkId);
+      setSnackbar({ open: true, message: 'הודעה נשלחה בהצלחה לרוכב', severity: 'success' });
+      await loadData(); // רענון הנתונים
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || 'שגיאה בשליחת הודעה',
+        severity: 'error'
+      });
+    } finally {
+      setSendingNotification(null);
+    }
+  }, [loadData]);
 
   // אופטימיזציה: חישוב בקרות מסוננות עם useMemo
   const filteredChecks = useMemo(() => {
@@ -438,9 +460,25 @@ export default function MonthlyChecks() {
                           color="primary"
                           size="small"
                           onClick={() => handleViewDetails(check)}
+                          title="צפה בפרטים"
                         >
                           <Visibility />
                         </IconButton>
+                        {check.status === 'pending' && (
+                          <IconButton
+                            color="secondary"
+                            size="small"
+                            onClick={() => handleSendNotification(check._id || check.id)}
+                            disabled={sendingNotification === (check._id || check.id)}
+                            title="שלח הודעה לרוכב"
+                          >
+                            {sendingNotification === (check._id || check.id) ? (
+                              <CircularProgress size={20} />
+                            ) : (
+                              <SendIcon />
+                            )}
+                          </IconButton>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
@@ -646,6 +684,21 @@ export default function MonthlyChecks() {
           <Button onClick={() => setDetailsDialogOpen(false)}>סגור</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar להודעות */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

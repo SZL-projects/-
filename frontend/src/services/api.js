@@ -112,6 +112,7 @@ export const monthlyChecksAPI = {
   create: (data) => api.post('/monthly-checks', data),
   update: (id, data) => api.put(`/monthly-checks/${id}`, data),
   delete: (id) => api.delete(`/monthly-checks/${id}`),
+  sendNotification: (id) => api.post(`/monthly-checks/${id}/send-notification`),
 };
 
 // Faults API
