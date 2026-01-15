@@ -110,7 +110,11 @@ export default function MonthlyChecks() {
         vehiclesAPI.getAll().catch(() => ({ data: { vehicles: [] } })),
       ]);
 
-      setChecks(checksRes.data.checks || checksRes.data.monthlyChecks || []);
+      const checksData = checksRes.data.checks || checksRes.data.monthlyChecks || [];
+      console.log('📋 [LOAD DATA] Received checks:', checksData);
+      console.log('📋 [LOAD DATA] First check ID:', checksData[0]?.id, checksData[0]?._id);
+
+      setChecks(checksData);
       setRiders(ridersRes.data.riders || []);
       setVehicles(vehiclesRes.data.vehicles || []);
       setError('');
@@ -670,7 +674,13 @@ export default function MonthlyChecks() {
                           <IconButton
                             color="secondary"
                             size="small"
-                            onClick={() => handleSendNotification(check._id || check.id)}
+                            onClick={() => {
+                              console.log('🔔 [BUTTON CLICK] Check object:', check);
+                              console.log('🔔 [BUTTON CLICK] check._id:', check._id);
+                              console.log('🔔 [BUTTON CLICK] check.id:', check.id);
+                              console.log('🔔 [BUTTON CLICK] Will send ID:', check._id || check.id);
+                              handleSendNotification(check._id || check.id);
+                            }}
                             disabled={sendingNotification === (check._id || check.id)}
                             title="שלח הודעה לרוכב"
                           >
