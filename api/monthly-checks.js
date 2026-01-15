@@ -44,7 +44,7 @@ module.exports = async (req, res) => {
       if (req.url.includes('/send-notification') && req.method === 'POST') {
         checkAuthorization(user, ['super_admin', 'manager']);
 
-        const checkRef = db.collection('monthlyChecks').doc(checkId);
+        const checkRef = db.collection('monthly_checks').doc(checkId);
         const checkDoc = await checkRef.get();
 
         if (!checkDoc.exists) {
@@ -78,7 +78,7 @@ module.exports = async (req, res) => {
         });
       }
 
-      const checkRef = db.collection('monthlyChecks').doc(checkId);
+      const checkRef = db.collection('monthly_checks').doc(checkId);
       const doc = await checkRef.get();
 
       if (!doc.exists) {
@@ -151,7 +151,7 @@ module.exports = async (req, res) => {
       const { search, status, vehicleId, riderId, limit = 100 } = req.query;
       const limitNum = Math.min(parseInt(limit), 500);
 
-      let query = db.collection('monthlyChecks');
+      let query = db.collection('monthly_checks');
 
       // סינונים
       if (status) {
@@ -192,7 +192,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({
         success: true,
         count: checks.length,
-        monthlyChecks: checks
+        monthly_checks: checks
       });
     }
 
@@ -238,7 +238,7 @@ module.exports = async (req, res) => {
             const monthStart = new Date(checkYear, checkMonth - 1, 1);
             const monthEnd = new Date(checkYear, checkMonth, 0, 23, 59, 59);
 
-            const existingCheckSnapshot = await db.collection('monthlyChecks')
+            const existingCheckSnapshot = await db.collection('monthly_checks')
               .where('riderId', '==', riderId)
               .where('vehicleId', '==', vehicle.id)
               .where('checkDate', '>=', monthStart)
@@ -267,7 +267,7 @@ module.exports = async (req, res) => {
               updatedBy: user.id
             };
 
-            const docRef = await db.collection('monthlyChecks').add(checkData);
+            const docRef = await db.collection('monthly_checks').add(checkData);
             createdChecks.push({ id: docRef.id, ...checkData });
           } catch (error) {
             errors.push({ riderId, error: error.message });
@@ -289,7 +289,7 @@ module.exports = async (req, res) => {
           updatedAt: new Date()
         };
 
-        const checkRef = await db.collection('monthlyChecks').add(checkData);
+        const checkRef = await db.collection('monthly_checks').add(checkData);
         const checkDoc = await checkRef.get();
 
         return res.status(201).json({
