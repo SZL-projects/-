@@ -315,23 +315,48 @@ export default function MonthlyChecks() {
 
     setOpeningChecks(true);
     try {
+      console.log('📝 [FRONTEND] Sending create request with riderIds:', selectedRiders);
       const response = await monthlyChecksAPI.create({
         riderIds: selectedRiders,
         month: new Date().getMonth() + 1,
         year: new Date().getFullYear()
       });
 
-      setSnackbar({
-        open: true,
-        message: `${selectedRiders.length} בקרות חודשיות נפתחו בהצלחה`,
-        severity: 'success'
-      });
+      console.log('📝 [FRONTEND] Received response:', response.data);
+
+      const { checks, errors } = response.data;
+      const createdCount = checks?.length || 0;
+      const errorCount = errors?.length || 0;
+
+      if (createdCount === 0 && errorCount > 0) {
+        // לא נוצרו בקרות בכלל - הצג שגיאה
+        const errorMessages = errors.map(e => e.error).join(', ');
+        setSnackbar({
+          open: true,
+          message: `לא ניתן ליצור בקרות: ${errorMessages}`,
+          severity: 'error'
+        });
+      } else if (errorCount > 0) {
+        // חלק נוצרו וחלק נכשלו
+        setSnackbar({
+          open: true,
+          message: `נוצרו ${createdCount} בקרות, ${errorCount} נכשלו`,
+          severity: 'warning'
+        });
+      } else {
+        // הכל עבד בהצלחה
+        setSnackbar({
+          open: true,
+          message: `${createdCount} בקרות חודשיות נפתחו בהצלחה`,
+          severity: 'success'
+        });
+      }
 
       setOpenChecksDialogOpen(false);
       setSelectedRiders([]);
       await loadData();
     } catch (error) {
-      console.error('Error opening checks:', error);
+      console.error('❌ [FRONTEND] Error opening checks:', error);
       setSnackbar({
         open: true,
         message: error.response?.data?.message || 'שגיאה בפתיחת בקרות',

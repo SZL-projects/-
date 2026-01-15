@@ -206,30 +206,44 @@ module.exports = async (req, res) => {
         const createdChecks = [];
         const errors = [];
 
+        console.log('📝 [CREATE CHECKS] Starting bulk creation:', {
+          riderCount: riderIds.length,
+          riderIds,
+          month,
+          year
+        });
+
         // פתיחת בקרות לכל הרוכבים הנבחרים
         for (const riderId of riderIds) {
           try {
+            console.log(`📝 [CREATE CHECKS] Processing rider: ${riderId}`);
+
             // מציאת הרוכב
             const riderDoc = await db.collection('riders').doc(riderId).get();
             if (!riderDoc.exists) {
+              console.log(`❌ [CREATE CHECKS] Rider not found: ${riderId}`);
               errors.push({ riderId, error: 'רוכב לא נמצא' });
               continue;
             }
             const rider = { id: riderDoc.id, ...riderDoc.data() };
+            console.log(`✅ [CREATE CHECKS] Rider found: ${rider.firstName} ${rider.lastName}`);
 
             // מציאת הכלי המשויך
+            console.log(`🔍 [CREATE CHECKS] Looking for vehicle assigned to: ${riderId}`);
             const vehiclesSnapshot = await db.collection('vehicles')
               .where('assignedTo', '==', riderId)
               .limit(1)
               .get();
 
             if (vehiclesSnapshot.empty) {
+              console.log(`❌ [CREATE CHECKS] No vehicle assigned to rider: ${riderId}`);
               errors.push({ riderId, error: 'לרוכב אין כלי משויך' });
               continue;
             }
 
             const vehicleDoc = vehiclesSnapshot.docs[0];
             const vehicle = { id: vehicleDoc.id, ...vehicleDoc.data() };
+            console.log(`✅ [CREATE CHECKS] Vehicle found: ${vehicle.licensePlate} (${vehicle.id})`);
 
             // בדיקה אם כבר קיימת בקרה לחודש זה
             const now = new Date();
@@ -238,6 +252,7 @@ module.exports = async (req, res) => {
             const monthStart = new Date(checkYear, checkMonth - 1, 1);
             const monthEnd = new Date(checkYear, checkMonth, 0, 23, 59, 59);
 
+            console.log(`🔍 [CREATE CHECKS] Checking for existing check: ${checkMonth}/${checkYear}`);
             const existingCheckSnapshot = await db.collection('monthly_checks')
               .where('riderId', '==', riderId)
               .where('vehicleId', '==', vehicle.id)
@@ -247,6 +262,7 @@ module.exports = async (req, res) => {
               .get();
 
             if (!existingCheckSnapshot.empty) {
+              console.log(`❌ [CREATE CHECKS] Check already exists for rider ${riderId}`);
               errors.push({ riderId, error: 'כבר קיימת בקרה לחודש זה' });
               continue;
             }
@@ -267,12 +283,21 @@ module.exports = async (req, res) => {
               updatedBy: user.id
             };
 
+            console.log(`💾 [CREATE CHECKS] Creating check document:`, checkData);
             const docRef = await db.collection('monthly_checks').add(checkData);
+            console.log(`✅ [CREATE CHECKS] Check created with ID: ${docRef.id}`);
             createdChecks.push({ id: docRef.id, ...checkData });
           } catch (error) {
+            console.error(`❌ [CREATE CHECKS] Error for rider ${riderId}:`, error.message);
             errors.push({ riderId, error: error.message });
           }
         }
+
+        console.log(`📊 [CREATE CHECKS] Summary:`, {
+          created: createdChecks.length,
+          errors: errors.length,
+          errorDetails: errors
+        });
 
         return res.status(201).json({
           success: true,
