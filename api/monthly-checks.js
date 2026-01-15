@@ -192,7 +192,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({
         success: true,
         count: checks.length,
-        monthly_checks: checks
+        monthlyChecks: checks
       });
     }
 
