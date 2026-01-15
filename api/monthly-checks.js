@@ -25,10 +25,12 @@ module.exports = async (req, res) => {
   }
 
   try {
-    console.log('📋 Monthly Checks Request [v2 - Timestamp Fixed]:', {
+    console.log('📋 Monthly Checks Request [v3 - Debug Send Notification]:', {
       method: req.method,
       url: req.url,
-      hasAuth: !!req.headers.authorization
+      hasAuth: !!req.headers.authorization,
+      fullUrl: req.url,
+      isSendNotification: req.url.includes('/send-notification')
     });
 
     const { db, admin } = initFirebase();
@@ -36,7 +38,7 @@ module.exports = async (req, res) => {
 
     // Extract ID from URL
     const checkId = extractIdFromUrl(req.url, 'monthly-checks');
-    console.log('📍 Check ID extracted:', checkId);
+    console.log('📍 Check ID extracted:', checkId, 'from URL:', req.url);
 
     // Single check operations (GET/PUT/DELETE /api/monthly-checks/[id])
     if (checkId) {
