@@ -39,21 +39,34 @@ function initFirebase() {
 
 // Extract ID from Vercel URL path - handles multiple patterns
 function extractIdFromUrl(url, resourceName) {
+  console.log('🔍 [extractIdFromUrl] Input:', { url, resourceName });
+
   // מסיר query parameters אם יש
   const urlWithoutQuery = url.split('?')[0];
+  console.log('🔍 [extractIdFromUrl] URL without query:', urlWithoutQuery);
 
   // Pattern 1: Full path /api/resource/123 or /api/resource/123/action
   let match = urlWithoutQuery.match(new RegExp(`/api/${resourceName}/([^/]+)`));
-  if (match) return match[1];
+  if (match) {
+    console.log('🔍 [extractIdFromUrl] Matched Pattern 1:', match[1]);
+    return match[1];
+  }
 
   // Pattern 2: Relative path /resource/123 or /resource/123/action
   match = urlWithoutQuery.match(new RegExp(`^/${resourceName}/([^/]+)`));
-  if (match) return match[1];
+  if (match) {
+    console.log('🔍 [extractIdFromUrl] Matched Pattern 2:', match[1]);
+    return match[1];
+  }
 
   // Pattern 3: Just the ID /123 or /123/action (when Vercel strips the prefix)
   match = urlWithoutQuery.match(/^\/([^/]+)/);
-  if (match && !urlWithoutQuery.includes(resourceName)) return match[1];
+  if (match && !urlWithoutQuery.includes(resourceName)) {
+    console.log('🔍 [extractIdFromUrl] Matched Pattern 3:', match[1]);
+    return match[1];
+  }
 
+  console.log('🔍 [extractIdFromUrl] No match found, returning null');
   return null;
 }
 
