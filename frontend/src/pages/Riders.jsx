@@ -105,14 +105,7 @@ export default function Riders() {
           newAssignmentStatus
         });
 
-        // עדכון פרטי הרוכב (ללא שדות השיוך)
-        const riderDataWithoutAssignment = { ...riderData };
-        delete riderDataWithoutAssignment.assignedVehicleId;
-        delete riderDataWithoutAssignment.assignmentStatus;
-
-        await ridersAPI.update(editingRider.id, riderDataWithoutAssignment);
-
-        // טיפול בשינוי שיוך הכלי
+        // טיפול בשינוי שיוך הכלי - לפני עדכון הרוכב!
         // מקרה 1: רוכב שהיה משויך ועכשיו לא משויך - לבטל שיוך
         if (oldAssignmentStatus === 'assigned' && newAssignmentStatus === 'unassigned' && oldVehicleId) {
           console.log('Riders - Unassigning vehicle:', oldVehicleId);
@@ -138,6 +131,13 @@ export default function Riders() {
             await vehiclesAPI.assign(newVehicleId, editingRider.id);
           }
         }
+
+        // עדכון פרטי הרוכב (ללא שדות השיוך - הם כבר עודכנו על ידי assign/unassign)
+        const riderDataWithoutAssignment = { ...riderData };
+        delete riderDataWithoutAssignment.assignedVehicleId;
+        delete riderDataWithoutAssignment.assignmentStatus;
+
+        await ridersAPI.update(editingRider.id, riderDataWithoutAssignment);
 
         showSnackbar('הרוכב עודכן בהצלחה', 'success');
       } else {
