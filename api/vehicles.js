@@ -465,7 +465,17 @@ module.exports = async (req, res) => {
         });
       }
 
-      // בדיקה אם הכלי כבר משויך לרוכב אחר
+      // בדיקה אם הכלי כבר משויך לאותו הרוכב - החזר הצלחה (idempotent)
+      if (vehicle.assignedTo === riderId) {
+        console.log('[ASSIGN] Vehicle already assigned to this rider - returning success');
+        return res.json({
+          success: true,
+          message: 'הכלי כבר משויך לרוכב זה',
+          vehicle: { id: vehicleDoc.id, ...vehicle }
+        });
+      }
+
+      // בדיקה אם הכלי משויך לרוכב אחר
       if (vehicle.assignedTo && vehicle.assignedTo !== riderId) {
         return res.status(400).json({
           success: false,
@@ -531,11 +541,13 @@ module.exports = async (req, res) => {
       const vehicle = { id: vehicleDoc.id, ...vehicleDoc.data() };
       console.log('[UNASSIGN] Vehicle found - assignedTo:', vehicle.assignedTo);
 
+      // אם הכלי כבר לא משויך - החזר הצלחה (idempotent operation)
       if (!vehicle.assignedTo) {
-        console.log('[UNASSIGN] ERROR: Vehicle not assigned');
-        return res.status(400).json({
-          success: false,
-          message: 'כלי לא משויך לרוכב'
+        console.log('[UNASSIGN] Vehicle already unassigned - returning success');
+        return res.json({
+          success: true,
+          message: 'הכלי כבר לא משויך',
+          vehicle: { id: vehicleDoc.id, ...vehicle }
         });
       }
 
