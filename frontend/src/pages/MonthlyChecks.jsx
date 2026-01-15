@@ -236,13 +236,21 @@ export default function MonthlyChecks() {
   }, []);
 
   const handleSendNotification = useCallback(async (checkId) => {
+    console.log('🔔 [FRONTEND] handleSendNotification called with ID:', checkId);
     try {
       setSendingNotification(checkId);
-      await monthlyChecksAPI.sendNotification(checkId);
+      console.log('🔔 [FRONTEND] Calling monthlyChecksAPI.sendNotification with ID:', checkId);
+      const response = await monthlyChecksAPI.sendNotification(checkId);
+      console.log('🔔 [FRONTEND] Response received:', response.data);
       setSnackbar({ open: true, message: 'הודעה נשלחה בהצלחה לרוכב', severity: 'success' });
       await loadData(); // רענון הנתונים
     } catch (error) {
-      console.error('Error sending notification:', error);
+      console.error('❌ [FRONTEND] Error sending notification:', error);
+      console.error('❌ [FRONTEND] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       setSnackbar({
         open: true,
         message: error.response?.data?.message || 'שגיאה בשליחת הודעה',
