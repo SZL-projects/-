@@ -6,6 +6,7 @@
     { "source": "/api/users/:path*", "destination": "/api/users" },
     { "source": "/api/riders/:path*", "destination": "/api/riders" },
     { "source": "/api/tasks/:path*", "destination": "/api/tasks" },
+    { "source": "/api/monthly-checks/:path*", "destination": "/api/monthly-checks" },
     { "source": "/api/faults/:path*", "destination": "/api/faults" },
     { "source": "/api/drive/:path*", "destination": "/api/drive" }
   ]
