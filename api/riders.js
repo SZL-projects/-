@@ -69,6 +69,90 @@ module.exports = async (req, res) => {
       if (req.method === 'PUT') {
         checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
 
+        // שליפת מצב רוכב נוכחי לבדיקת שינויים בשיוך
+        const currentRiderData = doc.data();
+        const oldVehicleId = currentRiderData.assignedVehicleId;
+        const oldAssignmentStatus = currentRiderData.assignmentStatus;
+
+        const newVehicleId = req.body.assignedVehicleId;
+        const newAssignmentStatus = req.body.assignmentStatus;
+
+        console.log('[RIDER UPDATE] Assignment change detection:', {
+          riderId,
+          oldVehicleId,
+          newVehicleId,
+          oldAssignmentStatus,
+          newAssignmentStatus
+        });
+
+        // טיפול בשינויי שיוך כלי
+        const assignmentChanged = oldAssignmentStatus !== newAssignmentStatus ||
+                                 oldVehicleId !== newVehicleId;
+
+        if (assignmentChanged) {
+          console.log('[RIDER UPDATE] Assignment changed - updating vehicles');
+
+          // אם היה כלי ישן משויך - בטל את השיוך שלו
+          if (oldVehicleId && oldAssignmentStatus === 'assigned') {
+            try {
+              const oldVehicleRef = db.collection('vehicles').doc(oldVehicleId);
+              const oldVehicleDoc = await oldVehicleRef.get();
+
+              if (oldVehicleDoc.exists) {
+                await oldVehicleRef.update({
+                  assignedTo: null,
+                  assignedAt: null,
+                  updatedAt: new Date(),
+                  updatedBy: user.id
+                });
+                console.log('[RIDER UPDATE] Unassigned old vehicle:', oldVehicleId);
+              }
+            } catch (err) {
+              console.error('[RIDER UPDATE] Error unassigning old vehicle:', err);
+            }
+          }
+
+          // אם יש כלי חדש משויך - שייך אותו
+          if (newVehicleId && newAssignmentStatus === 'assigned') {
+            try {
+              const newVehicleRef = db.collection('vehicles').doc(newVehicleId);
+              const newVehicleDoc = await newVehicleRef.get();
+
+              if (!newVehicleDoc.exists) {
+                return res.status(404).json({
+                  success: false,
+                  message: 'כלי לא נמצא'
+                });
+              }
+
+              const newVehicleData = newVehicleDoc.data();
+
+              // בדיקה שהכלי לא משויך כבר לרוכב אחר
+              if (newVehicleData.assignedTo && newVehicleData.assignedTo !== riderId) {
+                return res.status(400).json({
+                  success: false,
+                  message: 'כלי כבר משויך לרוכב אחר'
+                });
+              }
+
+              await newVehicleRef.update({
+                assignedTo: riderId,
+                assignedAt: new Date(),
+                updatedAt: new Date(),
+                updatedBy: user.id
+              });
+              console.log('[RIDER UPDATE] Assigned new vehicle:', newVehicleId);
+            } catch (err) {
+              console.error('[RIDER UPDATE] Error assigning new vehicle:', err);
+              return res.status(500).json({
+                success: false,
+                message: 'שגיאה בשיוך כלי'
+              });
+            }
+          }
+        }
+
+        // עדכון פרטי הרוכב
         const updateData = {
           ...req.body,
           updatedBy: user.id,
@@ -77,6 +161,8 @@ module.exports = async (req, res) => {
 
         await riderRef.update(updateData);
         const updatedDoc = await riderRef.get();
+
+        console.log('[RIDER UPDATE] Rider updated successfully:', riderId);
 
         return res.status(200).json({
           success: true,
@@ -194,6 +280,59 @@ module.exports = async (req, res) => {
       };
 
       const riderRef = await db.collection('riders').add(riderData);
+      const newRiderId = riderRef.id;
+
+      console.log('[RIDER CREATE] New rider created:', newRiderId);
+
+      // אם הרוכב החדש צריך להיות משויך לכלי - שייך אותו
+      const vehicleId = req.body.assignedVehicleId;
+      const assignmentStatus = req.body.assignmentStatus;
+
+      if (assignmentStatus === 'assigned' && vehicleId) {
+        console.log('[RIDER CREATE] Assigning vehicle to new rider:', vehicleId);
+
+        try {
+          const vehicleRef = db.collection('vehicles').doc(vehicleId);
+          const vehicleDoc = await vehicleRef.get();
+
+          if (!vehicleDoc.exists) {
+            // אם הכלי לא קיים, עדכן את הרוכב לסטטוס "לא משויך"
+            await riderRef.update({
+              assignmentStatus: 'unassigned',
+              assignedVehicleId: null
+            });
+            console.warn('[RIDER CREATE] Vehicle not found, rider set to unassigned');
+          } else {
+            const vehicleData = vehicleDoc.data();
+
+            // בדיקה שהכלי לא משויך כבר לרוכב אחר
+            if (vehicleData.assignedTo && vehicleData.assignedTo !== newRiderId) {
+              await riderRef.update({
+                assignmentStatus: 'unassigned',
+                assignedVehicleId: null
+              });
+              console.warn('[RIDER CREATE] Vehicle already assigned to another rider');
+            } else {
+              // שיוך הכלי לרוכב החדש
+              await vehicleRef.update({
+                assignedTo: newRiderId,
+                assignedAt: new Date(),
+                updatedAt: new Date(),
+                updatedBy: user.id
+              });
+              console.log('[RIDER CREATE] Vehicle assigned successfully');
+            }
+          }
+        } catch (err) {
+          console.error('[RIDER CREATE] Error assigning vehicle:', err);
+          // עדכן את הרוכב לסטטוס "לא משויך" במקרה של שגיאה
+          await riderRef.update({
+            assignmentStatus: 'unassigned',
+            assignedVehicleId: null
+          });
+        }
+      }
+
       const riderDoc = await riderRef.get();
 
       return res.status(201).json({

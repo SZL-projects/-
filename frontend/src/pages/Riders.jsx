@@ -92,80 +92,19 @@ export default function Riders() {
   const handleSaveRider = useCallback(async (riderData) => {
     try {
       if (editingRider) {
-        // עדכון רוכב קיים
-        const oldVehicleId = editingRider.assignedVehicleId;
-        const newVehicleId = riderData.assignedVehicleId;
-        const oldAssignmentStatus = editingRider.assignmentStatus;
-        const newAssignmentStatus = riderData.assignmentStatus;
-
-        console.log('Riders - Assignment change:', {
-          oldVehicleId,
-          newVehicleId,
-          oldAssignmentStatus,
-          newAssignmentStatus
-        });
-
-        // טיפול בשינוי שיוך הכלי - לפני עדכון הרוכב!
-        // מקרה 1: רוכב שהיה משויך ועכשיו לא משויך - לבטל שיוך
-        if (oldAssignmentStatus === 'assigned' && newAssignmentStatus === 'unassigned' && oldVehicleId) {
-          console.log('Riders - Unassigning vehicle:', oldVehicleId);
-          await vehiclesAPI.unassign(oldVehicleId);
-        }
-        // מקרה 2: רוכב שלא היה משויך ועכשיו משויך - לשייך
-        else if (oldAssignmentStatus === 'unassigned' && newAssignmentStatus === 'assigned' && newVehicleId) {
-          console.log('Riders - Assigning vehicle:', newVehicleId);
-          await vehiclesAPI.assign(newVehicleId, editingRider.id);
-        }
-        // מקרה 3: רוכב משויך שמחליף כלי - לבטל את הישן ולשייך את החדש
-        else if (oldAssignmentStatus === 'assigned' && newAssignmentStatus === 'assigned' && oldVehicleId !== newVehicleId) {
-          if (oldVehicleId) {
-            console.log('Riders - Unassigning old vehicle:', oldVehicleId);
-            try {
-              await vehiclesAPI.unassign(oldVehicleId);
-            } catch (err) {
-              console.warn('Error unassigning old vehicle:', err);
-            }
-          }
-          if (newVehicleId) {
-            console.log('Riders - Assigning new vehicle:', newVehicleId);
-            await vehiclesAPI.assign(newVehicleId, editingRider.id);
-          }
-        }
-
-        // עדכון פרטי הרוכב (ללא שדות השיוך - הם כבר עודכנו על ידי assign/unassign)
-        const riderDataWithoutAssignment = { ...riderData };
-        delete riderDataWithoutAssignment.assignedVehicleId;
-        delete riderDataWithoutAssignment.assignmentStatus;
-
-        await ridersAPI.update(editingRider.id, riderDataWithoutAssignment);
-
+        // עדכון רוכב קיים - ה-backend מטפל אוטומטית בשינויי השיוך לכלים
+        await ridersAPI.update(editingRider.id, riderData);
         showSnackbar('הרוכב עודכן בהצלחה', 'success');
       } else {
-        // יצירת רוכב חדש
-        const newVehicleId = riderData.assignedVehicleId;
-        const newAssignmentStatus = riderData.assignmentStatus;
-
-        // יצירת הרוכב (ללא שדות השיוך)
-        const riderDataWithoutAssignment = { ...riderData };
-        delete riderDataWithoutAssignment.assignedVehicleId;
-        delete riderDataWithoutAssignment.assignmentStatus;
-
-        const response = await ridersAPI.create(riderDataWithoutAssignment);
-        const newRiderId = response.data.rider.id;
-
-        // אם צריך לשייך כלי
-        if (newAssignmentStatus === 'assigned' && newVehicleId) {
-          console.log('Riders - Creating new rider and assigning vehicle:', newVehicleId);
-          await vehiclesAPI.assign(newVehicleId, newRiderId);
-        }
-
+        // יצירת רוכב חדש - ה-backend מטפל אוטומטית בשיוך לכלים
+        await ridersAPI.create(riderData);
         showSnackbar('הרוכב נוסף בהצלחה', 'success');
       }
       handleCloseDialog();
       loadRiders();
     } catch (err) {
       console.error('Error saving rider:', err);
-      showSnackbar('שגיאה בשמירת הרוכב', 'error');
+      showSnackbar(err.response?.data?.message || 'שגיאה בשמירת הרוכב', 'error');
     }
   }, [editingRider, handleCloseDialog, loadRiders]);
 
