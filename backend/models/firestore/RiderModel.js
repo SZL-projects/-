@@ -30,6 +30,7 @@ class RiderModel {
         region: riderData.region || {},
         riderStatus: riderData.riderStatus || 'active',
         assignmentStatus: riderData.assignmentStatus || 'unassigned',
+        assignedVehicleId: riderData.assignedVehicleId || null,
         drivingLicense: riderData.drivingLicense || {},
         licenseHistory: [],
         trainings: riderData.trainings || [],

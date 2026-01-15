@@ -71,11 +71,15 @@ module.exports = async (req, res) => {
 
         // שליפת מצב רוכב נוכחי לבדיקת שינויים בשיוך
         const currentRiderData = doc.data();
-        const oldVehicleId = currentRiderData.assignedVehicleId;
-        const oldAssignmentStatus = currentRiderData.assignmentStatus;
+        // נורמליזציה: מחרוזת ריקה או undefined הופכים ל-null
+        const oldVehicleId = currentRiderData.assignedVehicleId || null;
+        const oldAssignmentStatus = currentRiderData.assignmentStatus || 'unassigned';
 
-        const newVehicleId = req.body.assignedVehicleId;
-        const newAssignmentStatus = req.body.assignmentStatus;
+        // נורמליזציה: מחרוזת ריקה או undefined הופכים ל-null
+        const newVehicleId = (req.body.assignedVehicleId && req.body.assignedVehicleId !== '')
+          ? req.body.assignedVehicleId
+          : null;
+        const newAssignmentStatus = req.body.assignmentStatus || 'unassigned';
 
         console.log('[RIDER UPDATE] Assignment change detection:', {
           riderId,
@@ -155,6 +159,9 @@ module.exports = async (req, res) => {
         // עדכון פרטי הרוכב
         const updateData = {
           ...req.body,
+          // אם הסטטוס הוא "לא משויך", לוודא שאין vehicleId
+          assignedVehicleId: newAssignmentStatus === 'unassigned' ? null : newVehicleId,
+          assignmentStatus: newAssignmentStatus,
           updatedBy: user.id,
           updatedAt: new Date()
         };
@@ -285,8 +292,11 @@ module.exports = async (req, res) => {
       console.log('[RIDER CREATE] New rider created:', newRiderId);
 
       // אם הרוכב החדש צריך להיות משויך לכלי - שייך אותו
-      const vehicleId = req.body.assignedVehicleId;
-      const assignmentStatus = req.body.assignmentStatus;
+      // נורמליזציה: מחרוזת ריקה או undefined הופכים ל-null
+      const vehicleId = (req.body.assignedVehicleId && req.body.assignedVehicleId !== '')
+        ? req.body.assignedVehicleId
+        : null;
+      const assignmentStatus = req.body.assignmentStatus || 'unassigned';
 
       if (assignmentStatus === 'assigned' && vehicleId) {
         console.log('[RIDER CREATE] Assigning vehicle to new rider:', vehicleId);
