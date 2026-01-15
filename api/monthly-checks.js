@@ -253,15 +253,22 @@ module.exports = async (req, res) => {
             const monthEnd = new Date(checkYear, checkMonth, 0, 23, 59, 59);
 
             console.log(`🔍 [CREATE CHECKS] Checking for existing check: ${checkMonth}/${checkYear}`);
+
+            // שאילתה פשוטה יותר שלא דורשת אינדקס - רק לפי riderId
             const existingCheckSnapshot = await db.collection('monthly_checks')
               .where('riderId', '==', riderId)
-              .where('vehicleId', '==', vehicle.id)
-              .where('checkDate', '>=', monthStart)
-              .where('checkDate', '<=', monthEnd)
-              .limit(1)
               .get();
 
-            if (!existingCheckSnapshot.empty) {
+            // סינון בצד השרת - בודקים אם יש בקרה לחודש הזה
+            const existingCheck = existingCheckSnapshot.docs.find(doc => {
+              const data = doc.data();
+              const checkDate = data.checkDate?.toDate ? data.checkDate.toDate() : new Date(data.checkDate);
+              return data.vehicleId === vehicle.id &&
+                     checkDate >= monthStart &&
+                     checkDate <= monthEnd;
+            });
+
+            if (existingCheck) {
               console.log(`❌ [CREATE CHECKS] Check already exists for rider ${riderId}`);
               errors.push({ riderId, error: 'כבר קיימת בקרה לחודש זה' });
               continue;
