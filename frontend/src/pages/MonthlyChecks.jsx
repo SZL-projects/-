@@ -1,5 +1,28 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+// פונקציית עזר להמרת תאריך בצורה בטוחה
+const safeParseDate = (dateValue) => {
+  if (!dateValue) return null;
+
+  // אם זה Firestore Timestamp
+  if (dateValue.toDate && typeof dateValue.toDate === 'function') {
+    return dateValue.toDate();
+  }
+
+  // אם זה כבר Date object
+  if (dateValue instanceof Date) {
+    return isNaN(dateValue.getTime()) ? null : dateValue;
+  }
+
+  // אם זה string או number
+  try {
+    const parsed = new Date(dateValue);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  } catch (e) {
+    return null;
+  }
+};
 import {
   Box,
   Paper,
@@ -105,8 +128,8 @@ export default function MonthlyChecks() {
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const thisMonthChecks = checks.filter(check => {
-      const checkDate = check.checkDate?.toDate ? check.checkDate.toDate() : new Date(check.checkDate);
-      return checkDate >= firstDayOfMonth;
+      const checkDate = safeParseDate(check.checkDate);
+      return checkDate && checkDate >= firstDayOfMonth;
     });
 
     // חישוב רוכבים פעילים ללא בקרה החודש
@@ -133,8 +156,8 @@ export default function MonthlyChecks() {
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const thisMonthChecks = checks.filter(check => {
-      const checkDate = check.checkDate?.toDate ? check.checkDate.toDate() : new Date(check.checkDate);
-      return checkDate >= firstDayOfMonth;
+      const checkDate = safeParseDate(check.checkDate);
+      return checkDate && checkDate >= firstDayOfMonth;
     });
 
     const activeRiders = riders.filter(r => r.riderStatus === 'active' || r.status === 'active');
@@ -149,15 +172,16 @@ export default function MonthlyChecks() {
       const riderChecks = checks.filter(c =>
         (c.riderId === rider._id || c.riderId === rider.id)
       ).sort((a, b) => {
-        const dateA = a.checkDate?.toDate ? a.checkDate.toDate() : new Date(a.checkDate);
-        const dateB = b.checkDate?.toDate ? b.checkDate.toDate() : new Date(b.checkDate);
+        const dateA = safeParseDate(a.checkDate);
+        const dateB = safeParseDate(b.checkDate);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
         return dateB - dateA;
       });
 
       const lastCheck = riderChecks[0];
-      const lastCheckDate = lastCheck
-        ? (lastCheck.checkDate?.toDate ? lastCheck.checkDate.toDate() : new Date(lastCheck.checkDate))
-        : null;
+      const lastCheckDate = lastCheck ? safeParseDate(lastCheck.checkDate) : null;
 
       let daysSinceLastCheck = null;
       if (lastCheckDate) {
@@ -185,7 +209,8 @@ export default function MonthlyChecks() {
 
   const formatDate = (timestamp) => {
     if (!timestamp) return '-';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const date = safeParseDate(timestamp);
+    if (!date) return '-';
     return new Intl.DateTimeFormat('he-IL', {
       year: 'numeric',
       month: '2-digit',
