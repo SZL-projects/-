@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    console.log('📋 Monthly Checks Request:', {
+    console.log('📋 Monthly Checks Request [v2 - Timestamp Fixed]:', {
       method: req.method,
       url: req.url,
       hasAuth: !!req.headers.authorization
