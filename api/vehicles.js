@@ -492,9 +492,10 @@ module.exports = async (req, res) => {
         updatedBy: user.id
       });
 
-      // עדכון הרוכב - הוספת שיוך
+      // עדכון הרוכב - הוספת שיוך (שימוש בשני שמות השדות לתמיכה מלאה)
       await db.collection('riders').doc(riderId).update({
         assignedVehicle: vehicleId,
+        assignedVehicleId: vehicleId, // שדה נוסף שה-frontend משתמש בו
         assignmentStatus: 'assigned',
         assignedAt: new Date(),
         updatedAt: new Date(),
@@ -564,11 +565,12 @@ module.exports = async (req, res) => {
         updatedBy: user.id
       });
 
-      // עדכון הרוכב - הסרת שיוך
+      // עדכון הרוכב - הסרת שיוך (שימוש בשני שמות השדות לתמיכה מלאה)
       const riderDoc = await db.collection('riders').doc(riderId).get();
       if (riderDoc.exists) {
         await db.collection('riders').doc(riderId).update({
           assignedVehicle: null,
+          assignedVehicleId: null, // שדה נוסף שה-frontend משתמש בו
           assignmentStatus: 'unassigned',
           assignedAt: null,
           updatedAt: new Date(),
