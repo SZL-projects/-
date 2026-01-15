@@ -568,14 +568,19 @@ module.exports = async (req, res) => {
       // עדכון הרוכב - הסרת שיוך (שימוש בשני שמות השדות לתמיכה מלאה)
       const riderDoc = await db.collection('riders').doc(riderId).get();
       if (riderDoc.exists) {
-        await db.collection('riders').doc(riderId).update({
+        console.log('[UNASSIGN] Updating rider:', riderId, 'setting assignedVehicle=null, assignedVehicleId=null');
+        const updateData = {
           assignedVehicle: null,
           assignedVehicleId: null, // שדה נוסף שה-frontend משתמש בו
           assignmentStatus: 'unassigned',
           assignedAt: null,
           updatedAt: new Date(),
           updatedBy: user.id
-        });
+        };
+        await db.collection('riders').doc(riderId).update(updateData);
+        console.log('[UNASSIGN] Rider updated successfully with:', updateData);
+      } else {
+        console.log('[UNASSIGN] WARNING: Rider doc not found:', riderId);
       }
 
       const updatedVehicle = await db.collection('vehicles').doc(vehicleId).get();
