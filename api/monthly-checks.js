@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
       hasAuth: !!req.headers.authorization
     });
 
-    const { db } = initFirebase();
+    const { db, admin } = initFirebase();
     const user = await authenticateToken(req, db);
 
     // Extract ID from URL
@@ -66,9 +66,9 @@ module.exports = async (req, res) => {
 
         // עדכון תאריך שליחת הודעה אחרונה
         await checkRef.update({
-          lastReminderSent: new Date(),
+          lastReminderSent: admin.firestore.FieldValue.serverTimestamp(),
           manualReminderSentBy: user.id,
-          updatedAt: new Date(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedBy: user.id
         });
 
@@ -101,7 +101,7 @@ module.exports = async (req, res) => {
         const updateData = {
           ...req.body,
           updatedBy: user.id,
-          updatedAt: new Date()
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
         };
 
         await checkRef.update(updateData);
@@ -113,8 +113,8 @@ module.exports = async (req, res) => {
             try {
               await db.collection('vehicles').doc(check.vehicleId).update({
                 currentKilometers: parseInt(req.body.currentKm),
-                lastKilometerUpdate: new Date(),
-                updatedAt: new Date()
+                lastKilometerUpdate: admin.firestore.FieldValue.serverTimestamp(),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
               });
               console.log(`✅ קילומטרז עודכן לכלי ${check.vehicleId}: ${req.body.currentKm} ק"מ`);
             } catch (kmError) {
@@ -275,25 +275,33 @@ module.exports = async (req, res) => {
             }
 
             // יצירת בקרה חודשית
+            // יצירת תאריך באמצעות Firestore Timestamp
+            const checkDateObj = new Date(checkYear, checkMonth - 1, 1);
             const checkData = {
               riderId: rider.id,
               riderName: `${rider.firstName} ${rider.lastName}`,
               vehicleId: vehicle.id,
               vehicleLicensePlate: vehicle.licensePlate,
               vehiclePlate: vehicle.licensePlate,
-              checkDate: new Date(checkYear, checkMonth - 1, 1),
+              checkDate: admin.firestore.Timestamp.fromDate(checkDateObj),
               status: 'pending',
               checkResults: {},
-              createdAt: new Date(),
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
               createdBy: user.id,
-              updatedAt: new Date(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
               updatedBy: user.id
             };
 
-            console.log(`💾 [CREATE CHECKS] Creating check document:`, checkData);
+            console.log(`💾 [CREATE CHECKS] Creating check document for ${rider.firstName} ${rider.lastName}`);
             const docRef = await db.collection('monthly_checks').add(checkData);
             console.log(`✅ [CREATE CHECKS] Check created with ID: ${docRef.id}`);
-            createdChecks.push({ id: docRef.id, ...checkData });
+
+            // להחזיר עם תאריך תקין
+            createdChecks.push({
+              id: docRef.id,
+              ...checkData,
+              checkDate: checkDateObj // להחזיר Date רגיל לצד לקוח
+            });
           } catch (error) {
             console.error(`❌ [CREATE CHECKS] Error for rider ${riderId}:`, error.message);
             errors.push({ riderId, error: error.message });
@@ -317,9 +325,17 @@ module.exports = async (req, res) => {
         const checkData = {
           ...req.body,
           createdBy: user.id,
-          createdAt: new Date(),
-          updatedAt: new Date()
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
         };
+
+        // המרת checkDate ל-Timestamp אם קיים
+        if (checkData.checkDate) {
+          const dateObj = typeof checkData.checkDate === 'string'
+            ? new Date(checkData.checkDate)
+            : checkData.checkDate;
+          checkData.checkDate = admin.firestore.Timestamp.fromDate(dateObj);
+        }
 
         const checkRef = await db.collection('monthly_checks').add(checkData);
         const checkDoc = await checkRef.get();
