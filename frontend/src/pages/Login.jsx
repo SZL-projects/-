@@ -110,7 +110,7 @@ export default function Login() {
           )}
 
           {/* Login Form */}
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} action="javascript:void(0);">
             <TextField
               fullWidth
               label="שם משתמש"
@@ -172,11 +172,12 @@ export default function Login() {
             </Box>
 
             <Button
-              type="submit"
+              type="button"
               fullWidth
               variant="contained"
               size="large"
               disabled={loading}
+              onClick={handleSubmit}
               sx={{
                 mt: 2,
                 mb: 2,
