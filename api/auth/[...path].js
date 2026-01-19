@@ -64,12 +64,23 @@ module.exports = async (req, res) => {
         });
       }
 
-      const usersSnapshot = await db.collection('users')
+      // חיפוש לפי שם משתמש
+      let usersSnapshot = await db.collection('users')
         .where('username', '==', username)
         .limit(1)
         .get();
 
+      // אם לא נמצא לפי שם משתמש, ננסה לפי אימייל
       if (usersSnapshot.empty) {
+        console.log('📝 Username not found, trying email lookup:', username.toLowerCase());
+        usersSnapshot = await db.collection('users')
+          .where('email', '==', username.toLowerCase())
+          .limit(1)
+          .get();
+      }
+
+      if (usersSnapshot.empty) {
+        console.log('❌ User not found by username or email:', username);
         return res.status(401).json({
           success: false,
           message: 'שם משתמש או סיסמה שגויים'
