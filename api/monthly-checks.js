@@ -1,6 +1,7 @@
 // Vercel Serverless Function - /api/monthly-checks (all monthly check endpoints)
 const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkAuthorization } = require('./_utils/auth');
+const gmailService = require('./services/gmailService');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -66,17 +67,90 @@ module.exports = async (req, res) => {
           });
         }
 
+        // קבלת פרטי הרוכב לשליחת המייל
+        let riderEmail = null;
+        let riderName = check.riderName || 'רוכב';
+
+        if (check.riderId) {
+          const riderDoc = await db.collection('riders').doc(check.riderId).get();
+          if (riderDoc.exists) {
+            const riderData = riderDoc.data();
+            riderEmail = riderData.email;
+            riderName = `${riderData.firstName || ''} ${riderData.lastName || ''}`.trim() || riderName;
+          }
+        }
+
+        // שליחת מייל לרוכב
+        let emailSent = false;
+        let emailError = null;
+
+        console.log('📧 [SEND NOTIFICATION] Attempting to send email:', {
+          riderEmail,
+          riderName,
+          checkId,
+          vehiclePlate: check.vehicleLicensePlate || check.vehiclePlate
+        });
+
+        if (riderEmail) {
+          try {
+            // אתחול gmailService עם Firestore
+            console.log('📧 [SEND NOTIFICATION] Setting Firestore on gmailService...');
+            gmailService.setFirestore(db);
+
+            // פורמט תאריך הבקרה
+            const checkDate = check.checkDate?.toDate ? check.checkDate.toDate() : new Date(check.checkDate);
+            const monthNames = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+            const monthName = monthNames[checkDate.getMonth()];
+            const year = checkDate.getFullYear();
+
+            console.log('📧 [SEND NOTIFICATION] Calling sendReminderEmail...');
+
+            const emailResult = await gmailService.sendReminderEmail({
+              to: riderEmail,
+              subject: `תזכורת: בקרה חודשית לחודש ${monthName} ${year}`,
+              message: `שלום ${riderName},<br><br>
+                זוהי תזכורת למילוי הבקרה החודשית עבור הכלי שלך (${check.vehicleLicensePlate || check.vehiclePlate || ''}).<br><br>
+                אנא היכנס למערכת ומלא את הבקרה בהקדם האפשרי.<br><br>
+                תודה,<br>
+                מערכת ניהול צי ידידים`,
+              actionUrl: `${process.env.FRONTEND_URL || 'https://tzi-log-yedidim.vercel.app'}/my-profile`,
+              actionText: 'מלא בקרה חודשית'
+            });
+
+            emailSent = true;
+            console.log(`✅ [SEND NOTIFICATION] Email sent successfully to ${riderName} (${riderEmail}), messageId:`, emailResult?.id);
+          } catch (err) {
+            emailError = err.message;
+            console.error('❌ [SEND NOTIFICATION] Error sending email:', {
+              error: err.message,
+              stack: err.stack,
+              riderEmail,
+              riderName
+            });
+            // ממשיכים גם אם המייל נכשל - לפחות נעדכן את הרשומה
+          }
+        } else {
+          console.log(`⚠️ [SEND NOTIFICATION] No email found for rider ${riderName}`);
+        }
+
         // עדכון תאריך שליחת הודעה אחרונה
         await checkRef.update({
           lastReminderSent: admin.firestore.FieldValue.serverTimestamp(),
           manualReminderSentBy: user.id,
+          emailSent: emailSent,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedBy: user.id
         });
 
         return res.json({
           success: true,
-          message: 'הודעה נשלחה בהצלחה'
+          message: emailSent
+            ? `הודעה נשלחה בהצלחה לרוכב ${riderName}`
+            : riderEmail
+              ? `שגיאה בשליחת מייל: ${emailError || 'שגיאה לא ידועה'}`
+              : 'הרשומה עודכנה אך לא נמצא מייל לרוכב',
+          emailSent,
+          emailError: emailError || undefined
         });
       }
 

@@ -69,27 +69,39 @@ class GmailService {
 
   // אתחול Gmail API
   async initialize() {
+    console.log('📧 [GmailService] Starting initialization...');
     try {
+      console.log('📧 [GmailService] Getting OAuth2 client...');
       const auth = await this.getOAuth2Client();
+      console.log('📧 [GmailService] OAuth2 client obtained, creating Gmail API...');
       this.gmail = google.gmail({ version: 'v1', auth });
       this.initialized = true;
-      console.log('Gmail service initialized successfully');
+      console.log('📧 [GmailService] Gmail service initialized successfully');
       return true;
     } catch (error) {
-      console.error('Failed to initialize Gmail service:', error);
-      return false;
+      console.error('📧 [GmailService] Failed to initialize:', {
+        message: error.message,
+        stack: error.stack
+      });
+      this.initialized = false;
+      throw error; // זרוק את השגיאה במקום להחזיר false
     }
   }
 
   // שליחת מייל
   async sendEmail({ to, subject, html, text }) {
+    console.log('📧 [GmailService] sendEmail called:', { to, subject: subject?.substring(0, 50) });
+
     if (!this.initialized) {
+      console.log('📧 [GmailService] Not initialized, calling initialize()...');
       await this.initialize();
     }
 
     if (!this.initialized) {
       throw new Error('Gmail service not initialized');
     }
+
+    console.log('📧 [GmailService] Service is initialized, preparing email...');
 
     try {
       // יצירת המייל בפורמט RFC 2822
@@ -110,6 +122,8 @@ class GmailService {
         .replace(/\//g, '_')
         .replace(/=+$/, '');
 
+      console.log('📧 [GmailService] Sending via Gmail API...');
+
       const response = await this.gmail.users.messages.send({
         userId: 'me',
         requestBody: {
@@ -117,10 +131,14 @@ class GmailService {
         }
       });
 
-      console.log('Email sent successfully:', response.data.id);
+      console.log('📧 [GmailService] Email sent successfully:', response.data.id);
       return response.data;
     } catch (error) {
-      console.error('Error sending email:', error);
+      console.error('📧 [GmailService] Error sending email:', {
+        message: error.message,
+        code: error.code,
+        errors: error.errors
+      });
       throw error;
     }
   }
