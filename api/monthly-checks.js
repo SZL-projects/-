@@ -1,7 +1,7 @@
 // Vercel Serverless Function - /api/monthly-checks (all monthly check endpoints)
 const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkAuthorization } = require('./_utils/auth');
-const gmailService = require('./services/gmailService');
+const { sendMonthlyCheckReminder } = require('./_utils/emailService');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -84,41 +84,35 @@ module.exports = async (req, res) => {
         let emailSent = false;
         let emailError = null;
 
+        // פורמט תאריך הבקרה
+        const checkDate = check.checkDate?.toDate ? check.checkDate.toDate() : new Date(check.checkDate);
+        const monthNames = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+        const monthName = monthNames[checkDate.getMonth()];
+        const year = checkDate.getFullYear();
+
         console.log('📧 [SEND NOTIFICATION] Attempting to send email:', {
           riderEmail,
           riderName,
           checkId,
-          vehiclePlate: check.vehicleLicensePlate || check.vehiclePlate
+          vehiclePlate: check.vehicleLicensePlate || check.vehiclePlate,
+          monthName,
+          year
         });
 
         if (riderEmail) {
           try {
-            // אתחול gmailService עם Firestore
-            console.log('📧 [SEND NOTIFICATION] Setting Firestore on gmailService...');
-            gmailService.setFirestore(db);
+            console.log('📧 [SEND NOTIFICATION] Calling sendMonthlyCheckReminder via SMTP...');
 
-            // פורמט תאריך הבקרה
-            const checkDate = check.checkDate?.toDate ? check.checkDate.toDate() : new Date(check.checkDate);
-            const monthNames = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
-            const monthName = monthNames[checkDate.getMonth()];
-            const year = checkDate.getFullYear();
-
-            console.log('📧 [SEND NOTIFICATION] Calling sendReminderEmail...');
-
-            const emailResult = await gmailService.sendReminderEmail({
+            await sendMonthlyCheckReminder({
               to: riderEmail,
-              subject: `תזכורת: בקרה חודשית לחודש ${monthName} ${year}`,
-              message: `שלום ${riderName},<br><br>
-                זוהי תזכורת למילוי הבקרה החודשית עבור הכלי שלך (${check.vehicleLicensePlate || check.vehiclePlate || ''}).<br><br>
-                אנא היכנס למערכת ומלא את הבקרה בהקדם האפשרי.<br><br>
-                תודה,<br>
-                מערכת ניהול צי ידידים`,
-              actionUrl: `${process.env.FRONTEND_URL || 'https://tzi-log-yedidim.vercel.app'}/my-profile`,
-              actionText: 'מלא בקרה חודשית'
+              riderName,
+              vehiclePlate: check.vehicleLicensePlate || check.vehiclePlate || '',
+              monthName,
+              year
             });
 
             emailSent = true;
-            console.log(`✅ [SEND NOTIFICATION] Email sent successfully to ${riderName} (${riderEmail}), messageId:`, emailResult?.id);
+            console.log(`✅ [SEND NOTIFICATION] Email sent successfully to ${riderName} (${riderEmail})`);
           } catch (err) {
             emailError = err.message;
             console.error('❌ [SEND NOTIFICATION] Error sending email:', {

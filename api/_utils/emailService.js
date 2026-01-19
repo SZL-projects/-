@@ -156,6 +156,97 @@ exports.sendPasswordResetEmail = async (user, resetToken) => {
   });
 };
 
+// שליחת תזכורת בקרה חודשית לרוכב
+exports.sendMonthlyCheckReminder = async ({ to, riderName, vehiclePlate, monthName, year }) => {
+  const loginUrl = `${process.env.FRONTEND_URL}/my-profile`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html dir="rtl" lang="he">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          background-color: #f4f4f4;
+          padding: 20px;
+        }
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          background-color: #ffffff;
+          padding: 30px;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+          color: #ff9800;
+          text-align: center;
+        }
+        p {
+          color: #333;
+          line-height: 1.6;
+          font-size: 16px;
+        }
+        .info-box {
+          background-color: #fff3e0;
+          border-right: 4px solid #ff9800;
+          padding: 15px;
+          margin: 20px 0;
+        }
+        .button {
+          display: inline-block;
+          background-color: #ff9800;
+          color: #ffffff !important;
+          padding: 12px 30px;
+          text-decoration: none;
+          border-radius: 5px;
+          margin: 20px 0;
+          font-weight: bold;
+        }
+        .footer {
+          margin-top: 30px;
+          padding-top: 20px;
+          border-top: 1px solid #ddd;
+          text-align: center;
+          font-size: 14px;
+          color: #777;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>🏍️ תזכורת: בקרה חודשית</h1>
+        <p>שלום ${riderName},</p>
+        <p>זוהי תזכורת למילוי הבקרה החודשית עבור הכלי שלך.</p>
+
+        <div class="info-box">
+          <strong>פרטי הבקרה:</strong><br/>
+          חודש: ${monthName} ${year}<br/>
+          מספר רישוי: ${vehiclePlate || 'לא צוין'}
+        </div>
+
+        <p>אנא היכנס למערכת ומלא את הבקרה בהקדם האפשרי.</p>
+
+        <center>
+          <a href="${loginUrl}" class="button">מלא בקרה חודשית</a>
+        </center>
+
+        <div class="footer">
+          <p>© ${new Date().getFullYear()} מערכת CRM צי לוג ידידים</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await exports.sendEmail({
+    email: to,
+    subject: `תזכורת: בקרה חודשית לחודש ${monthName} ${year}`,
+    html,
+  });
+};
+
 // שליחת פרטי התחברות למשתמש
 exports.sendLoginCredentials = async (user, temporaryPassword) => {
   const loginUrl = `${process.env.FRONTEND_URL}/login`;
