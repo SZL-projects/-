@@ -42,18 +42,30 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
+
+    console.log('🔐 Login form submitted');
     setLoading(true);
     setError('');
 
-    const result = await login(formData, rememberMe);
+    try {
+      console.log('🔐 Calling login with:', { username: formData.username, rememberMe });
+      const result = await login(formData, rememberMe);
+      console.log('🔐 Login result:', result);
 
-    if (result.success) {
-      navigate('/dashboard');
-    } else {
-      setError(result.message);
+      if (result.success) {
+        console.log('🔐 Login successful, navigating to dashboard');
+        navigate('/dashboard');
+      } else {
+        console.log('🔐 Login failed:', result.message);
+        setError(result.message);
+      }
+    } catch (err) {
+      console.error('🔐 Login error:', err);
+      setError('שגיאה בהתחברות: ' + (err.message || 'שגיאה לא ידועה'));
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
