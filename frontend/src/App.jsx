@@ -77,6 +77,7 @@ function AppRoutes() {
         <Route path="vehicles/:id" element={<VehicleDetails />} />
         <Route path="tasks" element={<Tasks />} />
         <Route path="monthly-checks" element={<MonthlyChecks />} />
+        <Route path="monthly-check/:id" element={<MonthlyCheckForm />} />
         <Route path="faults" element={<Faults />} />
         <Route path="fault-report" element={<FaultReport />} />
         <Route path="monthly-check-form" element={<MonthlyCheckForm />} />
