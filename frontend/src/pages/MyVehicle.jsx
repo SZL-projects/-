@@ -415,6 +415,7 @@ export default function MyVehicle() {
                       in_progress: { label: 'בתהליך', color: 'info', icon: <HourglassEmpty fontSize="small" /> },
                       completed: { label: 'הושלם', color: 'success', icon: <CheckCircle fontSize="small" /> },
                       overdue: { label: 'באיחור', color: 'error', icon: <Warning fontSize="small" /> },
+                      issues: { label: 'יש בעיות', color: 'error', icon: <Warning fontSize="small" /> },
                     };
                     const status = statusConfig[check.status] || statusConfig.pending;
 

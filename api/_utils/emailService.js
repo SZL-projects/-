@@ -248,6 +248,112 @@ exports.sendMonthlyCheckReminder = async ({ to, riderName, vehiclePlate, monthNa
   });
 };
 
+// שליחת התראה למנהל על בעיות בבקרה חודשית
+exports.sendCheckIssuesAlert = async ({ managerEmail, riderName, vehiclePlate, issues, checkId }) => {
+  const checkUrl = `${process.env.FRONTEND_URL}/monthly-checks`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html dir="rtl" lang="he">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          background-color: #f4f4f4;
+          padding: 20px;
+        }
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          background-color: #ffffff;
+          padding: 30px;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+          color: #f44336;
+          text-align: center;
+        }
+        p {
+          color: #333;
+          line-height: 1.6;
+          font-size: 16px;
+        }
+        .alert-box {
+          background-color: #ffebee;
+          border-right: 4px solid #f44336;
+          padding: 15px;
+          margin: 20px 0;
+        }
+        .issues-list {
+          background-color: #fff3e0;
+          padding: 15px;
+          border-radius: 5px;
+          margin: 15px 0;
+        }
+        .issue-item {
+          padding: 5px 0;
+          border-bottom: 1px solid #ffe0b2;
+        }
+        .button {
+          display: inline-block;
+          background-color: #1976d2;
+          color: #ffffff !important;
+          padding: 12px 30px;
+          text-decoration: none;
+          border-radius: 5px;
+          margin: 20px 0;
+          font-weight: bold;
+        }
+        .footer {
+          margin-top: 30px;
+          padding-top: 20px;
+          border-top: 1px solid #ddd;
+          text-align: center;
+          font-size: 14px;
+          color: #777;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>⚠️ התראה: בעיות בבקרה חודשית</h1>
+        <p>שלום,</p>
+        <p>התקבלה בקרה חודשית עם בעיות שדורשות טיפול:</p>
+
+        <div class="alert-box">
+          <strong>פרטי הבקרה:</strong><br/>
+          רוכב: ${riderName}<br/>
+          מספר רישוי: ${vehiclePlate || 'לא צוין'}
+        </div>
+
+        <div class="issues-list">
+          <strong>בעיות שנמצאו:</strong>
+          ${issues.map(issue => `<div class="issue-item">• ${issue}</div>`).join('')}
+        </div>
+
+        <p>אנא בדוק את הבקרה ונקוט פעולה בהתאם.</p>
+
+        <center>
+          <a href="${checkUrl}" class="button">צפה בבקרות</a>
+        </center>
+
+        <div class="footer">
+          <p>© ${new Date().getFullYear()} מערכת CRM צי לוג ידידים</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await exports.sendEmail({
+    email: managerEmail,
+    subject: `⚠️ התראה: בעיות בבקרה חודשית - ${riderName}`,
+    html,
+  });
+};
+
 // שליחת פרטי התחברות למשתמש
 exports.sendLoginCredentials = async (user, temporaryPassword) => {
   const loginUrl = `${process.env.FRONTEND_URL}/login`;

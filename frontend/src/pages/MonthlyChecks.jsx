@@ -161,18 +161,22 @@ export default function MonthlyChecks() {
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const thisMonthChecks = checks.filter(check => {
+    // סינון רק בקרות שהושלמו בחודש הנוכחי
+    const completedChecksThisMonth = checks.filter(check => {
       const checkDate = safeParseDate(check.checkDate);
-      return checkDate && checkDate >= firstDayOfMonth;
+      const isThisMonth = checkDate && checkDate >= firstDayOfMonth;
+      const isCompleted = check.status === 'completed' || check.status === 'passed';
+      return isThisMonth && isCompleted;
     });
 
     const activeRiders = riders.filter(r => r.riderStatus === 'active' || r.status === 'active');
-    const ridersWithCheckThisMonth = new Set(
-      thisMonthChecks.map(check => check.riderId || check.riderName)
+    // רשימת רוכבים שהשלימו בקרה החודש
+    const ridersWithCompletedCheckThisMonth = new Set(
+      completedChecksThisMonth.map(check => check.riderId || check.riderName)
     );
 
     return activeRiders.filter(
-      rider => !ridersWithCheckThisMonth.has(rider._id || rider.id)
+      rider => !ridersWithCompletedCheckThisMonth.has(rider._id || rider.id)
     ).map(rider => {
       // מציאת הבקרה האחרונה של הרוכב
       const riderChecks = checks.filter(c =>
@@ -230,6 +234,7 @@ export default function MonthlyChecks() {
       passed: { label: 'עבר', color: 'success', icon: <CheckCircle /> },
       pending: { label: 'ממתין', color: 'warning', icon: <Warning /> },
       failed: { label: 'נכשל', color: 'error', icon: <ErrorOutline /> },
+      issues: { label: 'יש בעיות', color: 'error', icon: <ErrorOutline /> },
     };
 
     const { label, color, icon } = statusMap[status] || { label: status, color: 'default', icon: null };

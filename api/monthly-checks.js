@@ -1,7 +1,7 @@
 // Vercel Serverless Function - /api/monthly-checks (all monthly check endpoints)
 const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkAuthorization } = require('./_utils/auth');
-const { sendMonthlyCheckReminder } = require('./_utils/emailService');
+const { sendMonthlyCheckReminder, sendCheckIssuesAlert } = require('./_utils/emailService');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -169,8 +169,44 @@ module.exports = async (req, res) => {
 
       // PUT - update check
       if (req.method === 'PUT') {
+        const check = doc.data();
+        const checkResults = req.body.checkResults || {};
+
+        // בדיקה אם יש בעיות בבקרה
+        const issues = [];
+        if (checkResults.oilCheck === 'low' || checkResults.oilCheck === 'not_ok') {
+          issues.push('שמן - נמוך/לא תקין');
+        }
+        if (checkResults.waterCheck === 'low' || checkResults.waterCheck === 'not_ok') {
+          issues.push('מים - נמוך/לא תקין');
+        }
+        if (checkResults.brakesCondition === 'bad' || checkResults.brakesCondition === 'fair') {
+          issues.push(`בלמים - ${checkResults.brakesCondition === 'bad' ? 'לא תקין' : 'בינוני'}`);
+        }
+        if (checkResults.lightsCondition === 'bad' || checkResults.lightsCondition === 'fair') {
+          issues.push(`פנסים - ${checkResults.lightsCondition === 'bad' ? 'לא תקין' : 'בינוני'}`);
+        }
+        if (checkResults.mirrorsCondition === 'bad') {
+          issues.push('מראות - לא תקין');
+        }
+        if (checkResults.helmetCondition === 'bad') {
+          issues.push('קסדה - לא תקין');
+        }
+        if (req.body.issues && req.body.issues.trim()) {
+          issues.push(`הערות: ${req.body.issues}`);
+        }
+
+        // קביעת סטטוס - אם יש בעיות, סמן כ-issues
+        let finalStatus = req.body.status;
+        if (req.body.status === 'completed' && issues.length > 0) {
+          finalStatus = 'issues'; // סטטוס חדש לבקרה עם בעיות
+        }
+
         const updateData = {
           ...req.body,
+          status: finalStatus,
+          hasIssues: issues.length > 0,
+          issuesList: issues,
           updatedBy: user.id,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         };
@@ -179,7 +215,6 @@ module.exports = async (req, res) => {
 
         // אם הבקרה הושלמה - עדכון קילומטרז בכלי
         if (req.body.status === 'completed' && req.body.currentKm) {
-          const check = doc.data();
           if (check.vehicleId) {
             try {
               await db.collection('vehicles').doc(check.vehicleId).update({
@@ -194,12 +229,59 @@ module.exports = async (req, res) => {
           }
         }
 
+        // אם יש בעיות - שלח התראה למנהלים
+        if (issues.length > 0 && req.body.status === 'completed') {
+          try {
+            // מציאת מנהלים לשליחת התראה
+            const managersSnapshot = await db.collection('users')
+              .where('roles', 'array-contains', 'manager')
+              .get();
+
+            const superAdminsSnapshot = await db.collection('users')
+              .where('roles', 'array-contains', 'super_admin')
+              .get();
+
+            const managerEmails = new Set();
+            managersSnapshot.docs.forEach(doc => {
+              const data = doc.data();
+              if (data.email) managerEmails.add(data.email);
+            });
+            superAdminsSnapshot.docs.forEach(doc => {
+              const data = doc.data();
+              if (data.email) managerEmails.add(data.email);
+            });
+
+            console.log(`📧 שליחת התראות ל-${managerEmails.size} מנהלים על בעיות בבקרה`);
+
+            for (const email of managerEmails) {
+              try {
+                await sendCheckIssuesAlert({
+                  managerEmail: email,
+                  riderName: check.riderName || 'לא ידוע',
+                  vehiclePlate: check.vehicleLicensePlate || check.vehiclePlate,
+                  issues,
+                  checkId
+                });
+                console.log(`✅ התראה נשלחה ל-${email}`);
+              } catch (emailErr) {
+                console.error(`❌ שגיאה בשליחת התראה ל-${email}:`, emailErr.message);
+              }
+            }
+          } catch (alertError) {
+            console.error('❌ שגיאה בשליחת התראות למנהלים:', alertError.message);
+          }
+        }
+
         const updatedDoc = await checkRef.get();
 
         return res.status(200).json({
           success: true,
-          message: 'בקרה חודשית עודכנה בהצלחה',
-          monthlyCheck: { id: updatedDoc.id, ...updatedDoc.data() }
+          message: issues.length > 0
+            ? 'בקרה נשמרה עם בעיות - נשלחה התראה למנהלים'
+            : 'בקרה חודשית עודכנה בהצלחה',
+          monthlyCheck: { id: updatedDoc.id, ...updatedDoc.data() },
+          hasIssues: issues.length > 0,
+          issues
         });
       }
 
