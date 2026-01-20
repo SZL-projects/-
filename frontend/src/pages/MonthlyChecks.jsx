@@ -155,13 +155,17 @@ export default function MonthlyChecks() {
     }).format(date);
   };
 
-  const getStatusChip = (status) => {
+  const getStatusChip = (status, hasIssues = false) => {
+    // אם יש בעיות - תמיד הצג כ"יש בעיות"
+    if (status === 'issues' || hasIssues) {
+      return <Chip label="יש בעיות" color="error" size="small" icon={<ErrorOutline />} />;
+    }
+
     const statusMap = {
-      completed: { label: 'הושלם', color: 'success', icon: <CheckCircle /> },
-      passed: { label: 'עבר', color: 'success', icon: <CheckCircle /> },
+      completed: { label: 'תקין', color: 'success', icon: <CheckCircle /> },
+      passed: { label: 'תקין', color: 'success', icon: <CheckCircle /> },
       pending: { label: 'ממתין', color: 'warning', icon: <Warning /> },
       failed: { label: 'נכשל', color: 'error', icon: <ErrorOutline /> },
-      issues: { label: 'יש בעיות', color: 'error', icon: <ErrorOutline /> },
     };
 
     const { label, color, icon } = statusMap[status] || { label: status, color: 'default', icon: null };
@@ -608,7 +612,7 @@ export default function MonthlyChecks() {
                           </Typography>
                         ) : '-'}
                       </TableCell>
-                      <TableCell>{getStatusChip(check.status)}</TableCell>
+                      <TableCell>{getStatusChip(check.status, check.hasIssues)}</TableCell>
                       <TableCell align="center">
                         <IconButton
                           color="primary"
