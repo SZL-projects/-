@@ -337,29 +337,9 @@ module.exports = async (req, res) => {
             const monthStart = new Date(checkYear, checkMonth - 1, 1);
             const monthEnd = new Date(checkYear, checkMonth, 0, 23, 59, 59);
 
-            console.log(`🔍 [CREATE CHECKS] Checking for existing check: ${checkMonth}/${checkYear}`);
+            console.log(`📝 [CREATE CHECKS] Creating check for ${checkMonth}/${checkYear}`);
 
-            // שאילתה פשוטה יותר שלא דורשת אינדקס - רק לפי riderId
-            const existingCheckSnapshot = await db.collection('monthly_checks')
-              .where('riderId', '==', riderId)
-              .get();
-
-            // סינון בצד השרת - בודקים אם יש בקרה לחודש הזה
-            const existingCheck = existingCheckSnapshot.docs.find(doc => {
-              const data = doc.data();
-              const checkDate = data.checkDate?.toDate ? data.checkDate.toDate() : new Date(data.checkDate);
-              return data.vehicleId === vehicle.id &&
-                     checkDate >= monthStart &&
-                     checkDate <= monthEnd;
-            });
-
-            if (existingCheck) {
-              console.log(`❌ [CREATE CHECKS] Check already exists for rider ${riderId}`);
-              errors.push({ riderId, error: 'כבר קיימת בקרה לחודש זה' });
-              continue;
-            }
-
-            // יצירת בקרה חודשית
+            // יצירת בקרה חודשית - מותר ליצור מספר בקרות לאותו כלי
             // יצירת תאריך באמצעות Firestore Timestamp
             const checkDateObj = new Date(checkYear, checkMonth - 1, 1);
             const checkData = {

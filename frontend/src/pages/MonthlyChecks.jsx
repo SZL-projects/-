@@ -75,6 +75,7 @@ import {
   Send as SendIcon,
   FilterList,
   AddTask,
+  Delete,
 } from '@mui/icons-material';
 import { monthlyChecksAPI, ridersAPI, vehiclesAPI } from '../services/api';
 
@@ -96,6 +97,7 @@ export default function MonthlyChecks() {
   const [openChecksDialogOpen, setOpenChecksDialogOpen] = useState(false);
   const [selectedRiders, setSelectedRiders] = useState([]);
   const [openingChecks, setOpeningChecks] = useState(false);
+  const [deletingCheck, setDeletingCheck] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -343,6 +345,28 @@ export default function MonthlyChecks() {
       setSelectedRiders(eligibleRiders.map(r => r._id || r.id));
     }
   }, [selectedRiders, eligibleRiders]);
+
+  const handleDeleteCheck = useCallback(async (checkId) => {
+    if (!window.confirm('האם אתה בטוח שברצונך למחוק את הבקרה?')) {
+      return;
+    }
+
+    setDeletingCheck(checkId);
+    try {
+      await monthlyChecksAPI.delete(checkId);
+      setSnackbar({ open: true, message: 'הבקרה נמחקה בהצלחה', severity: 'success' });
+      await loadData();
+    } catch (error) {
+      console.error('Error deleting check:', error);
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || 'שגיאה במחיקת הבקרה',
+        severity: 'error'
+      });
+    } finally {
+      setDeletingCheck(null);
+    }
+  }, [loadData]);
 
   const handleOpenChecks = useCallback(async () => {
     if (selectedRiders.length === 0) {
@@ -691,6 +715,19 @@ export default function MonthlyChecks() {
                             )}
                           </IconButton>
                         )}
+                        <IconButton
+                          color="error"
+                          size="small"
+                          onClick={() => handleDeleteCheck(check._id || check.id)}
+                          disabled={deletingCheck === (check._id || check.id)}
+                          title="מחק בקרה"
+                        >
+                          {deletingCheck === (check._id || check.id) ? (
+                            <CircularProgress size={20} />
+                          ) : (
+                            <Delete />
+                          )}
+                        </IconButton>
                       </TableCell>
                     </TableRow>
                   ))
