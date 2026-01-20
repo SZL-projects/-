@@ -51,8 +51,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Tabs,
-  Tab,
   List,
   ListItem,
   ListItemText,
@@ -89,7 +87,6 @@ export default function MonthlyChecks() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterRider, setFilterRider] = useState('all');
   const [error, setError] = useState('');
-  const [viewMode, setViewMode] = useState(0); // 0: כל הבקרות, 1: רוכבים ללא בקרה
   const [selectedCheck, setSelectedCheck] = useState(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
@@ -138,84 +135,14 @@ export default function MonthlyChecks() {
       return checkDate && checkDate >= firstDayOfMonth;
     });
 
-    // חישוב רוכבים פעילים ללא בקרה החודש
-    const activeRiders = riders.filter(r => r.riderStatus === 'active' || r.status === 'active');
-    const ridersWithCheckThisMonth = new Set(
-      thisMonthChecks.map(check => check.riderId || check.riderName)
-    );
-    const ridersWithoutCheck = activeRiders.filter(
-      rider => !ridersWithCheckThisMonth.has(rider._id || rider.id)
-    );
-
     return {
       total: checks.length,
       thisMonth: thisMonthChecks.length,
       pending: checks.filter(c => c.status === 'pending').length,
       completed: checks.filter(c => c.status === 'completed' || c.status === 'passed').length,
-      ridersWithoutCheck: ridersWithoutCheck.length,
+      issues: checks.filter(c => c.status === 'issues' || c.hasIssues).length,
     };
-  }, [checks, riders]);
-
-  // אופטימיזציה: חישוב רוכבים ללא בקרה עם useMemo
-  const ridersWithoutCheck = useMemo(() => {
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    // סינון רק בקרות שהושלמו בחודש הנוכחי
-    const completedChecksThisMonth = checks.filter(check => {
-      const checkDate = safeParseDate(check.checkDate);
-      const isThisMonth = checkDate && checkDate >= firstDayOfMonth;
-      const isCompleted = check.status === 'completed' || check.status === 'passed';
-      return isThisMonth && isCompleted;
-    });
-
-    const activeRiders = riders.filter(r => r.riderStatus === 'active' || r.status === 'active');
-    // רשימת רוכבים שהשלימו בקרה החודש
-    const ridersWithCompletedCheckThisMonth = new Set(
-      completedChecksThisMonth.map(check => check.riderId || check.riderName)
-    );
-
-    return activeRiders.filter(
-      rider => !ridersWithCompletedCheckThisMonth.has(rider._id || rider.id)
-    ).map(rider => {
-      // מציאת הבקרה האחרונה של הרוכב
-      const riderChecks = checks.filter(c =>
-        (c.riderId === rider._id || c.riderId === rider.id)
-      ).sort((a, b) => {
-        const dateA = safeParseDate(a.checkDate);
-        const dateB = safeParseDate(b.checkDate);
-        if (!dateA && !dateB) return 0;
-        if (!dateA) return 1;
-        if (!dateB) return -1;
-        return dateB - dateA;
-      });
-
-      const lastCheck = riderChecks[0];
-      const lastCheckDate = lastCheck ? safeParseDate(lastCheck.checkDate) : null;
-
-      let daysSinceLastCheck = null;
-      if (lastCheckDate) {
-        daysSinceLastCheck = Math.floor((now - lastCheckDate) / (1000 * 60 * 60 * 24));
-      }
-
-      // מציאת הכלי המשויך לרוכב
-      const assignedVehicle = vehicles.find(v => v.assignedTo === (rider._id || rider.id));
-
-      return {
-        ...rider,
-        lastCheckDate,
-        daysSinceLastCheck,
-        assignedVehicle, // הכלי המשויך
-      };
-    });
-  }, [checks, riders, vehicles]);
-
-  const getColorByDays = (days) => {
-    if (!days) return 'default';
-    if (days <= 5) return 'success';
-    if (days <= 10) return 'warning';
-    return 'error';
-  };
+  }, [checks]);
 
   const formatDate = (timestamp) => {
     if (!timestamp) return '-';
@@ -539,39 +466,19 @@ export default function MonthlyChecks() {
           </Card>
         </Grid>
         <Grid item xs={6} sm={6} md={2.4}>
-          <Card
-            sx={{
-              cursor: 'pointer',
-              '&:hover': { bgcolor: 'action.hover' }
-            }}
-            onClick={() => setViewMode(1)}
-          >
+          <Card>
             <CardContent sx={{ textAlign: 'center' }}>
-              <Typography color="textSecondary" variant="body2">ללא בקרה</Typography>
+              <Typography color="textSecondary" variant="body2">יש בעיות</Typography>
               <Typography variant="h4" fontWeight="bold" color="error.main">
-                {stats.ridersWithoutCheck}
+                {stats.issues}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-      {/* Tabs */}
-      <Paper sx={{ mb: 2 }}>
-        <Tabs value={viewMode} onChange={(e, v) => setViewMode(v)}>
-          <Tab label="כל הבקרות" />
-          <Tab
-            label={
-              <Badge badgeContent={stats.ridersWithoutCheck} color="error">
-                רוכבים ללא בקרה
-              </Badge>
-            }
-          />
-        </Tabs>
-      </Paper>
-
-      {viewMode === 0 ? (
-        <>
+      {/* טבלת בקרות */}
+      <>
           {/* סינון וחיפוש */}
           <Paper sx={{ p: 2, mb: 3 }}>
             <Grid container spacing={2}>
@@ -599,10 +506,9 @@ export default function MonthlyChecks() {
                     label="סינון לפי סטטוס"
                   >
                     <MenuItem value="all">הכל</MenuItem>
-                    <MenuItem value="completed">הושלם</MenuItem>
-                    <MenuItem value="passed">עבר</MenuItem>
-                    <MenuItem value="pending">ממתין</MenuItem>
-                    <MenuItem value="failed">נכשל</MenuItem>
+                    <MenuItem value="pending">לא בוצע (ממתין)</MenuItem>
+                    <MenuItem value="completed">בוצע - תקין</MenuItem>
+                    <MenuItem value="issues">בוצע - יש בעיות</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -749,78 +655,6 @@ export default function MonthlyChecks() {
             </Box>
           )}
         </>
-      ) : (
-        /* רוכבים ללא בקרה */
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Warning color="error" /> רוכבים שלא ביצעו בקרה החודש
-          </Typography>
-          <Divider sx={{ my: 2 }} />
-
-          {loading ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : ridersWithoutCheck.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <CheckCircle sx={{ fontSize: 60, color: 'success.main', mb: 2 }} />
-              <Typography variant="h6" color="success.main">
-                כל הרוכבים ביצעו בקרה החודש!
-              </Typography>
-            </Box>
-          ) : (
-            <List>
-              {ridersWithoutCheck.map((rider) => (
-                <ListItem
-                  key={rider._id || rider.id}
-                  sx={{
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 1,
-                    mb: 1,
-                    bgcolor: rider.daysSinceLastCheck > 10 ? 'error.light' :
-                             rider.daysSinceLastCheck > 5 ? 'warning.light' : 'background.paper',
-                  }}
-                >
-                  <ListItemIcon>
-                    <Person color={getColorByDays(rider.daysSinceLastCheck)} />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body1" fontWeight="500">
-                          {rider.firstName} {rider.lastName}
-                        </Typography>
-                        {rider.daysSinceLastCheck !== null && (
-                          <Chip
-                            label={`${rider.daysSinceLastCheck} ימים מאז בקרה`}
-                            color={getColorByDays(rider.daysSinceLastCheck)}
-                            size="small"
-                          />
-                        )}
-                      </Box>
-                    }
-                    secondary={
-                      <>
-                        <Typography variant="body2" component="span">
-                          {rider.assignedVehicle ?
-                            `כלי: ${rider.assignedVehicle.licensePlate} (${rider.assignedVehicle.manufacturer} ${rider.assignedVehicle.model})` :
-                            'ללא כלי משויך'}
-                        </Typography>
-                        {rider.lastCheckDate && (
-                          <Typography variant="body2" component="span" sx={{ ml: 2 }}>
-                            • בקרה אחרונה: {formatDate(rider.lastCheckDate)}
-                          </Typography>
-                        )}
-                      </>
-                    }
-                  />
-                </ListItem>
-              ))}
-            </List>
-          )}
-        </Paper>
-      )}
 
       {/* Details Dialog */}
       <Dialog
