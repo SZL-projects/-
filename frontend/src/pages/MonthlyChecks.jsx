@@ -135,12 +135,26 @@ export default function MonthlyChecks() {
       return checkDate && checkDate >= firstDayOfMonth;
     });
 
+    // ספירת בקרות עם בעיות - צריך לבדוק גם את checkResults
+    const checksWithIssues = checks.filter(c => {
+      if (c.status === 'pending') return false;
+      const results = c.checkResults || {};
+      if (c.hasIssues || c.status === 'issues') return true;
+      if (results.oilCheck === 'low' || results.oilCheck === 'not_ok') return true;
+      if (results.waterCheck === 'low' || results.waterCheck === 'not_ok') return true;
+      if (results.brakesCondition === 'bad' || results.brakesCondition === 'fair') return true;
+      if (results.lightsCondition === 'bad' || results.lightsCondition === 'fair') return true;
+      if (results.mirrorsCondition === 'bad') return true;
+      if (results.helmetCondition === 'bad') return true;
+      return false;
+    });
+
     return {
       total: checks.length,
       thisMonth: thisMonthChecks.length,
       pending: checks.filter(c => c.status === 'pending').length,
       completed: checks.filter(c => c.status === 'completed' || c.status === 'passed').length,
-      issues: checks.filter(c => c.status === 'issues' || c.hasIssues).length,
+      issues: checksWithIssues.length,
     };
   }, [checks]);
 
@@ -155,9 +169,28 @@ export default function MonthlyChecks() {
     }).format(date);
   };
 
-  const getStatusChip = (status, hasIssues = false) => {
+  // פונקציה לבדוק אם יש בעיות בתוצאות הבקרה
+  const checkHasIssues = (check) => {
+    if (check.hasIssues) return true;
+    if (check.status === 'issues') return true;
+
+    const results = check.checkResults || {};
+    if (results.oilCheck === 'low' || results.oilCheck === 'not_ok') return true;
+    if (results.waterCheck === 'low' || results.waterCheck === 'not_ok') return true;
+    if (results.brakesCondition === 'bad' || results.brakesCondition === 'fair') return true;
+    if (results.lightsCondition === 'bad' || results.lightsCondition === 'fair') return true;
+    if (results.mirrorsCondition === 'bad') return true;
+    if (results.helmetCondition === 'bad') return true;
+
+    return false;
+  };
+
+  const getStatusChip = (check) => {
+    const status = check.status;
+    const hasIssues = checkHasIssues(check);
+
     // אם יש בעיות - תמיד הצג כ"יש בעיות"
-    if (status === 'issues' || hasIssues) {
+    if (hasIssues && (status === 'completed' || status === 'passed' || status === 'issues')) {
       return <Chip label="יש בעיות" color="error" size="small" icon={<ErrorOutline />} />;
     }
 
@@ -380,11 +413,11 @@ export default function MonthlyChecks() {
       } else if (filterStatus === 'pending') {
         matchesStatus = check.status === 'pending';
       } else if (filterStatus === 'completed') {
-        // בוצע תקין - סטטוס completed או passed בלי בעיות
-        matchesStatus = (check.status === 'completed' || check.status === 'passed') && !check.hasIssues && check.status !== 'issues';
+        // בוצע תקין - סטטוס completed או passed בלי בעיות (בודק גם את checkResults)
+        matchesStatus = (check.status === 'completed' || check.status === 'passed') && !checkHasIssues(check);
       } else if (filterStatus === 'issues') {
-        // יש בעיות
-        matchesStatus = check.status === 'issues' || check.hasIssues;
+        // יש בעיות - בודק hasIssues, status וגם את checkResults
+        matchesStatus = checkHasIssues(check) && check.status !== 'pending';
       }
 
       const matchesRider = filterRider === 'all' || check.riderId === filterRider;
@@ -612,7 +645,7 @@ export default function MonthlyChecks() {
                           </Typography>
                         ) : '-'}
                       </TableCell>
-                      <TableCell>{getStatusChip(check.status, check.hasIssues)}</TableCell>
+                      <TableCell>{getStatusChip(check)}</TableCell>
                       <TableCell align="center">
                         <IconButton
                           color="primary"
