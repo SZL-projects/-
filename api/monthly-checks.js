@@ -222,17 +222,20 @@ module.exports = async (req, res) => {
       const { search, status, vehicleId, riderId, limit = 100 } = req.query;
       const limitNum = Math.min(parseInt(limit), 500);
 
+      console.log('📋 [GET CHECKS] Query params:', { search, status, vehicleId, riderId, limit: limitNum });
+
       let query = db.collection('monthly_checks');
 
-      // סינונים
-      if (status) {
-        query = query.where('status', '==', status);
-      }
-      if (vehicleId) {
-        query = query.where('vehicleId', '==', vehicleId);
-      }
+      // סינונים - רק אחד בכל פעם כדי להימנע מבעיות אינדקס
       if (riderId) {
+        console.log('📋 [GET CHECKS] Filtering by riderId:', riderId);
         query = query.where('riderId', '==', riderId);
+      } else if (vehicleId) {
+        console.log('📋 [GET CHECKS] Filtering by vehicleId:', vehicleId);
+        query = query.where('vehicleId', '==', vehicleId);
+      } else if (status) {
+        console.log('📋 [GET CHECKS] Filtering by status:', status);
+        query = query.where('status', '==', status);
       }
 
       // סינון לפי תפקיד - רוכב רואה רק את עצמו
@@ -242,14 +245,25 @@ module.exports = async (req, res) => {
         ['super_admin', 'manager', 'secretary'].includes(role)
       );
 
-      if (isRider && !isAdminOrManager && user.riderId) {
-        query = query.where('riderId', '==', user.riderId);
+      // אם לא הוגדר riderId וזה רוכב - סנן לפי riderId שלו
+      if (!riderId && isRider && !isAdminOrManager && user.riderId) {
+        console.log('📋 [GET CHECKS] Rider filtering by own riderId:', user.riderId);
+        query = db.collection('monthly_checks').where('riderId', '==', user.riderId);
       }
 
-      query = query.orderBy('checkDate', 'desc').limit(limitNum);
+      query = query.limit(limitNum);
 
       const snapshot = await query.get();
+      console.log('📋 [GET CHECKS] Found', snapshot.docs.length, 'checks');
+
       let checks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      // מיון ב-client side
+      checks.sort((a, b) => {
+        const dateA = a.checkDate?.seconds ? a.checkDate.seconds : new Date(a.checkDate).getTime() / 1000;
+        const dateB = b.checkDate?.seconds ? b.checkDate.seconds : new Date(b.checkDate).getTime() / 1000;
+        return dateB - dateA;
+      });
 
       // חיפוש טקסט (client-side filtering)
       if (search) {
