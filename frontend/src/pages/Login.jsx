@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -22,7 +22,11 @@ import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
+
+  // בדיקה אם יש redirect URL שמור
+  const from = location.state?.from?.pathname || sessionStorage.getItem('redirectAfterLogin') || '/dashboard';
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -54,8 +58,9 @@ export default function Login() {
       console.log('🔐 Login result:', result);
 
       if (result.success) {
-        console.log('🔐 Login successful, navigating to dashboard');
-        navigate('/dashboard');
+        console.log('🔐 Login successful, navigating to:', from);
+        sessionStorage.removeItem('redirectAfterLogin'); // נקה את ה-redirect
+        navigate(from, { replace: true });
       } else {
         console.log('🔐 Login failed:', result.message);
         setError(result.message);

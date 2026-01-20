@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
@@ -47,12 +47,19 @@ const theme = createTheme({
 // Protected Route Component
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return <div>טוען...</div>;
   }
 
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    // שמור את הנתיב המבוקש כדי להעביר אליו אחרי login
+    sessionStorage.setItem('redirectAfterLogin', location.pathname);
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
 }
 
 function AppRoutes() {

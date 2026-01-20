@@ -32,9 +32,11 @@ import {
   Description,
   Visibility,
   Download,
+  Assignment,
+  HourglassEmpty,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { vehiclesAPI, ridersAPI, faultsAPI } from '../services/api';
+import { vehiclesAPI, ridersAPI, faultsAPI, monthlyChecksAPI } from '../services/api';
 
 export default function MyVehicle() {
   const navigate = useNavigate();
@@ -42,6 +44,7 @@ export default function MyVehicle() {
   const [vehicle, setVehicle] = useState(null);
   const [rider, setRider] = useState(null);
   const [recentFaults, setRecentFaults] = useState([]);
+  const [monthlyChecks, setMonthlyChecks] = useState([]);
   const [insuranceFiles, setInsuranceFiles] = useState([]);
   const [filesLoading, setFilesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -147,6 +150,22 @@ export default function MyVehicle() {
         setRecentFaults(vehicleFaults);
       } catch (err) {
         console.error('Error loading faults:', err);
+      }
+
+      // טעינת בקרות חודשיות - לפי vehicleId או riderId
+      try {
+        const riderId = riderData?.id || riderData?._id;
+        const checksResponse = await monthlyChecksAPI.getAll({ vehicleId, riderId });
+        const checks = checksResponse.data.monthlyChecks || [];
+        // מיון לפי תאריך - החדשות קודם
+        checks.sort((a, b) => {
+          const dateA = a.checkDate?.seconds ? new Date(a.checkDate.seconds * 1000) : new Date(a.checkDate);
+          const dateB = b.checkDate?.seconds ? new Date(b.checkDate.seconds * 1000) : new Date(b.checkDate);
+          return dateB - dateA;
+        });
+        setMonthlyChecks(checks);
+      } catch (err) {
+        console.error('Error loading monthly checks:', err);
       }
 
       setError('');
@@ -359,6 +378,106 @@ export default function MyVehicle() {
                   </Typography>
                 </Grid>
               </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* בקרות חודשיות */}
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Assignment /> בקרות חודשיות
+                </Typography>
+              </Box>
+              <Divider sx={{ mb: 2 }} />
+
+              {monthlyChecks.length === 0 ? (
+                <Box sx={{ textAlign: 'center', py: 3 }}>
+                  <Assignment sx={{ fontSize: 60, color: 'text.secondary', mb: 1, opacity: 0.3 }} />
+                  <Typography color="textSecondary">
+                    אין בקרות חודשיות
+                  </Typography>
+                </Box>
+              ) : (
+                <Grid container spacing={2}>
+                  {monthlyChecks.slice(0, 6).map((check) => {
+                    const checkDate = check.checkDate?.seconds
+                      ? new Date(check.checkDate.seconds * 1000)
+                      : new Date(check.checkDate);
+                    const monthNames = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+                    const monthName = monthNames[checkDate.getMonth()];
+                    const year = checkDate.getFullYear();
+
+                    const statusConfig = {
+                      pending: { label: 'ממתין', color: 'warning', icon: <HourglassEmpty fontSize="small" /> },
+                      in_progress: { label: 'בתהליך', color: 'info', icon: <HourglassEmpty fontSize="small" /> },
+                      completed: { label: 'הושלם', color: 'success', icon: <CheckCircle fontSize="small" /> },
+                      overdue: { label: 'באיחור', color: 'error', icon: <Warning fontSize="small" /> },
+                    };
+                    const status = statusConfig[check.status] || statusConfig.pending;
+
+                    return (
+                      <Grid item xs={12} sm={6} md={4} key={check.id}>
+                        <Paper
+                          variant="outlined"
+                          sx={{
+                            p: 2,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 1,
+                            cursor: check.status === 'pending' ? 'pointer' : 'default',
+                            '&:hover': check.status === 'pending' ? {
+                              backgroundColor: 'action.hover',
+                              borderColor: 'primary.main',
+                            } : {},
+                          }}
+                          onClick={() => {
+                            if (check.status === 'pending') {
+                              navigate(`/monthly-check/${check.id}`);
+                            }
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="subtitle1" fontWeight="bold">
+                              {monthName} {year}
+                            </Typography>
+                            <Chip
+                              label={status.label}
+                              color={status.color}
+                              size="small"
+                              icon={status.icon}
+                            />
+                          </Box>
+                          <Typography variant="body2" color="textSecondary">
+                            כלי: {check.vehicleLicensePlate || check.vehiclePlate || vehicle?.licensePlate || '-'}
+                          </Typography>
+                          {check.status === 'pending' && (
+                            <Button
+                              variant="contained"
+                              size="small"
+                              fullWidth
+                              sx={{ mt: 1 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/monthly-check/${check.id}`);
+                              }}
+                            >
+                              מלא בקרה
+                            </Button>
+                          )}
+                          {check.status === 'completed' && check.completedAt && (
+                            <Typography variant="caption" color="textSecondary">
+                              הושלם: {new Date(check.completedAt?.seconds ? check.completedAt.seconds * 1000 : check.completedAt).toLocaleDateString('he-IL')}
+                            </Typography>
+                          )}
+                        </Paper>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              )}
             </CardContent>
           </Card>
         </Grid>
