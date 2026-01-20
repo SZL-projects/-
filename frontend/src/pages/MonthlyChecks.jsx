@@ -369,7 +369,20 @@ export default function MonthlyChecks() {
         check.vehiclePlate?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         check.riderName?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesStatus = filterStatus === 'all' || check.status === filterStatus;
+      // סינון לפי סטטוס
+      let matchesStatus = false;
+      if (filterStatus === 'all') {
+        matchesStatus = true;
+      } else if (filterStatus === 'pending') {
+        matchesStatus = check.status === 'pending';
+      } else if (filterStatus === 'completed') {
+        // בוצע תקין - סטטוס completed או passed בלי בעיות
+        matchesStatus = (check.status === 'completed' || check.status === 'passed') && !check.hasIssues && check.status !== 'issues';
+      } else if (filterStatus === 'issues') {
+        // יש בעיות
+        matchesStatus = check.status === 'issues' || check.hasIssues;
+      }
+
       const matchesRider = filterRider === 'all' || check.riderId === filterRider;
 
       return matchesSearch && matchesStatus && matchesRider;
