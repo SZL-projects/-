@@ -21,7 +21,7 @@ import {
   CircularProgress,
   Chip,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   CheckCircle,
   Warning,
@@ -38,10 +38,12 @@ const steps = ['פרטי כלי', 'בדיקות חובה', 'בדיקות נוס�
 
 export default function MonthlyCheckForm() {
   const navigate = useNavigate();
+  const { id: checkId } = useParams(); // ID של הבקרה מה-URL
   const { user } = useAuth();
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [vehicle, setVehicle] = useState(null);
+  const [existingCheck, setExistingCheck] = useState(null); // בקרה קיימת
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -79,11 +81,41 @@ export default function MonthlyCheckForm() {
 
   useEffect(() => {
     loadVehicleData();
-  }, [user]);
+  }, [user, checkId]);
 
   const loadVehicleData = async () => {
     try {
       setLoading(true);
+
+      // אם יש ID של בקרה - טען את הבקרה הקיימת
+      if (checkId) {
+        try {
+          const checkResponse = await monthlyChecksAPI.getById(checkId);
+          const checkData = checkResponse.data.monthlyCheck || checkResponse.data;
+          setExistingCheck(checkData);
+
+          // טען את הכלי מהבקרה
+          if (checkData.vehicleId) {
+            const vehicleResponse = await vehiclesAPI.getById(checkData.vehicleId);
+            const vehicleData = vehicleResponse.data.vehicle;
+            setVehicle(vehicleData);
+
+            setFormData(prev => ({
+              ...prev,
+              vehicleId: vehicleData._id || vehicleData.id,
+              vehicleLicensePlate: vehicleData.licensePlate,
+              riderId: checkData.riderId,
+              currentKm: vehicleData.currentKilometers || vehicleData.currentMileage || '',
+            }));
+
+            setLoading(false);
+            return;
+          }
+        } catch (err) {
+          console.error('Error loading existing check:', err);
+          // אם נכשל לטעון את הבקרה - המשך לטעינה רגילה
+        }
+      }
 
       let vehicleId = null;
       let riderData = null;
@@ -240,7 +272,7 @@ export default function MonthlyCheckForm() {
       const checkData = {
         vehicleId: formData.vehicleId,
         vehicleLicensePlate: formData.vehicleLicensePlate,
-        riderId: formData.riderId, // משתמשים ב-riderId שנשמר ב-formData
+        riderId: formData.riderId || existingCheck?.riderId,
         currentKm: parseInt(formData.currentKm),
 
         checkResults: {
@@ -261,14 +293,21 @@ export default function MonthlyCheckForm() {
 
         issues: formData.issues || '',
         notes: formData.notes || '',
-        checkDate: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
         status: 'completed',
       };
 
-      await monthlyChecksAPI.create(checkData);
+      // אם יש בקרה קיימת - עדכן אותה, אחרת צור חדשה
+      if (existingCheck && checkId) {
+        await monthlyChecksAPI.update(checkId, checkData);
+      } else {
+        checkData.checkDate = new Date().toISOString();
+        await monthlyChecksAPI.create(checkData);
+      }
+
       setSuccess(true);
       setTimeout(() => {
-        navigate('/my-vehicle');
+        navigate('/my-profile');
       }, 2500);
     } catch (err) {
       console.error('Error submitting monthly check:', err);

@@ -108,7 +108,8 @@ module.exports = async (req, res) => {
               riderName,
               vehiclePlate: check.vehicleLicensePlate || check.vehiclePlate || '',
               monthName,
-              year
+              year,
+              checkId
             });
 
             emailSent = true;

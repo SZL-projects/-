@@ -157,9 +157,9 @@ exports.sendPasswordResetEmail = async (user, resetToken) => {
 };
 
 // שליחת תזכורת בקרה חודשית לרוכב
-exports.sendMonthlyCheckReminder = async ({ to, riderName, vehiclePlate, monthName, year }) => {
-  // שולחים לדף הלוגין - משם המשתמש יתחבר ויועבר לדשבורד
-  const loginUrl = `${process.env.FRONTEND_URL}/login`;
+exports.sendMonthlyCheckReminder = async ({ to, riderName, vehiclePlate, monthName, year, checkId }) => {
+  // קישור ישיר לבקרה הספציפית
+  const checkUrl = `${process.env.FRONTEND_URL}/monthly-check/${checkId}`;
 
   const html = `
     <!DOCTYPE html>
@@ -228,10 +228,9 @@ exports.sendMonthlyCheckReminder = async ({ to, riderName, vehiclePlate, monthNa
         </div>
 
         <p>אנא היכנס למערכת ומלא את הבקרה בהקדם האפשרי.</p>
-        <p>לאחר ההתחברות, גש לעמוד "הפרופיל שלי" כדי למלא את הבקרה.</p>
 
         <center>
-          <a href="${loginUrl}" class="button">התחבר למערכת</a>
+          <a href="${checkUrl}" class="button">מלא בקרה חודשית</a>
         </center>
 
         <div class="footer">
