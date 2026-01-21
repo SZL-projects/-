@@ -93,8 +93,12 @@ export default function Layout() {
   };
 
   const handleMenuClick = (path) => {
-    navigate(path);
+    // סגור את התפריט קודם
     setMobileOpen(false);
+    // נווט אחרי שה-Drawer נסגר
+    setTimeout(() => {
+      navigate(path);
+    }, 50);
   };
 
   const handleProfileMenuOpen = (event) => {
@@ -263,9 +267,12 @@ export default function Layout() {
           anchor="right"
           ModalProps={{
             keepMounted: false,
-            disableScrollLock: true,
+            disableScrollLock: false,
+            disablePortal: false,
+            disableEnforceFocus: true,
+            disableAutoFocus: true,
           }}
-          transitionDuration={{ enter: 225, exit: 195 }}
+          transitionDuration={{ enter: 200, exit: 150 }}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
