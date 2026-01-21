@@ -1,28 +1,41 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { ThemeProvider, createTheme, CssBaseline, CircularProgress, Box } from '@mui/material';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { lazy, Suspense } from 'react';
 import Layout from './components/Layout';
-import Login from './pages/Login';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import Dashboard from './pages/Dashboard';
-import Riders from './pages/Riders';
-import RiderDetail from './pages/RiderDetail';
-import Vehicles from './pages/Vehicles';
-import VehicleDetails from './pages/VehicleDetails';
-import Tasks from './pages/Tasks';
-import MonthlyChecks from './pages/MonthlyChecks';
-import Users from './pages/Users';
-import Faults from './pages/Faults';
-import FormBuilder from './pages/FormBuilder';
-import Reports from './pages/Reports';
-import FaultReport from './pages/FaultReport';
-import MonthlyCheckForm from './pages/MonthlyCheckForm';
-import MyVehicle from './pages/MyVehicle';
-import MyFaults from './pages/MyFaults';
-import MyProfile from './pages/MyProfile';
-import Settings from './pages/Settings';
 import ErrorBoundary from './components/ErrorBoundary';
+
+// Lazy loading - טעינה עצלה של דפים לשיפור ביצועים
+// דפים קריטיים לטעינה מהירה
+import Login from './pages/Login';
+
+// דפים משניים בטעינה עצלה
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Riders = lazy(() => import('./pages/Riders'));
+const RiderDetail = lazy(() => import('./pages/RiderDetail'));
+const Vehicles = lazy(() => import('./pages/Vehicles'));
+const VehicleDetails = lazy(() => import('./pages/VehicleDetails'));
+const Tasks = lazy(() => import('./pages/Tasks'));
+const MonthlyChecks = lazy(() => import('./pages/MonthlyChecks'));
+const Users = lazy(() => import('./pages/Users'));
+const Faults = lazy(() => import('./pages/Faults'));
+const FormBuilder = lazy(() => import('./pages/FormBuilder'));
+const Reports = lazy(() => import('./pages/Reports'));
+const FaultReport = lazy(() => import('./pages/FaultReport'));
+const MonthlyCheckForm = lazy(() => import('./pages/MonthlyCheckForm'));
+const MyVehicle = lazy(() => import('./pages/MyVehicle'));
+const MyFaults = lazy(() => import('./pages/MyFaults'));
+const MyProfile = lazy(() => import('./pages/MyProfile'));
+const Settings = lazy(() => import('./pages/Settings'));
+
+// Loading component לטעינה עצלה
+const PageLoader = () => (
+  <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+    <CircularProgress />
+  </Box>
+);
 
 // Theme עם תמיכה בעברית (RTL)
 const theme = createTheme({
@@ -64,39 +77,41 @@ function ProtectedRoute({ children }) {
 
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password/:token" element={<ResetPassword />} />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="riders" element={<Riders />} />
-        <Route path="riders/:id" element={<RiderDetail />} />
-        <Route path="vehicles" element={<Vehicles />} />
-        <Route path="vehicles/:id" element={<VehicleDetails />} />
-        <Route path="tasks" element={<Tasks />} />
-        <Route path="monthly-checks" element={<MonthlyChecks />} />
-        <Route path="monthly-check/:id" element={<MonthlyCheckForm />} />
-        <Route path="faults" element={<Faults />} />
-        <Route path="fault-report" element={<FaultReport />} />
-        <Route path="monthly-check-form" element={<MonthlyCheckForm />} />
-        <Route path="reports" element={<Reports />} />
-        <Route path="form-builder" element={<FormBuilder />} />
-        <Route path="users" element={<Users />} />
-        <Route path="settings" element={<Settings />} />
-        <Route path="my-vehicle" element={<MyVehicle />} />
-        <Route path="my-faults" element={<MyFaults />} />
-        <Route path="my-profile" element={<MyProfile />} />
-      </Route>
-    </Routes>
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="riders" element={<Riders />} />
+          <Route path="riders/:id" element={<RiderDetail />} />
+          <Route path="vehicles" element={<Vehicles />} />
+          <Route path="vehicles/:id" element={<VehicleDetails />} />
+          <Route path="tasks" element={<Tasks />} />
+          <Route path="monthly-checks" element={<MonthlyChecks />} />
+          <Route path="monthly-check/:id" element={<MonthlyCheckForm />} />
+          <Route path="faults" element={<Faults />} />
+          <Route path="fault-report" element={<FaultReport />} />
+          <Route path="monthly-check-form" element={<MonthlyCheckForm />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="form-builder" element={<FormBuilder />} />
+          <Route path="users" element={<Users />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="my-vehicle" element={<MyVehicle />} />
+          <Route path="my-faults" element={<MyFaults />} />
+          <Route path="my-profile" element={<MyProfile />} />
+        </Route>
+      </Routes>
+    </Suspense>
   );
 }
 

@@ -14,15 +14,20 @@ router.get('/', async (req, res) => {
   try {
     const { search, status, district, area, page = 1, limit = 50 } = req.query;
 
+    // ולידציה והגבלת פרמטרים למניעת עומס
+    const pageNum = Math.max(1, Math.min(parseInt(page) || 1, 1000));
+    const limitNum = Math.max(1, Math.min(parseInt(limit) || 50, 100)); // מקסימום 100 רשומות
+
     let query = {};
 
     // חיפוש
     if (search) {
+      const searchStr = String(search).trim().substring(0, 100); // הגבלת אורך חיפוש
       query.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
-        { idNumber: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } }
+        { firstName: { $regex: searchStr, $options: 'i' } },
+        { lastName: { $regex: searchStr, $options: 'i' } },
+        { idNumber: { $regex: searchStr, $options: 'i' } },
+        { phone: { $regex: searchStr, $options: 'i' } }
       ];
     }
 
@@ -44,19 +49,22 @@ router.get('/', async (req, res) => {
       query._id = req.user.riderId;
     }
 
+    // שימוש ב-lean() לביצועים משופרים - מחזיר אובייקטים רגילים במקום מסמכי Mongoose
     const riders = await Rider.find(query)
       .select('-__v')
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
+      .lean()
+      .limit(limitNum)
+      .skip((pageNum - 1) * limitNum)
       .sort({ createdAt: -1 });
 
+    // ספירה עם הגבלה לביצועים טובים יותר
     const count = await Rider.countDocuments(query);
 
     res.json({
       success: true,
       count,
-      totalPages: Math.ceil(count / limit),
-      currentPage: page,
+      totalPages: Math.ceil(count / limitNum),
+      currentPage: pageNum,
       riders
     });
   } catch (error) {
@@ -72,7 +80,8 @@ router.get('/', async (req, res) => {
 // @access  Private
 router.get('/:id', async (req, res) => {
   try {
-    const rider = await Rider.findById(req.params.id);
+    // שימוש ב-lean() לביצועים משופרים
+    const rider = await Rider.findById(req.params.id).lean();
 
     if (!rider) {
       return res.status(404).json({

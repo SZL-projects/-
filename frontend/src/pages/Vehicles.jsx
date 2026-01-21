@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -127,27 +127,28 @@ export default function Vehicles() {
     }
   };
 
-  const showSnackbar = (message, severity) => {
+  const showSnackbar = useCallback((message, severity) => {
     setSnackbar({ open: true, message, severity });
-  };
+  }, []);
 
-  const getStatusChip = (status) => {
-    const statusMap = {
-      active: { label: 'פעיל', color: 'success' },
-      waiting_for_rider: { label: 'ממתין לרוכב', color: 'warning' },
-      faulty: { label: 'תקול', color: 'error' },
-      unfit: { label: 'לא כשיר', color: 'error' },
-      stolen_lost: { label: 'גנוב/אבוד', color: 'error' },
-      decommissioned: { label: 'מושבת', color: 'default' },
-    };
+  // מיפוי סטטוסים - מוגדר מחוץ לרנדר למניעת יצירה מחדש
+  const statusMap = useMemo(() => ({
+    active: { label: 'פעיל', color: 'success' },
+    waiting_for_rider: { label: 'ממתין לרוכב', color: 'warning' },
+    faulty: { label: 'תקול', color: 'error' },
+    unfit: { label: 'לא כשיר', color: 'error' },
+    stolen_lost: { label: 'גנוב/אבוד', color: 'error' },
+    decommissioned: { label: 'מושבת', color: 'default' },
+  }), []);
 
+  const getStatusChip = useCallback((status) => {
     const { label, color } = statusMap[status] || { label: status, color: 'default' };
     return <Chip label={label} color={color} size="small" />;
-  };
+  }, [statusMap]);
 
-  const getTypeLabel = (type) => {
+  const getTypeLabel = useCallback((type) => {
     return type === 'scooter' ? 'קטנוע' : 'אופנוע';
-  };
+  }, []);
 
   return (
     <Box>

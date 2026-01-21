@@ -169,5 +169,12 @@ riderSchema.index({ idNumber: 1 });
 riderSchema.index({ phone: 1 });
 riderSchema.index({ firstName: 1, lastName: 1 });
 riderSchema.index({ 'region.district': 1, 'region.area': 1 });
+// אינדקסים נוספים לשיפור ביצועים
+riderSchema.index({ riderStatus: 1 });
+riderSchema.index({ assignmentStatus: 1 });
+riderSchema.index({ email: 1 });
+riderSchema.index({ userId: 1 });
+riderSchema.index({ createdAt: -1 });
+riderSchema.index({ riderStatus: 1, assignmentStatus: 1 }); // אינדקס מורכב לסינון
 
 module.exports = mongoose.model('Rider', riderSchema);

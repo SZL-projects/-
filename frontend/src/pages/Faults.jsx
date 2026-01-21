@@ -61,22 +61,9 @@ export default function Faults() {
   const [viewMode, setViewMode] = useState(0); // 0: הכל, 1: פתוחות, 2: קריטיות
   const [selectedFault, setSelectedFault] = useState(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [stats, setStats] = useState({
-    total: 0,
-    open: 0,
-    inProgress: 0,
-    resolved: 0,
-    critical: 0,
-    cannotRide: 0,
-  });
-
   useEffect(() => {
     loadData();
   }, []);
-
-  useEffect(() => {
-    calculateStats();
-  }, [faults]);
 
   const loadData = async () => {
     try {
@@ -99,23 +86,35 @@ export default function Faults() {
     }
   };
 
-  const calculateStats = () => {
-    setStats({
+  // אופטימיזציה: חישוב סטטיסטיקות במעבר אחד על המערך
+  const stats = useMemo(() => {
+    const result = {
       total: faults.length,
-      open: faults.filter(f => f.status === 'open').length,
-      inProgress: faults.filter(f => f.status === 'in_progress').length,
-      resolved: faults.filter(f => f.status === 'resolved' || f.status === 'closed').length,
-      critical: faults.filter(f => f.severity === 'critical' || f.severity === 'high').length,
-      cannotRide: faults.filter(f => f.canRide === false).length,
-    });
-  };
+      open: 0,
+      inProgress: 0,
+      resolved: 0,
+      critical: 0,
+      cannotRide: 0,
+    };
 
-  const handleViewDetails = (fault) => {
+    for (const f of faults) {
+      if (f.status === 'open') result.open++;
+      else if (f.status === 'in_progress') result.inProgress++;
+      else if (f.status === 'resolved' || f.status === 'closed') result.resolved++;
+
+      if (f.severity === 'critical' || f.severity === 'high') result.critical++;
+      if (f.canRide === false) result.cannotRide++;
+    }
+
+    return result;
+  }, [faults]);
+
+  const handleViewDetails = useCallback((fault) => {
     setSelectedFault(fault);
     setDetailsDialogOpen(true);
-  };
+  }, []);
 
-  const handleUpdateStatus = async (faultId, newStatus) => {
+  const handleUpdateStatus = useCallback(async (faultId, newStatus) => {
     try {
       await faultsAPI.update(faultId, { status: newStatus });
       await loadData();
@@ -123,55 +122,60 @@ export default function Faults() {
       console.error('Error updating fault status:', err);
       setError('שגיאה בעדכון הסטטוס');
     }
-  };
+  }, []);
 
-  const formatDate = (timestamp) => {
+  // מיפוי קבוע - מוגדר מחוץ לרנדר
+  const dateFormatter = useMemo(() => new Intl.DateTimeFormat('he-IL', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }), []);
+
+  const formatDate = useCallback((timestamp) => {
     if (!timestamp) return '-';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return new Intl.DateTimeFormat('he-IL', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date);
-  };
+    return dateFormatter.format(date);
+  }, [dateFormatter]);
 
-  const getStatusChip = (status) => {
-    const statusMap = {
-      open: { label: 'פתוחה', color: 'error', icon: <Warning /> },
-      in_progress: { label: 'בטיפול', color: 'warning', icon: <Build /> },
-      resolved: { label: 'נפתרה', color: 'success', icon: <CheckCircle /> },
-      closed: { label: 'סגורה', color: 'default', icon: <CheckCircle /> },
-    };
+  // מיפויי סטטוסים וחומרות - מוגדרים מחוץ לרנדר
+  const statusMap = useMemo(() => ({
+    open: { label: 'פתוחה', color: 'error', icon: <Warning /> },
+    in_progress: { label: 'בטיפול', color: 'warning', icon: <Build /> },
+    resolved: { label: 'נפתרה', color: 'success', icon: <CheckCircle /> },
+    closed: { label: 'סגורה', color: 'default', icon: <CheckCircle /> },
+  }), []);
 
+  const severityMap = useMemo(() => ({
+    critical: { label: 'קריטית', color: 'error' },
+    high: { label: 'גבוהה', color: 'error' },
+    medium: { label: 'בינונית', color: 'warning' },
+    low: { label: 'נמוכה', color: 'info' },
+  }), []);
+
+  const categoryMap = useMemo(() => ({
+    engine: 'מנוע',
+    brakes: 'בלמים',
+    electrical: 'חשמל ותאורה',
+    tires: 'צמיגים',
+    bodywork: 'מרכב',
+    other: 'אחר',
+  }), []);
+
+  const getStatusChip = useCallback((status) => {
     const { label, color, icon } = statusMap[status] || { label: status, color: 'default', icon: null };
     return <Chip label={label} color={color} size="small" icon={icon} />;
-  };
+  }, [statusMap]);
 
-  const getSeverityChip = (severity) => {
-    const severityMap = {
-      critical: { label: 'קריטית', color: 'error' },
-      high: { label: 'גבוהה', color: 'error' },
-      medium: { label: 'בינונית', color: 'warning' },
-      low: { label: 'נמוכה', color: 'info' },
-    };
-
+  const getSeverityChip = useCallback((severity) => {
     const { label, color } = severityMap[severity] || { label: severity, color: 'default' };
     return <Chip label={label} color={color} size="small" variant="outlined" />;
-  };
+  }, [severityMap]);
 
-  const getCategoryLabel = (category) => {
-    const categories = {
-      engine: 'מנוע',
-      brakes: 'בלמים',
-      electrical: 'חשמל ותאורה',
-      tires: 'צמיגים',
-      bodywork: 'מרכב',
-      other: 'אחר',
-    };
-    return categories[category] || category;
-  };
+  const getCategoryLabel = useCallback((category) => {
+    return categoryMap[category] || category;
+  }, [categoryMap]);
 
   // אופטימיזציה: useMemo למניעת סינון מיותר בכל render
   const filteredFaults = useMemo(() => {

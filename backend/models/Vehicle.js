@@ -270,6 +270,13 @@ const vehicleSchema = new mongoose.Schema({
 vehicleSchema.index({ licensePlate: 1 });
 vehicleSchema.index({ internalNumber: 1 });
 vehicleSchema.index({ status: 1 });
+// אינדקסים נוספים לשיפור ביצועים
+vehicleSchema.index({ assignedRider: 1 });
+vehicleSchema.index({ isAssigned: 1 });
+vehicleSchema.index({ createdAt: -1 });
+vehicleSchema.index({ type: 1 });
+vehicleSchema.index({ status: 1, isAssigned: 1 }); // אינדקס מורכב לשאילתות דשבורד
+vehicleSchema.index({ status: 1, type: 1 }); // אינדקס מורכב לסינון
 
 // Virtual field for images (converts gallery to simple array of URLs/objects)
 vehicleSchema.virtual('images').get(function() {

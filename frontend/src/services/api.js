@@ -9,6 +9,57 @@ const api = axios.create({
   },
 });
 
+// ===== מערכת Cache פשוטה לשיפור ביצועים =====
+const cache = new Map();
+const CACHE_DURATION = 30 * 1000; // 30 שניות
+
+// פונקציה לקבלת מפתח cache
+const getCacheKey = (url, params) => {
+  return `${url}${params ? JSON.stringify(params) : ''}`;
+};
+
+// פונקציה לבדיקת תקינות cache
+const isCacheValid = (cacheEntry) => {
+  if (!cacheEntry) return false;
+  return Date.now() - cacheEntry.timestamp < CACHE_DURATION;
+};
+
+// פונקציה לניקוי cache לפי prefix (לאחר עדכון/יצירה/מחיקה)
+export const invalidateCache = (prefix) => {
+  for (const key of cache.keys()) {
+    if (key.startsWith(prefix)) {
+      cache.delete(key);
+    }
+  }
+};
+
+// פונקציה לניקוי כל ה-cache
+export const clearAllCache = () => {
+  cache.clear();
+};
+
+// פונקציה עטיפה ל-GET requests עם cache
+const cachedGet = async (url, config = {}) => {
+  const cacheKey = getCacheKey(url, config.params);
+  const cachedData = cache.get(cacheKey);
+
+  // אם יש cache תקין, החזר אותו
+  if (isCacheValid(cachedData)) {
+    return cachedData.data;
+  }
+
+  // אחרת, בצע קריאה לשרת
+  const response = await api.get(url, config);
+
+  // שמור ב-cache
+  cache.set(cacheKey, {
+    data: response,
+    timestamp: Date.now()
+  });
+
+  return response;
+};
+
 // הוספת token לכל בקשה
 api.interceptors.request.use(
   (config) => {
@@ -58,23 +109,44 @@ export const authAPI = {
   changePassword: (oldPassword, newPassword) => api.put('/auth/change-password', { oldPassword, newPassword }),
 };
 
-// Riders API
+// Riders API - עם cache לשיפור ביצועים
 export const ridersAPI = {
-  getAll: (params) => api.get('/riders', { params }),
-  getById: (id) => api.get(`/riders/${id}`),
-  create: (data) => api.post('/riders', data),
-  update: (id, data) => api.put(`/riders/${id}`, data),
-  delete: (id) => api.delete(`/riders/${id}`),
+  getAll: (params) => cachedGet('/riders', { params }),
+  getById: (id) => cachedGet(`/riders/${id}`),
+  create: (data) => {
+    invalidateCache('/riders');
+    return api.post('/riders', data);
+  },
+  update: (id, data) => {
+    invalidateCache('/riders');
+    return api.put(`/riders/${id}`, data);
+  },
+  delete: (id) => {
+    invalidateCache('/riders');
+    return api.delete(`/riders/${id}`);
+  },
 };
 
-// Vehicles API
+// Vehicles API - עם cache לשיפור ביצועים
 export const vehiclesAPI = {
-  getAll: (params) => api.get('/vehicles', { params }),
-  getById: (id) => api.get(`/vehicles/${id}`),
-  create: (data) => api.post('/vehicles', data),
-  update: (id, data) => api.put(`/vehicles/${id}`, data),
-  delete: (id) => api.delete(`/vehicles/${id}`),
-  updateKilometers: (id, data) => api.patch(`/vehicles/${id}/kilometers`, data),
+  getAll: (params) => cachedGet('/vehicles', { params }),
+  getById: (id) => cachedGet(`/vehicles/${id}`),
+  create: (data) => {
+    invalidateCache('/vehicles');
+    return api.post('/vehicles', data);
+  },
+  update: (id, data) => {
+    invalidateCache('/vehicles');
+    return api.put(`/vehicles/${id}`, data);
+  },
+  delete: (id) => {
+    invalidateCache('/vehicles');
+    return api.delete(`/vehicles/${id}`);
+  },
+  updateKilometers: (id, data) => {
+    invalidateCache('/vehicles');
+    return api.patch(`/vehicles/${id}/kilometers`, data);
+  },
   createFolder: (vehicleNumber, vehicleId) => api.post('/vehicles/create-folder', { vehicleNumber, vehicleId }),
   uploadFile: (formData, folderId) => {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -89,41 +161,85 @@ export const vehiclesAPI = {
     let params = `folderId=${folderId}`;
     if (vehicleId) params += `&vehicleId=${vehicleId}`;
     if (viewAsRider) params += `&viewAsRider=true`;
-    return api.get(`/vehicles/list-files?${params}`);
+    return cachedGet(`/vehicles/list-files?${params}`);
   },
-  deleteFile: (fileId, recursive = false) => api.delete(`/vehicles/delete-file?fileId=${fileId}${recursive ? '&recursive=true' : ''}`),
-  updateFileVisibility: (vehicleId, fileId, visibleToRider) => api.patch('/vehicles/update-file-visibility', { vehicleId, fileId, visibleToRider }),
-  moveToArchive: (vehicleId, fileId) => api.post('/vehicles/move-to-archive', { vehicleId, fileId }),
-  assign: (vehicleId, riderId) => api.post(`/vehicles/${vehicleId}/assign`, { riderId }),
-  unassign: (vehicleId) => api.post(`/vehicles/${vehicleId}/unassign`),
+  deleteFile: (fileId, recursive = false) => {
+    invalidateCache('/vehicles');
+    return api.delete(`/vehicles/delete-file?fileId=${fileId}${recursive ? '&recursive=true' : ''}`);
+  },
+  updateFileVisibility: (vehicleId, fileId, visibleToRider) => {
+    invalidateCache('/vehicles');
+    return api.patch('/vehicles/update-file-visibility', { vehicleId, fileId, visibleToRider });
+  },
+  moveToArchive: (vehicleId, fileId) => {
+    invalidateCache('/vehicles');
+    return api.post('/vehicles/move-to-archive', { vehicleId, fileId });
+  },
+  assign: (vehicleId, riderId) => {
+    invalidateCache('/vehicles');
+    invalidateCache('/riders');
+    return api.post(`/vehicles/${vehicleId}/assign`, { riderId });
+  },
+  unassign: (vehicleId) => {
+    invalidateCache('/vehicles');
+    invalidateCache('/riders');
+    return api.post(`/vehicles/${vehicleId}/unassign`);
+  },
 };
 
-// Tasks API
+// Tasks API - עם cache לשיפור ביצועים
 export const tasksAPI = {
-  getAll: (params) => api.get('/tasks', { params }),
-  getById: (id) => api.get(`/tasks/${id}`),
-  create: (data) => api.post('/tasks', data),
-  update: (id, data) => api.put(`/tasks/${id}`, data),
-  delete: (id) => api.delete(`/tasks/${id}`),
+  getAll: (params) => cachedGet('/tasks', { params }),
+  getById: (id) => cachedGet(`/tasks/${id}`),
+  create: (data) => {
+    invalidateCache('/tasks');
+    return api.post('/tasks', data);
+  },
+  update: (id, data) => {
+    invalidateCache('/tasks');
+    return api.put(`/tasks/${id}`, data);
+  },
+  delete: (id) => {
+    invalidateCache('/tasks');
+    return api.delete(`/tasks/${id}`);
+  },
 };
 
-// Monthly Checks API
+// Monthly Checks API - עם cache לשיפור ביצועים
 export const monthlyChecksAPI = {
-  getAll: (params) => api.get('/monthly-checks', { params }),
-  getById: (id) => api.get(`/monthly-checks/${id}`),
-  create: (data) => api.post('/monthly-checks', data),
-  update: (id, data) => api.put(`/monthly-checks/${id}`, data),
-  delete: (id) => api.delete(`/monthly-checks/${id}`),
+  getAll: (params) => cachedGet('/monthly-checks', { params }),
+  getById: (id) => cachedGet(`/monthly-checks/${id}`),
+  create: (data) => {
+    invalidateCache('/monthly-checks');
+    return api.post('/monthly-checks', data);
+  },
+  update: (id, data) => {
+    invalidateCache('/monthly-checks');
+    return api.put(`/monthly-checks/${id}`, data);
+  },
+  delete: (id) => {
+    invalidateCache('/monthly-checks');
+    return api.delete(`/monthly-checks/${id}`);
+  },
   sendNotification: (id) => api.post(`/monthly-checks/${id}/send-notification`),
 };
 
-// Faults API
+// Faults API - עם cache לשיפור ביצועים
 export const faultsAPI = {
-  getAll: (params) => api.get('/faults', { params }),
-  getById: (id) => api.get(`/faults/${id}`),
-  create: (data) => api.post('/faults', data),
-  update: (id, data) => api.put(`/faults/${id}`, data),
-  delete: (id) => api.delete(`/faults/${id}`),
+  getAll: (params) => cachedGet('/faults', { params }),
+  getById: (id) => cachedGet(`/faults/${id}`),
+  create: (data) => {
+    invalidateCache('/faults');
+    return api.post('/faults', data);
+  },
+  update: (id, data) => {
+    invalidateCache('/faults');
+    return api.put(`/faults/${id}`, data);
+  },
+  delete: (id) => {
+    invalidateCache('/faults');
+    return api.delete(`/faults/${id}`);
+  },
 };
 
 export default api;

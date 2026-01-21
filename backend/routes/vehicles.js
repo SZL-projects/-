@@ -13,15 +13,20 @@ router.get('/', async (req, res) => {
   try {
     const { search, status, type, page = 1, limit = 50 } = req.query;
 
+    // ולידציה והגבלת פרמטרים למניעת עומס
+    const pageNum = Math.max(1, Math.min(parseInt(page) || 1, 1000));
+    const limitNum = Math.max(1, Math.min(parseInt(limit) || 50, 100)); // מקסימום 100 רשומות
+
     let query = {};
 
     // חיפוש
     if (search) {
+      const searchStr = String(search).trim().substring(0, 100); // הגבלת אורך חיפוש
       query.$or = [
-        { licensePlate: { $regex: search, $options: 'i' } },
-        { internalNumber: { $regex: search, $options: 'i' } },
-        { manufacturer: { $regex: search, $options: 'i' } },
-        { model: { $regex: search, $options: 'i' } }
+        { licensePlate: { $regex: searchStr, $options: 'i' } },
+        { internalNumber: { $regex: searchStr, $options: 'i' } },
+        { manufacturer: { $regex: searchStr, $options: 'i' } },
+        { model: { $regex: searchStr, $options: 'i' } }
       ];
     }
 
@@ -35,10 +40,12 @@ router.get('/', async (req, res) => {
       query.type = type;
     }
 
+    // שימוש ב-lean() לביצועים משופרים - מחזיר אובייקטים רגילים במקום מסמכי Mongoose
     const vehicles = await Vehicle.find(query)
       .select('-__v')
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
+      .lean()
+      .limit(limitNum)
+      .skip((pageNum - 1) * limitNum)
       .sort({ createdAt: -1 });
 
     const count = await Vehicle.countDocuments(query);
@@ -46,8 +53,8 @@ router.get('/', async (req, res) => {
     res.json({
       success: true,
       count,
-      totalPages: Math.ceil(count / limit),
-      currentPage: page,
+      totalPages: Math.ceil(count / limitNum),
+      currentPage: pageNum,
       vehicles
     });
   } catch (error) {
@@ -63,7 +70,8 @@ router.get('/', async (req, res) => {
 // @access  Private
 router.get('/:id', async (req, res) => {
   try {
-    const vehicle = await Vehicle.findById(req.params.id);
+    // שימוש ב-lean() לביצועים משופרים
+    const vehicle = await Vehicle.findById(req.params.id).lean();
 
     if (!vehicle) {
       return res.status(404).json({

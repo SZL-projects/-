@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -128,30 +128,31 @@ export default function Riders() {
     }
   };
 
-  const showSnackbar = (message, severity) => {
+  const showSnackbar = useCallback((message, severity) => {
     setSnackbar({ open: true, message, severity });
-  };
+  }, []);
 
-  const getStatusChip = (status) => {
-    const statusMap = {
-      active: { label: 'פעיל', color: 'success' },
-      inactive: { label: 'לא פעיל', color: 'default' },
-      frozen: { label: 'מוקפא', color: 'warning' },
-    };
+  // מיפוי סטטוסים - מוגדר מחוץ לרנדר למניעת יצירה מחדש
+  const statusMap = useMemo(() => ({
+    active: { label: 'פעיל', color: 'success' },
+    inactive: { label: 'לא פעיל', color: 'default' },
+    frozen: { label: 'מוקפא', color: 'warning' },
+  }), []);
 
+  const assignmentMap = useMemo(() => ({
+    assigned: { label: 'משויך', color: 'primary' },
+    unassigned: { label: 'לא משויך', color: 'default' },
+  }), []);
+
+  const getStatusChip = useCallback((status) => {
     const { label, color } = statusMap[status] || { label: status, color: 'default' };
     return <Chip label={label} color={color} size="small" />;
-  };
+  }, [statusMap]);
 
-  const getAssignmentChip = (status) => {
-    const statusMap = {
-      assigned: { label: 'משויך', color: 'primary' },
-      unassigned: { label: 'לא משויך', color: 'default' },
-    };
-
-    const { label, color } = statusMap[status] || { label: status, color: 'default' };
+  const getAssignmentChip = useCallback((status) => {
+    const { label, color } = assignmentMap[status] || { label: status, color: 'default' };
     return <Chip label={label} color={color} size="small" />;
-  };
+  }, [assignmentMap]);
 
   return (
     <Box>
