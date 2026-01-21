@@ -21,6 +21,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -72,9 +74,11 @@ const managementMenuItems = [
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user, logout, hasRole, hasAnyRole } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(!isMobile);
   const [anchorEl, setAnchorEl] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -234,12 +238,19 @@ export default function Layout() {
   );
 
   return (
-    <Box sx={{ display: 'flex', direction: 'rtl' }}>
+    <Box sx={{
+      display: 'flex',
+      direction: 'rtl',
+      minHeight: '100vh',
+      minHeight: '100dvh',
+      width: '100%',
+      overflow: 'hidden',
+    }}>
       {/* Drawer */}
       <Box
         component="nav"
         sx={{
-          width: { sm: drawerOpen ? drawerWidth : drawerWidthClosed },
+          width: { xs: 0, sm: drawerOpen ? drawerWidth : drawerWidthClosed },
           flexShrink: { sm: 0 },
           transition: 'width 0.3s',
         }}
@@ -356,20 +367,26 @@ export default function Layout() {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
-          width: { sm: `calc(100% - ${drawerOpen ? drawerWidth : drawerWidthClosed}px)` },
+          p: { xs: 1.5, sm: 2, md: 3 },
+          width: { xs: '100%', sm: `calc(100% - ${drawerOpen ? drawerWidth : drawerWidthClosed}px)` },
           transition: 'width 0.3s, margin 0.3s',
           marginRight: { sm: 0 },
+          minHeight: '100vh',
+          minHeight: '100dvh',
+          overflow: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          pb: { xs: 10, sm: 3 },
         }}
       >
         {/* AppBar */}
         <AppBar
           position="fixed"
           sx={{
-            width: { sm: `calc(100% - ${drawerOpen ? drawerWidth : drawerWidthClosed}px)` },
-            right: { sm: `${drawerOpen ? drawerWidth : drawerWidthClosed}px` },
+            width: { xs: '100%', sm: `calc(100% - ${drawerOpen ? drawerWidth : drawerWidthClosed}px)` },
+            right: { xs: 0, sm: `${drawerOpen ? drawerWidth : drawerWidthClosed}px` },
             left: 'auto',
             transition: 'width 0.3s, right 0.3s',
+            zIndex: (theme) => theme.zIndex.drawer + 1,
           }}
         >
           <Toolbar>

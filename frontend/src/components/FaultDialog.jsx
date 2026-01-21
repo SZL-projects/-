@@ -12,7 +12,14 @@ import {
   InputLabel,
   Select,
   Autocomplete,
+  useMediaQuery,
+  useTheme,
+  IconButton,
+  AppBar,
+  Toolbar,
+  Typography,
 } from '@mui/material';
+import { Close } from '@mui/icons-material';
 import { vehiclesAPI, ridersAPI } from '../services/api';
 
 const severityOptions = [
@@ -29,6 +36,9 @@ const statusOptions = [
 ];
 
 export default function FaultDialog({ open, onClose, onSave, fault }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [formData, setFormData] = useState({
     vehicleId: '',
     riderId: '',
@@ -140,10 +150,33 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth dir="rtl">
-      <DialogTitle>{fault ? 'עריכת תקלה' : 'הוספת תקלה חדשה'}</DialogTitle>
-      <DialogContent>
-        <Grid container spacing={2} sx={{ mt: 1 }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      fullScreen={isMobile}
+      dir="rtl"
+    >
+      {isMobile ? (
+        <AppBar sx={{ position: 'relative' }}>
+          <Toolbar>
+            <IconButton edge="start" color="inherit" onClick={onClose}>
+              <Close />
+            </IconButton>
+            <Typography sx={{ flex: 1 }} variant="h6">
+              {fault ? 'עריכת תקלה' : 'הוספת תקלה חדשה'}
+            </Typography>
+            <Button autoFocus color="inherit" onClick={handleSubmit}>
+              {fault ? 'עדכן' : 'הוסף'}
+            </Button>
+          </Toolbar>
+        </AppBar>
+      ) : (
+        <DialogTitle>{fault ? 'עריכת תקלה' : 'הוספת תקלה חדשה'}</DialogTitle>
+      )}
+      <DialogContent sx={{ pt: isMobile ? 3 : 1 }}>
+        <Grid container spacing={2} sx={{ mt: isMobile ? 0 : 1 }}>
           <Grid item xs={12} sm={6}>
             <Autocomplete
               options={vehicles}
@@ -267,12 +300,14 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
           </Grid>
         </Grid>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>ביטול</Button>
-        <Button onClick={handleSubmit} variant="contained">
-          {fault ? 'עדכן' : 'הוסף'}
-        </Button>
-      </DialogActions>
+      {!isMobile && (
+        <DialogActions>
+          <Button onClick={onClose}>ביטול</Button>
+          <Button onClick={handleSubmit} variant="contained">
+            {fault ? 'עדכן' : 'הוסף'}
+          </Button>
+        </DialogActions>
+      )}
     </Dialog>
   );
 }

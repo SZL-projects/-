@@ -12,7 +12,13 @@ import {
   InputLabel,
   Select,
   Typography,
+  useMediaQuery,
+  useTheme,
+  IconButton,
+  AppBar,
+  Toolbar,
 } from '@mui/material';
+import { Close } from '@mui/icons-material';
 
 const taskStatuses = [
   { value: 'pending', label: 'ממתין' },
@@ -28,6 +34,9 @@ const priorities = [
 ];
 
 export default function TaskDialog({ open, onClose, onSave, task }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -99,10 +108,33 @@ export default function TaskDialog({ open, onClose, onSave, task }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth dir="rtl">
-      <DialogTitle>{task ? 'עריכת משימה' : 'הוספת משימה חדשה'}</DialogTitle>
-      <DialogContent>
-        <Grid container spacing={2} sx={{ mt: 1 }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      fullScreen={isMobile}
+      dir="rtl"
+    >
+      {isMobile ? (
+        <AppBar sx={{ position: 'relative' }}>
+          <Toolbar>
+            <IconButton edge="start" color="inherit" onClick={onClose}>
+              <Close />
+            </IconButton>
+            <Typography sx={{ flex: 1 }} variant="h6">
+              {task ? 'עריכת משימה' : 'הוספת משימה חדשה'}
+            </Typography>
+            <Button autoFocus color="inherit" onClick={handleSubmit}>
+              {task ? 'עדכן' : 'הוסף'}
+            </Button>
+          </Toolbar>
+        </AppBar>
+      ) : (
+        <DialogTitle>{task ? 'עריכת משימה' : 'הוספת משימה חדשה'}</DialogTitle>
+      )}
+      <DialogContent sx={{ pt: isMobile ? 3 : 1 }}>
+        <Grid container spacing={2} sx={{ mt: isMobile ? 0 : 1 }}>
           <Grid item xs={12}>
             <TextField
               fullWidth
@@ -195,12 +227,14 @@ export default function TaskDialog({ open, onClose, onSave, task }) {
           </Grid>
         </Grid>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>ביטול</Button>
-        <Button onClick={handleSubmit} variant="contained">
-          {task ? 'עדכן' : 'הוסף'}
-        </Button>
-      </DialogActions>
+      {!isMobile && (
+        <DialogActions>
+          <Button onClick={onClose}>ביטול</Button>
+          <Button onClick={handleSubmit} variant="contained">
+            {task ? 'עדכן' : 'הוסף'}
+          </Button>
+        </DialogActions>
+      )}
     </Dialog>
   );
 }

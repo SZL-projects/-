@@ -11,7 +11,14 @@ import {
   FormControl,
   InputLabel,
   Select,
+  useMediaQuery,
+  useTheme,
+  IconButton,
+  AppBar,
+  Toolbar,
+  Typography,
 } from '@mui/material';
+import { Close } from '@mui/icons-material';
 
 const vehicleTypes = [
   { value: 'motorcycle', label: 'אופנוע' },
@@ -28,6 +35,9 @@ const vehicleStatuses = [
 ];
 
 export default function VehicleDialog({ open, onClose, onSave, vehicle }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [formData, setFormData] = useState({
     licensePlate: '',
     internalNumber: '',
@@ -96,10 +106,33 @@ export default function VehicleDialog({ open, onClose, onSave, vehicle }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth dir="rtl">
-      <DialogTitle>{vehicle ? 'עריכת כלי' : 'הוספת כלי חדש'}</DialogTitle>
-      <DialogContent>
-        <Grid container spacing={2} sx={{ mt: 1 }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      fullScreen={isMobile}
+      dir="rtl"
+    >
+      {isMobile ? (
+        <AppBar sx={{ position: 'relative' }}>
+          <Toolbar>
+            <IconButton edge="start" color="inherit" onClick={onClose}>
+              <Close />
+            </IconButton>
+            <Typography sx={{ flex: 1 }} variant="h6">
+              {vehicle ? 'עריכת כלי' : 'הוספת כלי חדש'}
+            </Typography>
+            <Button autoFocus color="inherit" onClick={handleSubmit}>
+              {vehicle ? 'עדכן' : 'הוסף'}
+            </Button>
+          </Toolbar>
+        </AppBar>
+      ) : (
+        <DialogTitle>{vehicle ? 'עריכת כלי' : 'הוספת כלי חדש'}</DialogTitle>
+      )}
+      <DialogContent sx={{ pt: isMobile ? 3 : 1 }}>
+        <Grid container spacing={2} sx={{ mt: isMobile ? 0 : 1 }}>
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
@@ -196,12 +229,14 @@ export default function VehicleDialog({ open, onClose, onSave, vehicle }) {
           </Grid>
         </Grid>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>ביטול</Button>
-        <Button onClick={handleSubmit} variant="contained">
-          {vehicle ? 'עדכן' : 'הוסף'}
-        </Button>
-      </DialogActions>
+      {!isMobile && (
+        <DialogActions>
+          <Button onClick={onClose}>ביטול</Button>
+          <Button onClick={handleSubmit} variant="contained">
+            {vehicle ? 'עדכן' : 'הוסף'}
+          </Button>
+        </DialogActions>
+      )}
     </Dialog>
   );
 }

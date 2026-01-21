@@ -77,32 +77,37 @@ export default function Login() {
     <Box
       sx={{
         minHeight: '100vh',
+        minHeight: '100dvh',
         display: 'flex',
         alignItems: 'center',
+        justifyContent: 'center',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        p: { xs: 2, sm: 3 },
+        overflow: 'auto',
       }}
     >
-      <Container maxWidth="sm">
+      <Container maxWidth="sm" sx={{ my: 'auto' }}>
         <Paper
           elevation={10}
           sx={{
-            p: 4,
+            p: { xs: 3, sm: 4 },
             borderRadius: 3,
+            maxWidth: '100%',
           }}
         >
           {/* Logo & Title */}
-          <Box sx={{ textAlign: 'center', mb: 4 }}>
+          <Box sx={{ textAlign: 'center', mb: { xs: 3, sm: 4 } }}>
             <TwoWheeler
               sx={{
-                fontSize: 80,
+                fontSize: { xs: 60, sm: 80 },
                 color: 'primary.main',
                 mb: 2,
               }}
             />
-            <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+            <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
               מערכת CRM
             </Typography>
-            <Typography variant="h6" color="text.secondary">
+            <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
               צי לוג ידידים
             </Typography>
           </Box>

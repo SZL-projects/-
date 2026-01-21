@@ -37,7 +37,7 @@ const PageLoader = () => (
   </Box>
 );
 
-// Theme עם תמיכה בעברית (RTL)
+// Theme עם תמיכה בעברית (RTL) ומובייל
 const theme = createTheme({
   direction: 'rtl',
   palette: {
@@ -47,6 +47,10 @@ const theme = createTheme({
     secondary: {
       main: '#dc004e',
     },
+    background: {
+      default: '#f5f5f5',
+      paper: '#ffffff',
+    },
   },
   typography: {
     fontFamily: [
@@ -54,6 +58,78 @@ const theme = createTheme({
       'Arial',
       'sans-serif',
     ].join(','),
+  },
+  components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: {
+          overflowX: 'hidden',
+          minHeight: '100vh',
+          minHeight: '100dvh',
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          minHeight: 44,
+          '@media (max-width: 600px)': {
+            minHeight: 48,
+            fontSize: '0.95rem',
+          },
+        },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          '@media (max-width: 600px)': {
+            padding: 12,
+          },
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        root: {
+          '@media (max-width: 600px)': {
+            padding: '8px 6px',
+            fontSize: '0.85rem',
+          },
+        },
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          '@media (max-width: 600px)': {
+            margin: 16,
+            width: 'calc(100% - 32px)',
+            maxHeight: 'calc(100% - 32px)',
+          },
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          '@media (max-width: 600px)': {
+            borderRadius: 8,
+          },
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '@media (max-width: 600px)': {
+            '& .MuiInputBase-input': {
+              fontSize: '16px',
+            },
+          },
+        },
+      },
+    },
   },
 });
 

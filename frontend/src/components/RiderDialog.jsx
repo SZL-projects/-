@@ -13,7 +13,13 @@ import {
   Select,
   Typography,
   Autocomplete,
+  useMediaQuery,
+  useTheme,
+  IconButton,
+  AppBar,
+  Toolbar,
 } from '@mui/material';
+import { Close } from '@mui/icons-material';
 import { vehiclesAPI } from '../services/api';
 
 const riderStatuses = [
@@ -38,6 +44,9 @@ const districts = [
 ];
 
 export default function RiderDialog({ open, onClose, onSave, rider }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -194,10 +203,33 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth dir="rtl">
-      <DialogTitle>{rider ? 'עריכת רוכב' : 'הוספת רוכב חדש'}</DialogTitle>
-      <DialogContent>
-        <Grid container spacing={2} sx={{ mt: 1 }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      fullScreen={isMobile}
+      dir="rtl"
+    >
+      {isMobile ? (
+        <AppBar sx={{ position: 'relative' }}>
+          <Toolbar>
+            <IconButton edge="start" color="inherit" onClick={onClose}>
+              <Close />
+            </IconButton>
+            <Typography sx={{ flex: 1 }} variant="h6">
+              {rider ? 'עריכת רוכב' : 'הוספת רוכב חדש'}
+            </Typography>
+            <Button autoFocus color="inherit" onClick={handleSubmit}>
+              {rider ? 'עדכן' : 'הוסף'}
+            </Button>
+          </Toolbar>
+        </AppBar>
+      ) : (
+        <DialogTitle>{rider ? 'עריכת רוכב' : 'הוספת רוכב חדש'}</DialogTitle>
+      )}
+      <DialogContent sx={{ pt: isMobile ? 3 : 1 }}>
+        <Grid container spacing={2} sx={{ mt: isMobile ? 0 : 1 }}>
           {/* פרטים אישיים */}
           <Grid item xs={12}>
             <Typography variant="subtitle1" fontWeight="bold" color="primary">
@@ -408,12 +440,14 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
           )}
         </Grid>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>ביטול</Button>
-        <Button onClick={handleSubmit} variant="contained">
-          {rider ? 'עדכן' : 'הוסף'}
-        </Button>
-      </DialogActions>
+      {!isMobile && (
+        <DialogActions>
+          <Button onClick={onClose}>ביטול</Button>
+          <Button onClick={handleSubmit} variant="contained">
+            {rider ? 'עדכן' : 'הוסף'}
+          </Button>
+        </DialogActions>
+      )}
     </Dialog>
   );
 }
