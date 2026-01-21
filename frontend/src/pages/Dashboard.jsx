@@ -251,10 +251,19 @@ export default function Dashboard() {
       // פעילות אחרונה - נתונים אמיתיים מהמערכת
       const allActivities = [];
 
-      // הוספת כלים אחרונים
-      vehicles.slice(0, 10).forEach(v => {
-        const createdAt = v.createdAt?.toDate ? v.createdAt.toDate() : new Date(v.createdAt);
-        if (createdAt && !isNaN(createdAt.getTime())) {
+      // פונקציה לפרסור תאריך מ-Firestore או מחרוזת
+      const parseDate = (timestamp) => {
+        if (!timestamp) return null;
+        if (timestamp.toDate) return timestamp.toDate();
+        if (timestamp.seconds) return new Date(timestamp.seconds * 1000);
+        const d = new Date(timestamp);
+        return isNaN(d.getTime()) ? null : d;
+      };
+
+      // הוספת כל הכלים
+      vehicles.forEach(v => {
+        const createdAt = parseDate(v.createdAt);
+        if (createdAt) {
           allActivities.push({
             id: `vehicle-${v.id}`,
             type: 'vehicle',
@@ -264,10 +273,10 @@ export default function Dashboard() {
         }
       });
 
-      // הוספת רוכבים אחרונים
-      riders.slice(0, 10).forEach(r => {
-        const createdAt = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
-        if (createdAt && !isNaN(createdAt.getTime())) {
+      // הוספת כל הרוכבים
+      riders.forEach(r => {
+        const createdAt = parseDate(r.createdAt);
+        if (createdAt) {
           allActivities.push({
             id: `rider-${r.id}`,
             type: 'rider',
@@ -277,10 +286,10 @@ export default function Dashboard() {
         }
       });
 
-      // הוספת משימות אחרונות
-      tasks.slice(0, 10).forEach(t => {
-        const createdAt = t.createdAt?.toDate ? t.createdAt.toDate() : new Date(t.createdAt);
-        if (createdAt && !isNaN(createdAt.getTime())) {
+      // הוספת כל המשימות
+      tasks.forEach(t => {
+        const createdAt = parseDate(t.createdAt);
+        if (createdAt) {
           allActivities.push({
             id: `task-${t.id}`,
             type: 'task',
@@ -290,11 +299,10 @@ export default function Dashboard() {
         }
       });
 
-      // הוספת תקלות אחרונות
-      faults.slice(0, 10).forEach(f => {
-        const reportedDate = f.reportedDate?.toDate ? f.reportedDate.toDate() :
-                            f.createdAt?.toDate ? f.createdAt.toDate() : new Date(f.reportedDate || f.createdAt);
-        if (reportedDate && !isNaN(reportedDate.getTime())) {
+      // הוספת כל התקלות
+      faults.forEach(f => {
+        const reportedDate = parseDate(f.reportedDate) || parseDate(f.createdAt);
+        if (reportedDate) {
           allActivities.push({
             id: `fault-${f.id}`,
             type: 'fault',
