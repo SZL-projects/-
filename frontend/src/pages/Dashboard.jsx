@@ -44,6 +44,23 @@ import { useAuth } from '../contexts/AuthContext';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
+// פונקציה להמרת תאריך לזמן יחסי (לפני שעה, לפני יום וכו')
+const formatTimeAgo = (date) => {
+  if (!date) return '';
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'עכשיו';
+  if (diffMins < 60) return `לפני ${diffMins} דקות`;
+  if (diffHours < 24) return `לפני ${diffHours === 1 ? 'שעה' : diffHours + ' שעות'}`;
+  if (diffDays < 7) return `לפני ${diffDays === 1 ? 'יום' : diffDays + ' ימים'}`;
+  if (diffDays < 30) return `לפני ${Math.floor(diffDays / 7)} שבועות`;
+  return date.toLocaleDateString('he-IL');
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const theme = useTheme();
@@ -231,13 +248,70 @@ export default function Dashboard() {
 
       setMonthlyTrendData(Object.values(monthlyStats));
 
-      // Recent Activity (mock data - replace with real data)
-      setRecentActivity([
-        { id: 1, type: 'vehicle', text: 'כלי חדש נוסף למערכת', time: 'לפני שעה' },
-        { id: 2, type: 'task', text: 'משימה חדשה נוצרה', time: 'לפני שעתיים' },
-        { id: 3, type: 'rider', text: 'רוכב חדש נרשם', time: 'לפני 3 שעות' },
-        { id: 4, type: 'fault', text: 'תקלה דווחה', time: 'לפני 5 שעות' },
-      ]);
+      // פעילות אחרונה - נתונים אמיתיים מהמערכת
+      const allActivities = [];
+
+      // הוספת כלים אחרונים
+      vehicles.slice(0, 10).forEach(v => {
+        const createdAt = v.createdAt?.toDate ? v.createdAt.toDate() : new Date(v.createdAt);
+        if (createdAt && !isNaN(createdAt.getTime())) {
+          allActivities.push({
+            id: `vehicle-${v.id}`,
+            type: 'vehicle',
+            text: `כלי ${v.licensePlate || v.internalNumber || 'חדש'} נוסף למערכת`,
+            date: createdAt,
+          });
+        }
+      });
+
+      // הוספת רוכבים אחרונים
+      riders.slice(0, 10).forEach(r => {
+        const createdAt = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+        if (createdAt && !isNaN(createdAt.getTime())) {
+          allActivities.push({
+            id: `rider-${r.id}`,
+            type: 'rider',
+            text: `רוכב ${r.firstName || ''} ${r.lastName || ''} נרשם`.trim(),
+            date: createdAt,
+          });
+        }
+      });
+
+      // הוספת משימות אחרונות
+      tasks.slice(0, 10).forEach(t => {
+        const createdAt = t.createdAt?.toDate ? t.createdAt.toDate() : new Date(t.createdAt);
+        if (createdAt && !isNaN(createdAt.getTime())) {
+          allActivities.push({
+            id: `task-${t.id}`,
+            type: 'task',
+            text: `משימה: ${t.title || t.description?.substring(0, 30) || 'משימה חדשה'}`,
+            date: createdAt,
+          });
+        }
+      });
+
+      // הוספת תקלות אחרונות
+      faults.slice(0, 10).forEach(f => {
+        const reportedDate = f.reportedDate?.toDate ? f.reportedDate.toDate() :
+                            f.createdAt?.toDate ? f.createdAt.toDate() : new Date(f.reportedDate || f.createdAt);
+        if (reportedDate && !isNaN(reportedDate.getTime())) {
+          allActivities.push({
+            id: `fault-${f.id}`,
+            type: 'fault',
+            text: `תקלה: ${f.title || f.description?.substring(0, 30) || 'תקלה חדשה'}`,
+            date: reportedDate,
+          });
+        }
+      });
+
+      // מיון לפי תאריך (החדש ביותר קודם) ולקיחת 10 האחרונים
+      allActivities.sort((a, b) => b.date - a.date);
+      const recentActivitiesWithTime = allActivities.slice(0, 10).map(activity => ({
+        ...activity,
+        time: formatTimeAgo(activity.date),
+      }));
+
+      setRecentActivity(recentActivitiesWithTime);
 
       // Alerts - משתמש בערכים שכבר חישבנו
       const newAlerts = [];
