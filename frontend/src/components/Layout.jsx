@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -83,23 +83,57 @@ export default function Layout() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
+  // מנגנון למניעת פתיחה מחדש של ה-Drawer
+  const isClosingRef = useRef(false);
+  const closingTimeoutRef = useRef(null);
+
   // בדיקה אם יש למשתמש הרשאות ניהול
   const hasManagementRole = hasAnyRole(['super_admin', 'manager', 'secretary', 'logistics', 'regional_manager']);
   // בדיקה אם המשתמש הוא רוכב
   const isRider = hasRole('rider');
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
+  const handleDrawerToggle = useCallback(() => {
+    // אם ה-Drawer בתהליך סגירה, לא נפתח אותו מחדש
+    if (isClosingRef.current) {
+      return;
+    }
+    setMobileOpen(prev => !prev);
+  }, []);
 
-  const handleMenuClick = (path) => {
-    // סגור את התפריט קודם
+  const handleMenuClick = useCallback((path) => {
+    // סמן שאנחנו בתהליך סגירה
+    isClosingRef.current = true;
+
+    // נקה timeout קודם אם קיים
+    if (closingTimeoutRef.current) {
+      clearTimeout(closingTimeoutRef.current);
+    }
+
+    // סגור את ה-Drawer
     setMobileOpen(false);
-    // נווט אחרי שה-Drawer נסגר
-    setTimeout(() => {
-      navigate(path);
-    }, 50);
-  };
+
+    // נווט לדף החדש
+    navigate(path);
+
+    // אפשר פתיחה מחדש רק אחרי 300ms
+    closingTimeoutRef.current = setTimeout(() => {
+      isClosingRef.current = false;
+    }, 300);
+  }, [navigate]);
+
+  const handleDrawerClose = useCallback(() => {
+    isClosingRef.current = true;
+    setMobileOpen(false);
+
+    // נקה timeout קודם אם קיים
+    if (closingTimeoutRef.current) {
+      clearTimeout(closingTimeoutRef.current);
+    }
+
+    closingTimeoutRef.current = setTimeout(() => {
+      isClosingRef.current = false;
+    }, 300);
+  }, []);
 
   const handleProfileMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -263,7 +297,7 @@ export default function Layout() {
         <Drawer
           variant="temporary"
           open={mobileOpen}
-          onClose={() => setMobileOpen(false)}
+          onClose={handleDrawerClose}
           anchor="right"
           ModalProps={{
             keepMounted: false,
