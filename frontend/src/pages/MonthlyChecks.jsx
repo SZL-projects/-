@@ -43,6 +43,7 @@ import {
   Grid,
   Card,
   CardContent,
+  CardActions,
   Select,
   MenuItem,
   FormControl,
@@ -58,6 +59,11 @@ import {
   Divider,
   Badge,
   Snackbar,
+  Stack,
+  useMediaQuery,
+  useTheme,
+  AppBar,
+  Toolbar,
 } from '@mui/material';
 import {
   Search,
@@ -74,11 +80,14 @@ import {
   FilterList,
   AddTask,
   Delete,
+  Close,
 } from '@mui/icons-material';
 import { monthlyChecksAPI, ridersAPI, vehiclesAPI } from '../services/api';
 
 export default function MonthlyChecks() {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [checks, setChecks] = useState([]);
   const [riders, setRiders] = useState([]);
   const [vehicles, setVehicles] = useState([]);
@@ -427,25 +436,41 @@ export default function MonthlyChecks() {
   }, [checks, searchTerm, filterStatus, filterRider]);
 
   return (
-    <Box>
+    <Box sx={{ maxWidth: '100%', overflowX: 'hidden' }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', md: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', md: 'center' },
+        mb: 3,
+        gap: 2
+      }}>
         <Box>
-          <Typography variant="h4" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant={isMobile ? 'h5' : 'h4'} fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Build /> בקרה חודשית
           </Typography>
-          <Typography variant="body2" color="textSecondary">
-            ניהול ומעקב אחר בקרות חודשיות
-          </Typography>
+          {!isMobile && (
+            <Typography variant="body2" color="textSecondary">
+              ניהול ומעקב אחר בקרות חודשיות
+            </Typography>
+          )}
         </Box>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 1,
+          width: { xs: '100%', md: 'auto' }
+        }}>
           <Button
             variant="contained"
             color="primary"
             startIcon={<AddTask />}
             onClick={handleOpenChecksDialog}
+            fullWidth={isMobile}
+            size={isMobile ? 'medium' : 'large'}
           >
-            פתח בקרות חודשיות
+            פתח בקרות
           </Button>
           <Button
             variant="contained"
@@ -453,19 +478,23 @@ export default function MonthlyChecks() {
             startIcon={sendingNotification === 'all' ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
             onClick={handleSendToAll}
             disabled={sendingNotification === 'all' || stats.pending === 0}
+            fullWidth={isMobile}
+            size={isMobile ? 'medium' : 'large'}
           >
-            <Badge badgeContent={stats.pending} color="error">
-              שלח הודעה לכל הממתינים
-            </Badge>
+            {isMobile ? `שלח לממתינים (${stats.pending})` : (
+              <Badge badgeContent={stats.pending} color="error">
+                שלח הודעה לכל הממתינים
+              </Badge>
+            )}
           </Button>
-          <Button
-            variant="outlined"
-            startIcon={<Refresh />}
+          <IconButton
             onClick={loadData}
             disabled={loading}
+            color="primary"
+            sx={{ display: { xs: 'none', sm: 'flex' } }}
           >
-            רענן
-          </Button>
+            <Refresh />
+          </IconButton>
         </Box>
       </Box>
 
@@ -582,120 +611,216 @@ export default function MonthlyChecks() {
             </Grid>
           </Paper>
 
-          {/* טבלת בקרות */}
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>מספר רישוי</TableCell>
-                  <TableCell>רוכב</TableCell>
-                  <TableCell>תאריך בקרה</TableCell>
-                  <TableCell>ק"מ</TableCell>
-                  <TableCell>שמן</TableCell>
-                  <TableCell>צמיגים</TableCell>
-                  <TableCell>סטטוס</TableCell>
-                  <TableCell align="center">פעולות</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {loading ? (
+          {/* טבלת בקרות - Desktop */}
+          {!isMobile ? (
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
                   <TableRow>
-                    <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
-                      <CircularProgress />
-                    </TableCell>
+                    <TableCell>מספר רישוי</TableCell>
+                    <TableCell>רוכב</TableCell>
+                    <TableCell>תאריך בקרה</TableCell>
+                    <TableCell>ק"מ</TableCell>
+                    <TableCell>שמן</TableCell>
+                    <TableCell>צמיגים</TableCell>
+                    <TableCell>סטטוס</TableCell>
+                    <TableCell align="center">פעולות</TableCell>
                   </TableRow>
-                ) : filteredChecks.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} align="center">
-                      <Box sx={{ py: 4 }}>
-                        <Build sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
-                        <Typography color="textSecondary">
-                          לא נמצאו בקרות
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredChecks.map((check) => (
-                    <TableRow key={check._id || check.id} hover>
-                      <TableCell>
-                        <Typography variant="body1" fontWeight="500">
-                          {check.vehicleLicensePlate || check.vehiclePlate || '-'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>{check.riderName || '-'}</TableCell>
-                      <TableCell>{formatDate(check.checkDate)}</TableCell>
-                      <TableCell>
-                        {check.currentKm?.toLocaleString('he-IL') ||
-                         check.kilometers?.toLocaleString('he-IL') || '0'}
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={check.checkResults?.oilCheck === 'ok' ? 'תקין' :
-                                check.checkResults?.oilCheck === 'low' ? 'נמוך' : '-'}
-                          color={check.checkResults?.oilCheck === 'ok' ? 'success' :
-                                check.checkResults?.oilCheck === 'low' ? 'warning' : 'default'}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {check.checkResults?.tirePressureFront && check.checkResults?.tirePressureRear ? (
-                          <Typography variant="caption">
-                            {check.checkResults.tirePressureFront}/{check.checkResults.tirePressureRear}
-                          </Typography>
-                        ) : '-'}
-                      </TableCell>
-                      <TableCell>{getStatusChip(check)}</TableCell>
-                      <TableCell align="center">
-                        <IconButton
-                          color="primary"
-                          size="small"
-                          onClick={() => handleViewDetails(check)}
-                          title="צפה בפרטים"
-                        >
-                          <Visibility />
-                        </IconButton>
-                        {check.status === 'pending' && (
-                          <IconButton
-                            color="secondary"
-                            size="small"
-                            onClick={() => {
-                              console.log('🔔 [BUTTON CLICK] Check object:', check);
-                              console.log('🔔 [BUTTON CLICK] check._id:', check._id);
-                              console.log('🔔 [BUTTON CLICK] check.id:', check.id);
-                              console.log('🔔 [BUTTON CLICK] Will send ID:', check._id || check.id);
-                              handleSendNotification(check._id || check.id);
-                            }}
-                            disabled={sendingNotification === (check._id || check.id)}
-                            title="שלח הודעה לרוכב"
-                          >
-                            {sendingNotification === (check._id || check.id) ? (
-                              <CircularProgress size={20} />
-                            ) : (
-                              <SendIcon />
-                            )}
-                          </IconButton>
-                        )}
-                        <IconButton
-                          color="error"
-                          size="small"
-                          onClick={() => handleDeleteCheck(check._id || check.id)}
-                          disabled={deletingCheck === (check._id || check.id)}
-                          title="מחק בקרה"
-                        >
-                          {deletingCheck === (check._id || check.id) ? (
-                            <CircularProgress size={20} />
-                          ) : (
-                            <Delete />
-                          )}
-                        </IconButton>
+                </TableHead>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                        <CircularProgress />
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                  ) : filteredChecks.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} align="center">
+                        <Box sx={{ py: 4 }}>
+                          <Build sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+                          <Typography color="textSecondary">
+                            לא נמצאו בקרות
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredChecks.map((check) => (
+                      <TableRow key={check._id || check.id} hover>
+                        <TableCell>
+                          <Typography variant="body1" fontWeight="500">
+                            {check.vehicleLicensePlate || check.vehiclePlate || '-'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>{check.riderName || '-'}</TableCell>
+                        <TableCell>{formatDate(check.checkDate)}</TableCell>
+                        <TableCell>
+                          {check.currentKm?.toLocaleString('he-IL') ||
+                           check.kilometers?.toLocaleString('he-IL') || '0'}
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={check.checkResults?.oilCheck === 'ok' ? 'תקין' :
+                                  check.checkResults?.oilCheck === 'low' ? 'נמוך' : '-'}
+                            color={check.checkResults?.oilCheck === 'ok' ? 'success' :
+                                  check.checkResults?.oilCheck === 'low' ? 'warning' : 'default'}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {check.checkResults?.tirePressureFront && check.checkResults?.tirePressureRear ? (
+                            <Typography variant="caption">
+                              {check.checkResults.tirePressureFront}/{check.checkResults.tirePressureRear}
+                            </Typography>
+                          ) : '-'}
+                        </TableCell>
+                        <TableCell>{getStatusChip(check)}</TableCell>
+                        <TableCell align="center">
+                          <IconButton
+                            color="primary"
+                            size="small"
+                            onClick={() => handleViewDetails(check)}
+                            title="צפה בפרטים"
+                          >
+                            <Visibility />
+                          </IconButton>
+                          {check.status === 'pending' && (
+                            <IconButton
+                              color="secondary"
+                              size="small"
+                              onClick={() => {
+                                handleSendNotification(check._id || check.id);
+                              }}
+                              disabled={sendingNotification === (check._id || check.id)}
+                              title="שלח הודעה לרוכב"
+                            >
+                              {sendingNotification === (check._id || check.id) ? (
+                                <CircularProgress size={20} />
+                              ) : (
+                                <SendIcon />
+                              )}
+                            </IconButton>
+                          )}
+                          <IconButton
+                            color="error"
+                            size="small"
+                            onClick={() => handleDeleteCheck(check._id || check.id)}
+                            disabled={deletingCheck === (check._id || check.id)}
+                            title="מחק בקרה"
+                          >
+                            {deletingCheck === (check._id || check.id) ? (
+                              <CircularProgress size={20} />
+                            ) : (
+                              <Delete />
+                            )}
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            /* כרטיסים למובייל */
+            <Box>
+              {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress />
+                </Box>
+              ) : filteredChecks.length === 0 ? (
+                <Paper sx={{ p: 4, textAlign: 'center' }}>
+                  <Build sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+                  <Typography color="textSecondary">לא נמצאו בקרות</Typography>
+                </Paper>
+              ) : (
+                <Stack spacing={2}>
+                  {filteredChecks.map((check) => (
+                    <Card key={check._id || check.id}>
+                      <CardContent sx={{ pb: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                          <Box>
+                            <Typography variant="subtitle1" fontWeight="bold">
+                              {check.vehicleLicensePlate || check.vehiclePlate || '-'}
+                            </Typography>
+                            <Typography variant="body2" color="textSecondary">
+                              {check.riderName || '-'}
+                            </Typography>
+                          </Box>
+                          {getStatusChip(check)}
+                        </Box>
+
+                        <Grid container spacing={1} sx={{ mt: 1 }}>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">תאריך</Typography>
+                            <Typography variant="body2">{formatDate(check.checkDate)}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">ק"מ</Typography>
+                            <Typography variant="body2">
+                              {check.currentKm?.toLocaleString('he-IL') ||
+                               check.kilometers?.toLocaleString('he-IL') || '0'}
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">שמן</Typography>
+                            <Box>
+                              <Chip
+                                label={check.checkResults?.oilCheck === 'ok' ? 'תקין' :
+                                      check.checkResults?.oilCheck === 'low' ? 'נמוך' : '-'}
+                                color={check.checkResults?.oilCheck === 'ok' ? 'success' :
+                                      check.checkResults?.oilCheck === 'low' ? 'warning' : 'default'}
+                                size="small"
+                              />
+                            </Box>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="caption" color="textSecondary">צמיגים</Typography>
+                            <Typography variant="body2">
+                              {check.checkResults?.tirePressureFront && check.checkResults?.tirePressureRear ?
+                                `${check.checkResults.tirePressureFront}/${check.checkResults.tirePressureRear}` : '-'}
+                            </Typography>
+                          </Grid>
+                        </Grid>
+                      </CardContent>
+                      <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
+                        <Button
+                          size="small"
+                          startIcon={<Visibility />}
+                          onClick={() => handleViewDetails(check)}
+                        >
+                          פרטים
+                        </Button>
+                        {check.status === 'pending' && (
+                          <Button
+                            size="small"
+                            color="secondary"
+                            startIcon={sendingNotification === (check._id || check.id) ?
+                              <CircularProgress size={16} /> : <SendIcon />}
+                            onClick={() => handleSendNotification(check._id || check.id)}
+                            disabled={sendingNotification === (check._id || check.id)}
+                          >
+                            שלח
+                          </Button>
+                        )}
+                        <Button
+                          size="small"
+                          color="error"
+                          startIcon={deletingCheck === (check._id || check.id) ?
+                            <CircularProgress size={16} /> : <Delete />}
+                          onClick={() => handleDeleteCheck(check._id || check.id)}
+                          disabled={deletingCheck === (check._id || check.id)}
+                        >
+                          מחק
+                        </Button>
+                      </CardActions>
+                    </Card>
+                  ))}
+                </Stack>
+              )}
+            </Box>
+          )}
 
           {!loading && filteredChecks.length > 0 && (
             <Box sx={{ mt: 2, textAlign: 'center' }}>
@@ -712,14 +837,28 @@ export default function MonthlyChecks() {
         onClose={() => setDetailsDialogOpen(false)}
         maxWidth="md"
         fullWidth
+        fullScreen={isMobile}
         dir="rtl"
       >
-        <DialogTitle>
-          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Build /> פרטי בקרה חודשית
-          </Typography>
-        </DialogTitle>
-        <DialogContent>
+        {isMobile ? (
+          <AppBar sx={{ position: 'relative' }}>
+            <Toolbar>
+              <IconButton edge="start" color="inherit" onClick={() => setDetailsDialogOpen(false)}>
+                <Close />
+              </IconButton>
+              <Typography sx={{ flex: 1 }} variant="h6">
+                פרטי בקרה חודשית
+              </Typography>
+            </Toolbar>
+          </AppBar>
+        ) : (
+          <DialogTitle>
+            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Build /> פרטי בקרה חודשית
+            </Typography>
+          </DialogTitle>
+        )}
+        <DialogContent sx={{ pt: isMobile ? 3 : 1 }}>
           {selectedCheck && (
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} sm={6}>
@@ -818,9 +957,11 @@ export default function MonthlyChecks() {
             </Grid>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDetailsDialogOpen(false)}>סגור</Button>
-        </DialogActions>
+        {!isMobile && (
+          <DialogActions>
+            <Button onClick={() => setDetailsDialogOpen(false)}>סגור</Button>
+          </DialogActions>
+        )}
       </Dialog>
 
       {/* Dialog לפתיחת בקרות חודשיות */}
@@ -829,17 +970,39 @@ export default function MonthlyChecks() {
         onClose={() => setOpenChecksDialogOpen(false)}
         maxWidth="md"
         fullWidth
+        fullScreen={isMobile}
         dir="rtl"
       >
-        <DialogTitle>
-          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <AddTask /> פתיחת בקרות חודשיות
-          </Typography>
-          <Typography variant="body2" color="textSecondary">
-            בחר רוכבים לפתיחת בקרה חודשית - {new Date().toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
-          </Typography>
-        </DialogTitle>
-        <DialogContent>
+        {isMobile ? (
+          <AppBar sx={{ position: 'relative' }}>
+            <Toolbar>
+              <IconButton edge="start" color="inherit" onClick={() => setOpenChecksDialogOpen(false)}>
+                <Close />
+              </IconButton>
+              <Typography sx={{ flex: 1 }} variant="h6">
+                פתיחת בקרות חודשיות
+              </Typography>
+              <Button
+                autoFocus
+                color="inherit"
+                onClick={handleOpenChecks}
+                disabled={openingChecks || selectedRiders.length === 0}
+              >
+                {openingChecks ? 'פותח...' : `פתח (${selectedRiders.length})`}
+              </Button>
+            </Toolbar>
+          </AppBar>
+        ) : (
+          <DialogTitle>
+            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <AddTask /> פתיחת בקרות חודשיות
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              בחר רוכבים לפתיחת בקרה חודשית - {new Date().toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
+            </Typography>
+          </DialogTitle>
+        )}
+        <DialogContent sx={{ pt: isMobile ? 3 : 1 }}>
           <Box sx={{ mt: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="body1" fontWeight="500">
@@ -908,20 +1071,22 @@ export default function MonthlyChecks() {
             )}
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenChecksDialogOpen(false)}>
-            ביטול
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleOpenChecks}
-            disabled={openingChecks || selectedRiders.length === 0}
-            startIcon={openingChecks ? <CircularProgress size={20} /> : <AddTask />}
-          >
-            {openingChecks ? 'פותח בקרות...' : `פתח ${selectedRiders.length} בקרות`}
-          </Button>
-        </DialogActions>
+        {!isMobile && (
+          <DialogActions>
+            <Button onClick={() => setOpenChecksDialogOpen(false)}>
+              ביטול
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleOpenChecks}
+              disabled={openingChecks || selectedRiders.length === 0}
+              startIcon={openingChecks ? <CircularProgress size={20} /> : <AddTask />}
+            >
+              {openingChecks ? 'פותח בקרות...' : `פתח ${selectedRiders.length} בקרות`}
+            </Button>
+          </DialogActions>
+        )}
       </Dialog>
 
       {/* Snackbar להודעות */}
