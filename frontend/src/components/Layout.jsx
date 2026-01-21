@@ -259,16 +259,21 @@ export default function Layout() {
         <Drawer
           variant="temporary"
           open={mobileOpen}
-          onClose={handleDrawerToggle}
+          onClose={() => setMobileOpen(false)}
           anchor="right"
           ModalProps={{
-            keepMounted: true,
+            keepMounted: false,
+            disableScrollLock: true,
           }}
+          transitionDuration={{ enter: 225, exit: 195 }}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
+            },
+            '& .MuiBackdrop-root': {
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
             },
           }}
         >
