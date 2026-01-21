@@ -79,6 +79,8 @@ export default function Dashboard() {
   const [recentActivity, setRecentActivity] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [criticalFaultsList, setCriticalFaultsList] = useState([]);
+  const [vehicleStatusData, setVehicleStatusData] = useState([]);
+  const [monthlyTrendData, setMonthlyTrendData] = useState([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -112,16 +114,42 @@ export default function Dashboard() {
       let openFaults = 0;
       const criticalFaults = [];
 
+      // ספירת סטטוסי כלים לגרף
+      const vehicleStatusCounts = {
+        active: 0,
+        waiting_for_rider: 0,
+        in_maintenance: 0,
+        inactive: 0,
+        other: 0
+      };
+
       riders.forEach(r => {
-        if (r.riderStatus === 'active' || r.status === 'active') activeRiders++;
+        // המודל משתמש ב-riderStatus
+        if (r.riderStatus === 'active') activeRiders++;
       });
 
       vehicles.forEach(v => {
-        if (v.status === 'active') activeVehicles++;
-        if (v.status === 'waiting_for_rider' || v.status === 'available') vehiclesWaitingForRider++;
+        // ספירה לפי סטטוס
+        if (v.status === 'active') {
+          activeVehicles++;
+          vehicleStatusCounts.active++;
+        } else if (v.status === 'waiting_for_rider' || v.status === 'available') {
+          vehiclesWaitingForRider++;
+          vehicleStatusCounts.waiting_for_rider++;
+        } else if (v.status === 'in_maintenance') {
+          vehicleStatusCounts.in_maintenance++;
+        } else if (v.status === 'inactive') {
+          vehicleStatusCounts.inactive++;
+        } else {
+          vehicleStatusCounts.other++;
+        }
 
-        if (v.insuranceExpiry) {
-          const expiryDate = new Date(v.insuranceExpiry);
+        // בדיקת ביטוח - בודק בתוך אובייקט insurance
+        const insuranceExpiry = v.insurance?.mandatory?.expiryDate ||
+                               v.insurance?.comprehensive?.expiryDate ||
+                               v.insuranceExpiry;
+        if (insuranceExpiry) {
+          const expiryDate = insuranceExpiry.toDate ? insuranceExpiry.toDate() : new Date(insuranceExpiry);
           if (expiryDate >= now && expiryDate <= oneMonthFromNow) expiringInsurance++;
         }
       });
@@ -133,7 +161,8 @@ export default function Dashboard() {
       faults.forEach(f => {
         if (f.status === 'open' || f.status === 'in_progress') {
           openFaults++;
-          if (f.severity === 'critical' || f.canRide === false) {
+          // תקלות קריטיות = critical או high או canRide=false
+          if (f.severity === 'critical' || f.severity === 'high' || f.canRide === false) {
             criticalFaults.push(f);
           }
         }
@@ -153,6 +182,54 @@ export default function Dashboard() {
       });
 
       setCriticalFaultsList(criticalFaults.slice(0, 5));
+
+      // נתונים אמיתיים לגרף סטטוס כלים
+      setVehicleStatusData([
+        { name: 'פעיל', value: vehicleStatusCounts.active },
+        { name: 'ממתין לרוכב', value: vehicleStatusCounts.waiting_for_rider },
+        { name: 'בתחזוקה', value: vehicleStatusCounts.in_maintenance },
+        { name: 'לא פעיל', value: vehicleStatusCounts.inactive },
+        ...(vehicleStatusCounts.other > 0 ? [{ name: 'אחר', value: vehicleStatusCounts.other }] : [])
+      ].filter(item => item.value > 0));
+
+      // חישוב מגמות חודשיות אמיתיות מהתקלות והמשימות
+      const monthlyStats = {};
+      const now6MonthsAgo = new Date();
+      now6MonthsAgo.setMonth(now6MonthsAgo.getMonth() - 5);
+
+      // אתחול 6 חודשים אחרונים
+      for (let i = 0; i < 6; i++) {
+        const date = new Date();
+        date.setMonth(date.getMonth() - (5 - i));
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const monthNames = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+        monthlyStats[monthKey] = { month: monthNames[date.getMonth()], משימות: 0, תקלות: 0 };
+      }
+
+      // ספירת משימות לפי חודש
+      tasks.forEach(t => {
+        const createdAt = t.createdAt?.toDate ? t.createdAt.toDate() : new Date(t.createdAt);
+        if (createdAt >= now6MonthsAgo) {
+          const monthKey = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
+          if (monthlyStats[monthKey]) {
+            monthlyStats[monthKey].משימות++;
+          }
+        }
+      });
+
+      // ספירת תקלות לפי חודש
+      faults.forEach(f => {
+        const reportedDate = f.reportedDate?.toDate ? f.reportedDate.toDate() :
+                            f.createdAt?.toDate ? f.createdAt.toDate() : new Date(f.reportedDate || f.createdAt);
+        if (reportedDate >= now6MonthsAgo) {
+          const monthKey = `${reportedDate.getFullYear()}-${String(reportedDate.getMonth() + 1).padStart(2, '0')}`;
+          if (monthlyStats[monthKey]) {
+            monthlyStats[monthKey].תקלות++;
+          }
+        }
+      });
+
+      setMonthlyTrendData(Object.values(monthlyStats));
 
       // Recent Activity (mock data - replace with real data)
       setRecentActivity([
@@ -199,21 +276,6 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
-
-  const vehicleStatusData = [
-    { name: 'פעיל', value: stats.activeVehicles },
-    { name: 'ממתין לרוכב', value: Math.max(0, stats.totalVehicles - stats.activeVehicles - 2) },
-    { name: 'אחר', value: 2 },
-  ];
-
-  const monthlyTrend = [
-    { month: 'ינואר', משימות: 12, תקלות: 3 },
-    { month: 'פברואר', משימות: 19, תקלות: 5 },
-    { month: 'מרץ', משימות: 15, תקלות: 2 },
-    { month: 'אפריל', משימות: 22, תקלות: 4 },
-    { month: 'מאי', משימות: 18, תקלות: 6 },
-    { month: 'יוני', משימות: stats.pendingTasks, תקלות: stats.openFaults },
-  ];
 
   const StatCard = ({ title, value, icon: Icon, color, trend }) => (
     <Card sx={{ height: '100%' }}>
@@ -389,7 +451,7 @@ export default function Dashboard() {
             </Typography>
             <Divider sx={{ mb: 2 }} />
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={monthlyTrend}>
+              <LineChart data={monthlyTrendData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
