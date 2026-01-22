@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Drawer,
+  SwipeableDrawer,
   AppBar,
   Toolbar,
   List,
@@ -88,22 +89,18 @@ export default function Layout() {
   // בדיקה אם המשתמש הוא רוכב
   const isRider = hasRole('rider');
 
-  const handleDrawerToggle = useCallback(() => {
-    setMobileOpen(prev => !prev);
+  const handleDrawerOpen = useCallback(() => {
+    setMobileOpen(true);
   }, []);
-
-  const handleMenuClick = useCallback((path) => {
-    // סגור מיד וחכה שהאנימציה תסתיים לפני ניווט
-    setMobileOpen(false);
-    // המתן לסגירת ה-Drawer לפני ניווט
-    requestAnimationFrame(() => {
-      navigate(path);
-    });
-  }, [navigate]);
 
   const handleDrawerClose = useCallback(() => {
     setMobileOpen(false);
   }, []);
+
+  const handleMenuClick = useCallback((path) => {
+    setMobileOpen(false);
+    navigate(path);
+  }, [navigate]);
 
   const handleProfileMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -264,15 +261,16 @@ export default function Layout() {
         }}
       >
         {/* Mobile drawer */}
-        <Drawer
-          variant="temporary"
+        <SwipeableDrawer
           open={mobileOpen}
           onClose={handleDrawerClose}
+          onOpen={handleDrawerOpen}
           anchor="right"
-          ModalProps={{
-            keepMounted: false,
-          }}
-          transitionDuration={150}
+          disableBackdropTransition
+          disableDiscovery
+          disableSwipeToOpen
+          hysteresis={0.52}
+          minFlingVelocity={450}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
@@ -350,7 +348,7 @@ export default function Layout() {
               )}
             </List>
           </Box>
-        </Drawer>
+        </SwipeableDrawer>
 
         {/* Desktop drawer */}
         <Drawer
@@ -402,7 +400,7 @@ export default function Layout() {
             <IconButton
               color="inherit"
               edge="start"
-              onClick={handleDrawerToggle}
+              onClick={handleDrawerOpen}
               sx={{ ml: 2, display: { sm: 'none' } }}
             >
               <MenuIcon />
