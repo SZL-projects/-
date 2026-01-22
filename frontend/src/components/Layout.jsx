@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -82,78 +82,57 @@ export default function Layout() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [drawerLocked, setDrawerLocked] = useState(false);
 
-  // מנגנון למניעת פתיחה מחדש של ה-Drawer
-  const isClosingRef = useRef(false);
-  const closingTimeoutRef = useRef(null);
+  // Ref לניקוי timeout
+  const lockTimeoutRef = useRef(null);
+
+  // ניקוי timeout בעת unmount
+  useEffect(() => {
+    return () => {
+      if (lockTimeoutRef.current) {
+        clearTimeout(lockTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // בדיקה אם יש למשתמש הרשאות ניהול
   const hasManagementRole = hasAnyRole(['super_admin', 'manager', 'secretary', 'logistics', 'regional_manager']);
   // בדיקה אם המשתמש הוא רוכב
   const isRider = hasRole('rider');
 
-  const handleDrawerToggle = useCallback((e) => {
-    // מניעת אירועים כפולים
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
+  // פונקציה לנעילת ה-Drawer
+  const lockDrawer = useCallback(() => {
+    setDrawerLocked(true);
+    if (lockTimeoutRef.current) {
+      clearTimeout(lockTimeoutRef.current);
     }
+    lockTimeoutRef.current = setTimeout(() => {
+      setDrawerLocked(false);
+    }, 600);
+  }, []);
 
-    // אם ה-Drawer בתהליך סגירה, לא נפתח אותו מחדש
-    if (isClosingRef.current) {
+  const handleDrawerToggle = useCallback(() => {
+    // אם ה-Drawer נעול, לא עושים כלום
+    if (drawerLocked) {
       return;
     }
     setMobileOpen(prev => !prev);
-  }, []);
+  }, [drawerLocked]);
 
-  const handleMenuClick = useCallback((path, e) => {
-    // מניעת אירועים כפולים
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    // סמן שאנחנו בתהליך סגירה
-    isClosingRef.current = true;
-
-    // נקה timeout קודם אם קיים
-    if (closingTimeoutRef.current) {
-      clearTimeout(closingTimeoutRef.current);
-    }
-
-    // סגור את ה-Drawer מיד
+  const handleMenuClick = useCallback((path) => {
+    // נעל את ה-Drawer
+    lockDrawer();
+    // סגור מיד
     setMobileOpen(false);
+    // נווט
+    navigate(path);
+  }, [navigate, lockDrawer]);
 
-    // נווט לדף החדש עם delay קטן
-    setTimeout(() => {
-      navigate(path);
-    }, 50);
-
-    // אפשר פתיחה מחדש רק אחרי 500ms
-    closingTimeoutRef.current = setTimeout(() => {
-      isClosingRef.current = false;
-    }, 500);
-  }, [navigate]);
-
-  const handleDrawerClose = useCallback((e, reason) => {
-    // מניעת אירועים כפולים
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    isClosingRef.current = true;
+  const handleDrawerClose = useCallback(() => {
+    lockDrawer();
     setMobileOpen(false);
-
-    // נקה timeout קודם אם קיים
-    if (closingTimeoutRef.current) {
-      clearTimeout(closingTimeoutRef.current);
-    }
-
-    closingTimeoutRef.current = setTimeout(() => {
-      isClosingRef.current = false;
-    }, 500);
-  }, []);
+  }, [lockDrawer]);
 
   const handleProfileMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -366,7 +345,7 @@ export default function Layout() {
                     <ListItem key={item.text} disablePadding>
                       <ListItemButton
                         selected={location.pathname === item.path}
-                        onClick={(e) => handleMenuClick(item.path, e)}
+                        onClick={() => handleMenuClick(item.path)}
                       >
                         <ListItemIcon>{item.icon}</ListItemIcon>
                         <ListItemText primary={item.text} />
@@ -395,7 +374,7 @@ export default function Layout() {
                       <ListItem key={item.text} disablePadding>
                         <ListItemButton
                           selected={location.pathname === item.path}
-                          onClick={(e) => handleMenuClick(item.path, e)}
+                          onClick={() => handleMenuClick(item.path)}
                         >
                           <ListItemIcon>{item.icon}</ListItemIcon>
                           <ListItemText primary={item.text} />
