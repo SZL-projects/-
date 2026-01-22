@@ -92,7 +92,13 @@ export default function Layout() {
   // בדיקה אם המשתמש הוא רוכב
   const isRider = hasRole('rider');
 
-  const handleDrawerToggle = useCallback(() => {
+  const handleDrawerToggle = useCallback((e) => {
+    // מניעת אירועים כפולים
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     // אם ה-Drawer בתהליך סגירה, לא נפתח אותו מחדש
     if (isClosingRef.current) {
       return;
@@ -100,7 +106,13 @@ export default function Layout() {
     setMobileOpen(prev => !prev);
   }, []);
 
-  const handleMenuClick = useCallback((path) => {
+  const handleMenuClick = useCallback((path, e) => {
+    // מניעת אירועים כפולים
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     // סמן שאנחנו בתהליך סגירה
     isClosingRef.current = true;
 
@@ -109,19 +121,27 @@ export default function Layout() {
       clearTimeout(closingTimeoutRef.current);
     }
 
-    // סגור את ה-Drawer
+    // סגור את ה-Drawer מיד
     setMobileOpen(false);
 
-    // נווט לדף החדש
-    navigate(path);
+    // נווט לדף החדש עם delay קטן
+    setTimeout(() => {
+      navigate(path);
+    }, 50);
 
-    // אפשר פתיחה מחדש רק אחרי 300ms
+    // אפשר פתיחה מחדש רק אחרי 500ms
     closingTimeoutRef.current = setTimeout(() => {
       isClosingRef.current = false;
-    }, 300);
+    }, 500);
   }, [navigate]);
 
-  const handleDrawerClose = useCallback(() => {
+  const handleDrawerClose = useCallback((e, reason) => {
+    // מניעת אירועים כפולים
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     isClosingRef.current = true;
     setMobileOpen(false);
 
@@ -132,7 +152,7 @@ export default function Layout() {
 
     closingTimeoutRef.current = setTimeout(() => {
       isClosingRef.current = false;
-    }, 300);
+    }, 500);
   }, []);
 
   const handleProfileMenuOpen = (event) => {
@@ -346,7 +366,7 @@ export default function Layout() {
                     <ListItem key={item.text} disablePadding>
                       <ListItemButton
                         selected={location.pathname === item.path}
-                        onClick={() => handleMenuClick(item.path)}
+                        onClick={(e) => handleMenuClick(item.path, e)}
                       >
                         <ListItemIcon>{item.icon}</ListItemIcon>
                         <ListItemText primary={item.text} />
@@ -375,7 +395,7 @@ export default function Layout() {
                       <ListItem key={item.text} disablePadding>
                         <ListItemButton
                           selected={location.pathname === item.path}
-                          onClick={() => handleMenuClick(item.path)}
+                          onClick={(e) => handleMenuClick(item.path, e)}
                         >
                           <ListItemIcon>{item.icon}</ListItemIcon>
                           <ListItemText primary={item.text} />

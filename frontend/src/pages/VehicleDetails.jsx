@@ -15,6 +15,7 @@ import {
 import { ArrowBack, Edit } from '@mui/icons-material';
 import { vehiclesAPI } from '../services/api';
 import VehicleFiles from '../components/VehicleFiles';
+import VehicleDialog from '../components/VehicleDialog';
 
 export default function VehicleDetails() {
   const { id } = useParams();
@@ -25,6 +26,7 @@ export default function VehicleDetails() {
   const [folderData, setFolderData] = useState(null);
   const [creatingFolders, setCreatingFolders] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   useEffect(() => {
     loadVehicle();
@@ -49,6 +51,18 @@ export default function VehicleDetails() {
 
   const showSnackbar = (message, severity) => {
     setSnackbar({ open: true, message, severity });
+  };
+
+  const handleEditVehicle = async (formData) => {
+    try {
+      await vehiclesAPI.update(id, formData);
+      showSnackbar('הכלי עודכן בהצלחה', 'success');
+      setEditDialogOpen(false);
+      loadVehicle();
+    } catch (err) {
+      console.error('Error updating vehicle:', err);
+      showSnackbar(err.response?.data?.message || 'שגיאה בעדכון הכלי', 'error');
+    }
   };
 
   const createFolderStructure = async () => {
@@ -175,6 +189,7 @@ export default function VehicleDetails() {
           variant="outlined"
           startIcon={<Edit />}
           sx={{ mr: 'auto' }}
+          onClick={() => setEditDialogOpen(true)}
         >
           עריכה
         </Button>
@@ -311,6 +326,14 @@ export default function VehicleDetails() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Edit Vehicle Dialog */}
+      <VehicleDialog
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+        onSave={handleEditVehicle}
+        vehicle={vehicle}
+      />
     </Box>
   );
 }
