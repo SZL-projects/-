@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -82,57 +82,28 @@ export default function Layout() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
-  const [drawerLocked, setDrawerLocked] = useState(false);
-
-  // Ref לניקוי timeout
-  const lockTimeoutRef = useRef(null);
-
-  // ניקוי timeout בעת unmount
-  useEffect(() => {
-    return () => {
-      if (lockTimeoutRef.current) {
-        clearTimeout(lockTimeoutRef.current);
-      }
-    };
-  }, []);
 
   // בדיקה אם יש למשתמש הרשאות ניהול
   const hasManagementRole = hasAnyRole(['super_admin', 'manager', 'secretary', 'logistics', 'regional_manager']);
   // בדיקה אם המשתמש הוא רוכב
   const isRider = hasRole('rider');
 
-  // פונקציה לנעילת ה-Drawer
-  const lockDrawer = useCallback(() => {
-    setDrawerLocked(true);
-    if (lockTimeoutRef.current) {
-      clearTimeout(lockTimeoutRef.current);
-    }
-    lockTimeoutRef.current = setTimeout(() => {
-      setDrawerLocked(false);
-    }, 600);
+  const handleDrawerToggle = useCallback(() => {
+    setMobileOpen(prev => !prev);
   }, []);
 
-  const handleDrawerToggle = useCallback(() => {
-    // אם ה-Drawer נעול, לא עושים כלום
-    if (drawerLocked) {
-      return;
-    }
-    setMobileOpen(prev => !prev);
-  }, [drawerLocked]);
-
   const handleMenuClick = useCallback((path) => {
-    // נעל את ה-Drawer
-    lockDrawer();
-    // סגור מיד
+    // סגור מיד וחכה שהאנימציה תסתיים לפני ניווט
     setMobileOpen(false);
-    // נווט
-    navigate(path);
-  }, [navigate, lockDrawer]);
+    // המתן לסגירת ה-Drawer לפני ניווט
+    requestAnimationFrame(() => {
+      navigate(path);
+    });
+  }, [navigate]);
 
   const handleDrawerClose = useCallback(() => {
-    lockDrawer();
     setMobileOpen(false);
-  }, [lockDrawer]);
+  }, []);
 
   const handleProfileMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -300,20 +271,13 @@ export default function Layout() {
           anchor="right"
           ModalProps={{
             keepMounted: false,
-            disableScrollLock: false,
-            disablePortal: false,
-            disableEnforceFocus: true,
-            disableAutoFocus: true,
           }}
-          transitionDuration={{ enter: 200, exit: 150 }}
+          transitionDuration={150}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
-            },
-            '& .MuiBackdrop-root': {
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
             },
           }}
         >
