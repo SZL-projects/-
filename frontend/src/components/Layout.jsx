@@ -3,7 +3,6 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Drawer,
-  SwipeableDrawer,
   AppBar,
   Toolbar,
   List,
@@ -98,7 +97,9 @@ export default function Layout() {
   }, []);
 
   const handleMenuClick = useCallback((path) => {
+    // סגירת התפריט
     setMobileOpen(false);
+    // ניווט לדף
     navigate(path);
   }, [navigate]);
 
@@ -261,16 +262,14 @@ export default function Layout() {
         }}
       >
         {/* Mobile drawer */}
-        <SwipeableDrawer
+        <Drawer
+          variant="temporary"
           open={mobileOpen}
           onClose={handleDrawerClose}
-          onOpen={handleDrawerOpen}
           anchor="right"
-          disableBackdropTransition
-          disableDiscovery
-          disableSwipeToOpen
-          hysteresis={0.52}
-          minFlingVelocity={450}
+          ModalProps={{
+            keepMounted: false,
+          }}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
@@ -348,7 +347,7 @@ export default function Layout() {
               )}
             </List>
           </Box>
-        </SwipeableDrawer>
+        </Drawer>
 
         {/* Desktop drawer */}
         <Drawer
