@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Drawer,
+  SwipeableDrawer,
   AppBar,
   Toolbar,
   List,
@@ -260,11 +261,14 @@ export default function Layout() {
         }}
       >
         {/* Mobile drawer */}
-        <Drawer
-          variant="temporary"
+        <SwipeableDrawer
           open={mobileOpen}
           onClose={closeDrawer}
+          onOpen={openDrawer}
           anchor="right"
+          disableBackdropTransition={false}
+          disableDiscovery={false}
+          swipeAreaWidth={20}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
@@ -342,7 +346,7 @@ export default function Layout() {
               )}
             </List>
           </Box>
-        </Drawer>
+        </SwipeableDrawer>
 
         {/* Desktop drawer */}
         <Drawer
