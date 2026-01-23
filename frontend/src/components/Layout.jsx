@@ -88,17 +88,17 @@ export default function Layout() {
   // בדיקה אם המשתמש הוא רוכב
   const isRider = hasRole('rider');
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(prev => !prev);
+  const openDrawer = () => {
+    setMobileOpen(true);
+  };
+
+  const closeDrawer = () => {
+    setMobileOpen(false);
   };
 
   const handleMenuClick = (path) => {
-    // סגירה מיידית
     setMobileOpen(false);
-    // המתנה קצרה לסגירה ואז ניווט
-    setTimeout(() => {
-      navigate(path);
-    }, 50);
+    navigate(path);
   };
 
   const handleProfileMenuOpen = (event) => {
@@ -263,11 +263,8 @@ export default function Layout() {
         <Drawer
           variant="temporary"
           open={mobileOpen}
-          onClose={() => setMobileOpen(false)}
+          onClose={closeDrawer}
           anchor="right"
-          ModalProps={{
-            keepMounted: true,
-          }}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
@@ -397,7 +394,7 @@ export default function Layout() {
             <IconButton
               color="inherit"
               edge="start"
-              onClick={handleDrawerToggle}
+              onClick={openDrawer}
               sx={{ ml: 2, display: { sm: 'none' } }}
             >
               <MenuIcon />
