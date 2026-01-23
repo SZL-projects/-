@@ -267,14 +267,24 @@ export default function Layout() {
           open={mobileOpen}
           onClose={handleDrawerClose}
           anchor="right"
+          disableScrollLock
           ModalProps={{
             keepMounted: false,
+            disableAutoFocus: true,
+            disableEnforceFocus: true,
           }}
+          SlideProps={{
+            appear: true,
+          }}
+          transitionDuration={200}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
+            },
+            '& .MuiBackdrop-root': {
+              transitionDuration: '200ms !important',
             },
           }}
         >
