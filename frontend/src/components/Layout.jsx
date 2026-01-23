@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -88,20 +88,18 @@ export default function Layout() {
   // בדיקה אם המשתמש הוא רוכב
   const isRider = hasRole('rider');
 
-  const handleDrawerOpen = useCallback(() => {
-    setMobileOpen(true);
-  }, []);
+  const handleDrawerToggle = () => {
+    setMobileOpen(prev => !prev);
+  };
 
-  const handleDrawerClose = useCallback(() => {
+  const handleMenuClick = (path) => {
+    // סגירה מיידית
     setMobileOpen(false);
-  }, []);
-
-  const handleMenuClick = useCallback((path) => {
-    // סגירת התפריט
-    setMobileOpen(false);
-    // ניווט לדף
-    navigate(path);
-  }, [navigate]);
+    // המתנה קצרה לסגירה ואז ניווט
+    setTimeout(() => {
+      navigate(path);
+    }, 50);
+  };
 
   const handleProfileMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -265,26 +263,16 @@ export default function Layout() {
         <Drawer
           variant="temporary"
           open={mobileOpen}
-          onClose={handleDrawerClose}
+          onClose={() => setMobileOpen(false)}
           anchor="right"
-          disableScrollLock
           ModalProps={{
-            keepMounted: false,
-            disableAutoFocus: true,
-            disableEnforceFocus: true,
+            keepMounted: true,
           }}
-          SlideProps={{
-            appear: true,
-          }}
-          transitionDuration={200}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
-            },
-            '& .MuiBackdrop-root': {
-              transitionDuration: '200ms !important',
             },
           }}
         >
@@ -409,7 +397,7 @@ export default function Layout() {
             <IconButton
               color="inherit"
               edge="start"
-              onClick={handleDrawerOpen}
+              onClick={handleDrawerToggle}
               sx={{ ml: 2, display: { sm: 'none' } }}
             >
               <MenuIcon />
