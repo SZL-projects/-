@@ -96,6 +96,14 @@ export default function Layout() {
     setMobileOpen(false);
   };
 
+  // אתחול מוקדם - פותח וסוגר את ה-Drawer כדי לאתחל אותו
+  useEffect(() => {
+    if (isMobile) {
+      setMobileOpen(true);
+      setTimeout(() => setMobileOpen(false), 10);
+    }
+  }, [isMobile]);
+
   // סגור drawer כשהחלון מאבד פוקוס
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -306,11 +314,13 @@ export default function Layout() {
           onClose={closeDrawer}
           anchor="right"
           hideBackdrop
+          disablePortal
           ModalProps={{
-            keepMounted: false,
+            keepMounted: true,
             disableAutoFocus: true,
             disableEnforceFocus: true,
             disableRestoreFocus: true,
+            disablePortal: true,
           }}
           sx={{
             display: { xs: 'block', sm: 'none' },
