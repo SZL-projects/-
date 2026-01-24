@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -88,42 +88,9 @@ export default function Layout() {
   // בדיקה אם המשתמש הוא רוכב
   const isRider = hasRole('rider');
 
-  const openDrawer = () => {
-    setMobileOpen(true);
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
   };
-
-  const closeDrawer = () => {
-    setMobileOpen(false);
-  };
-
-  // אתחול מוקדם - פותח וסוגר את ה-Drawer כדי לאתחל אותו
-  useEffect(() => {
-    if (isMobile) {
-      setMobileOpen(true);
-      setTimeout(() => setMobileOpen(false), 10);
-    }
-  }, [isMobile]);
-
-  // סגור drawer כשהחלון מאבד פוקוס
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        setMobileOpen(false);
-      }
-    };
-
-    const handleBlur = () => {
-      setMobileOpen(false);
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', handleBlur);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleBlur);
-    };
-  }, []);
 
   const handleMenuClick = (path) => {
     setMobileOpen(false);
@@ -288,54 +255,24 @@ export default function Layout() {
           transition: 'width 0.3s',
         }}
       >
-        {/* Custom Backdrop - fixes iOS first-click issue */}
-        {mobileOpen && (
-          <Box
-            onClick={closeDrawer}
-            onTouchStart={closeDrawer}
-            sx={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              bgcolor: 'rgba(0, 0, 0, 0.5)',
-              zIndex: 1199,
-              display: { xs: 'block', sm: 'none' },
-              cursor: 'pointer',
-            }}
-          />
-        )}
-
         {/* Mobile drawer */}
         <Drawer
           variant="temporary"
           open={mobileOpen}
-          onClose={closeDrawer}
+          onClose={handleDrawerToggle}
           anchor="right"
-          hideBackdrop
-          disablePortal
           ModalProps={{
             keepMounted: true,
-            disableAutoFocus: true,
-            disableEnforceFocus: true,
-            disableRestoreFocus: true,
-            disablePortal: true,
           }}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
-              zIndex: 1200,
             },
           }}
         >
-          <Box
-            sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-            onClick={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-          >
+          <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <Toolbar sx={{ justifyContent: 'space-between', py: 2, px: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <TwoWheeler sx={{ fontSize: 40, color: 'primary.main' }} />
@@ -456,7 +393,7 @@ export default function Layout() {
             <IconButton
               color="inherit"
               edge="start"
-              onClick={openDrawer}
+              onClick={handleDrawerToggle}
               sx={{ ml: 2, display: { sm: 'none' } }}
             >
               <MenuIcon />
