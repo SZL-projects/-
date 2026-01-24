@@ -95,6 +95,8 @@ html, body, #root {
 .MuiBackdrop-root {
   cursor: pointer !important;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
 }
 
 

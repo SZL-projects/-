@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Drawer,
+  SwipeableDrawer,
   AppBar,
   Toolbar,
   List,
@@ -88,12 +89,11 @@ export default function Layout() {
   // בדיקה אם המשתמש הוא רוכב
   const isRider = hasRole('rider');
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
+  const openDrawer = () => setMobileOpen(true);
+  const closeDrawer = () => setMobileOpen(false);
 
   const handleMenuClick = (path) => {
-    setMobileOpen(false);
+    closeDrawer();
     navigate(path);
   };
 
@@ -256,20 +256,17 @@ export default function Layout() {
         }}
       >
         {/* Mobile drawer */}
-        <Drawer
-          variant="temporary"
+        <SwipeableDrawer
           open={mobileOpen}
-          onClose={handleDrawerToggle}
+          onClose={closeDrawer}
+          onOpen={openDrawer}
           anchor="right"
+          disableSwipeToOpen={false}
+          swipeAreaWidth={20}
+          hysteresis={0.25}
+          minFlingVelocity={400}
           ModalProps={{
             keepMounted: true,
-          }}
-          slotProps={{
-            backdrop: {
-              role: 'button',
-              tabIndex: 0,
-              'aria-label': 'close menu',
-            },
           }}
           sx={{
             display: { xs: 'block', sm: 'none' },
@@ -348,7 +345,7 @@ export default function Layout() {
               )}
             </List>
           </Box>
-        </Drawer>
+        </SwipeableDrawer>
 
         {/* Desktop drawer */}
         <Drawer
@@ -400,7 +397,7 @@ export default function Layout() {
             <IconButton
               color="inherit"
               edge="start"
-              onClick={handleDrawerToggle}
+              onClick={openDrawer}
               sx={{ ml: 2, display: { sm: 'none' } }}
             >
               <MenuIcon />
