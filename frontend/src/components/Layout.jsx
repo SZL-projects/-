@@ -280,30 +280,44 @@ export default function Layout() {
           transition: 'width 0.3s',
         }}
       >
+        {/* Custom Backdrop - fixes iOS first-click issue */}
+        {mobileOpen && (
+          <Box
+            onClick={closeDrawer}
+            onTouchStart={closeDrawer}
+            sx={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              bgcolor: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 1199,
+              display: { xs: 'block', sm: 'none' },
+              cursor: 'pointer',
+            }}
+          />
+        )}
+
         {/* Mobile drawer */}
         <Drawer
           variant="temporary"
           open={mobileOpen}
           onClose={closeDrawer}
           anchor="right"
+          hideBackdrop
           ModalProps={{
             keepMounted: false,
             disableAutoFocus: true,
             disableEnforceFocus: true,
             disableRestoreFocus: true,
           }}
-          SlotProps={{
-            backdrop: {
-              onClick: closeDrawer,
-              onTouchEnd: closeDrawer,
-              sx: { cursor: 'pointer' },
-            },
-          }}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
+              zIndex: 1200,
             },
           }}
         >
