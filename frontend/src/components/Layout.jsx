@@ -331,7 +331,11 @@ export default function Layout() {
             },
           }}
         >
-          <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <Box
+            sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+          >
             <Toolbar sx={{ justifyContent: 'space-between', py: 2, px: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <TwoWheeler sx={{ fontSize: 40, color: 'primary.main' }} />
