@@ -297,6 +297,7 @@ export default function Layout() {
                       <ListItemButton
                         selected={location.pathname === item.path}
                         onClick={() => handleMenuClick(item.path)}
+                        onTouchEnd={() => handleMenuClick(item.path)}
                       >
                         <ListItemIcon>{item.icon}</ListItemIcon>
                         <ListItemText primary={item.text} />
@@ -326,6 +327,7 @@ export default function Layout() {
                         <ListItemButton
                           selected={location.pathname === item.path}
                           onClick={() => handleMenuClick(item.path)}
+                          onTouchEnd={() => handleMenuClick(item.path)}
                         >
                           <ListItemIcon>{item.icon}</ListItemIcon>
                           <ListItemText primary={item.text} />
