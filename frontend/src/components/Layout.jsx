@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -88,13 +88,18 @@ export default function Layout() {
   // בדיקה אם המשתמש הוא רוכב
   const isRider = hasRole('rider');
 
-  const openDrawer = () => setMobileOpen(true);
-  const closeDrawer = () => setMobileOpen(false);
+  const handleDrawerOpen = useCallback(() => {
+    setMobileOpen(true);
+  }, []);
 
-  const handleMenuClick = (path) => {
-    closeDrawer();
+  const handleDrawerClose = useCallback(() => {
+    setMobileOpen(false);
+  }, []);
+
+  const handleMenuClick = useCallback((path) => {
+    setMobileOpen(false);
     navigate(path);
-  };
+  }, [navigate]);
 
   const handleProfileMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -258,8 +263,11 @@ export default function Layout() {
         <Drawer
           variant="temporary"
           open={mobileOpen}
-          onClose={closeDrawer}
+          onClose={handleDrawerClose}
           anchor="right"
+          ModalProps={{
+            keepMounted: false,
+          }}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
@@ -297,7 +305,6 @@ export default function Layout() {
                       <ListItemButton
                         selected={location.pathname === item.path}
                         onClick={() => handleMenuClick(item.path)}
-                        onTouchEnd={() => handleMenuClick(item.path)}
                       >
                         <ListItemIcon>{item.icon}</ListItemIcon>
                         <ListItemText primary={item.text} />
@@ -327,7 +334,6 @@ export default function Layout() {
                         <ListItemButton
                           selected={location.pathname === item.path}
                           onClick={() => handleMenuClick(item.path)}
-                          onTouchEnd={() => handleMenuClick(item.path)}
                         >
                           <ListItemIcon>{item.icon}</ListItemIcon>
                           <ListItemText primary={item.text} />
@@ -391,7 +397,7 @@ export default function Layout() {
             <IconButton
               color="inherit"
               edge="start"
-              onClick={openDrawer}
+              onClick={handleDrawerOpen}
               sx={{ ml: 2, display: { sm: 'none' } }}
             >
               <MenuIcon />
