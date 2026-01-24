@@ -288,8 +288,11 @@ export default function Layout() {
           anchor="right"
           ModalProps={{
             keepMounted: false,
+            disableAutoFocus: true,
+            disableEnforceFocus: true,
+            disableRestoreFocus: true,
             BackdropProps: {
-              onClick: closeDrawer,
+              onTouchStart: closeDrawer,
             },
           }}
           sx={{
