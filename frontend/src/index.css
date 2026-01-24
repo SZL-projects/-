@@ -91,6 +91,12 @@ html, body, #root {
   overflow-x: auto !important;
 }
 
+/* Fix iOS first-click issue on Backdrop */
+.MuiBackdrop-root {
+  cursor: pointer !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
 
 /* Fix input zoom on iOS */
 @media screen and (max-width: 600px) {

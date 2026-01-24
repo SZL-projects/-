@@ -291,8 +291,12 @@ export default function Layout() {
             disableAutoFocus: true,
             disableEnforceFocus: true,
             disableRestoreFocus: true,
-            BackdropProps: {
-              onTouchStart: closeDrawer,
+          }}
+          SlotProps={{
+            backdrop: {
+              onClick: closeDrawer,
+              onTouchEnd: closeDrawer,
+              sx: { cursor: 'pointer' },
             },
           }}
           sx={{
