@@ -1,9 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Drawer,
-  SwipeableDrawer,
   AppBar,
   Toolbar,
   List,
@@ -96,6 +95,27 @@ export default function Layout() {
   const closeDrawer = () => {
     setMobileOpen(false);
   };
+
+  // סגור drawer כשהחלון מאבד פוקוס
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setMobileOpen(false);
+      }
+    };
+
+    const handleBlur = () => {
+      setMobileOpen(false);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
 
   const handleMenuClick = (path) => {
     setMobileOpen(false);
@@ -261,14 +281,17 @@ export default function Layout() {
         }}
       >
         {/* Mobile drawer */}
-        <SwipeableDrawer
+        <Drawer
+          variant="temporary"
           open={mobileOpen}
           onClose={closeDrawer}
-          onOpen={openDrawer}
           anchor="right"
-          disableBackdropTransition={false}
-          disableDiscovery={false}
-          swipeAreaWidth={20}
+          ModalProps={{
+            keepMounted: false,
+            BackdropProps: {
+              onClick: closeDrawer,
+            },
+          }}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
@@ -346,7 +369,7 @@ export default function Layout() {
               )}
             </List>
           </Box>
-        </SwipeableDrawer>
+        </Drawer>
 
         {/* Desktop drawer */}
         <Drawer
