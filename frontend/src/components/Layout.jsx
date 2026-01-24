@@ -264,6 +264,13 @@ export default function Layout() {
           ModalProps={{
             keepMounted: true,
           }}
+          slotProps={{
+            backdrop: {
+              role: 'button',
+              tabIndex: 0,
+              'aria-label': 'close menu',
+            },
+          }}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': {
