@@ -11,8 +11,13 @@ import {
   Alert,
   Divider,
   Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
-import { ArrowBack, Edit } from '@mui/icons-material';
+import { ArrowBack, Edit, Refresh, CreateNewFolder } from '@mui/icons-material';
 import { vehiclesAPI } from '../services/api';
 import VehicleFiles from '../components/VehicleFiles';
 import VehicleDialog from '../components/VehicleDialog';
@@ -27,6 +32,9 @@ export default function VehicleDetails() {
   const [creatingFolders, setCreatingFolders] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [addFolderDialogOpen, setAddFolderDialogOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [refreshingFolders, setRefreshingFolders] = useState(false);
 
   useEffect(() => {
     loadVehicle();
@@ -86,6 +94,43 @@ export default function VehicleDetails() {
     }
   };
 
+  const refreshFolders = async () => {
+    if (!folderData) return;
+
+    setRefreshingFolders(true);
+    try {
+      const response = await vehiclesAPI.refreshFolders(id);
+      showSnackbar(response.data.message, 'success');
+      await loadVehicle();
+    } catch (err) {
+      console.error('Error refreshing folders:', err);
+      showSnackbar(err.response?.data?.message || 'שגיאה בריענון התיקיות', 'error');
+    } finally {
+      setRefreshingFolders(false);
+    }
+  };
+
+  const addCustomFolder = async () => {
+    if (!newFolderName.trim()) {
+      showSnackbar('נא להזין שם תיקייה', 'error');
+      return;
+    }
+
+    setCreatingFolders(true);
+    try {
+      await vehiclesAPI.addCustomFolder(id, newFolderName.trim());
+      showSnackbar('תיקייה נוצרה בהצלחה', 'success');
+      setAddFolderDialogOpen(false);
+      setNewFolderName('');
+      await loadVehicle();
+    } catch (err) {
+      console.error('Error adding custom folder:', err);
+      showSnackbar(err.response?.data?.message || 'שגיאה ביצירת תיקייה', 'error');
+    } finally {
+      setCreatingFolders(false);
+    }
+  };
+
   const deleteFolderStructure = async () => {
     if (!folderData || !window.confirm('האם אתה בטוח שברצונך למחוק את כל מבנה התיקיות? פעולה זו תמחק את כל הקבצים!')) {
       return;
@@ -97,7 +142,9 @@ export default function VehicleDetails() {
       const foldersToDelete = [
         folderData.insuranceFolderId,
         folderData.archiveFolderId,
-        folderData.photosFolderId
+        folderData.photosFolderId,
+        folderData.miscFolderId,
+        ...(folderData.customFolders || []).map(f => f.id)
       ].filter(Boolean); // מסנן רק IDs שקיימים
 
       // מחיקת כל תת-תיקייה (רקורסיבית - כולל כל הקבצים בתוכה)
@@ -124,7 +171,8 @@ export default function VehicleDetails() {
         driveFolderData: null,
         insuranceFolderId: null,
         archiveFolderId: null,
-        photosFolderId: null
+        photosFolderId: null,
+        miscFolderId: null
       });
 
       setFolderData(null);
@@ -289,19 +337,41 @@ export default function VehicleDetails() {
           </Paper>
         ) : (
           <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
               <Typography variant="h6">
                 קבצים ומסמכים
               </Typography>
-              <Button
-                variant="outlined"
-                color="error"
-                onClick={deleteFolderStructure}
-                disabled={creatingFolders}
-                size="small"
-              >
-                מחק מבנה תיקיות
-              </Button>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  onClick={refreshFolders}
+                  disabled={refreshingFolders || creatingFolders}
+                  size="small"
+                  startIcon={refreshingFolders ? <CircularProgress size={16} /> : <Refresh />}
+                >
+                  {refreshingFolders ? 'מרענן...' : 'רענן תיקיות'}
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="success"
+                  onClick={() => setAddFolderDialogOpen(true)}
+                  disabled={creatingFolders}
+                  size="small"
+                  startIcon={<CreateNewFolder />}
+                >
+                  הוסף תיקייה
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={deleteFolderStructure}
+                  disabled={creatingFolders}
+                  size="small"
+                >
+                  מחק מבנה תיקיות
+                </Button>
+              </Box>
             </Box>
             <VehicleFiles
               vehicleNumber={vehicle.internalNumber || vehicle.licensePlate}
@@ -334,6 +404,48 @@ export default function VehicleDetails() {
         onSave={handleEditVehicle}
         vehicle={vehicle}
       />
+
+      {/* Add Folder Dialog */}
+      <Dialog
+        open={addFolderDialogOpen}
+        onClose={() => {
+          setAddFolderDialogOpen(false);
+          setNewFolderName('');
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>הוספת תיקייה חדשה</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="שם התיקייה"
+            fullWidth
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            placeholder="לדוגמה: תאונה, מסמכים נוספים..."
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setAddFolderDialogOpen(false);
+              setNewFolderName('');
+            }}
+          >
+            ביטול
+          </Button>
+          <Button
+            onClick={addCustomFolder}
+            variant="contained"
+            disabled={creatingFolders || !newFolderName.trim()}
+          >
+            {creatingFolders ? 'יוצר...' : 'צור תיקייה'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

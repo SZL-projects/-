@@ -175,6 +175,18 @@ export const vehiclesAPI = {
     invalidateCache('/vehicles');
     return api.post('/vehicles/move-to-archive', { vehicleId, fileId });
   },
+  addCustomFolder: (vehicleId, folderName) => {
+    invalidateCache('/vehicles');
+    return api.post('/vehicles/add-custom-folder', { vehicleId, folderName });
+  },
+  deleteCustomFolder: (vehicleId, folderId) => {
+    invalidateCache('/vehicles');
+    return api.post('/vehicles/delete-custom-folder', { vehicleId, folderId });
+  },
+  refreshFolders: (vehicleId) => {
+    invalidateCache('/vehicles');
+    return api.post('/vehicles/refresh-folders', { vehicleId });
+  },
   assign: (vehicleId, riderId) => {
     invalidateCache('/vehicles');
     invalidateCache('/riders');

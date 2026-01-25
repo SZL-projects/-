@@ -222,6 +222,10 @@ class GoogleDriveService {
       const photosFolder = await this.createFolder('תמונות כלי', mainFolder.id);
       console.log(`Created photos folder: ${photosFolder.name} (${photosFolder.id})`);
 
+      // תיקיית שונות
+      const miscFolder = await this.createFolder('שונות', mainFolder.id);
+      console.log(`Created misc folder: ${miscFolder.name} (${miscFolder.id})`);
+
       return {
         mainFolderId: mainFolder.id,
         mainFolderLink: mainFolder.webViewLink,
@@ -230,7 +234,10 @@ class GoogleDriveService {
         archiveFolderId: archiveFolder.id,
         archiveFolderLink: archiveFolder.webViewLink,
         photosFolderId: photosFolder.id,
-        photosFolderLink: photosFolder.webViewLink
+        photosFolderLink: photosFolder.webViewLink,
+        miscFolderId: miscFolder.id,
+        miscFolderLink: miscFolder.webViewLink,
+        customFolders: [] // מערך לתיקיות מותאמות אישית
       };
     } catch (error) {
       console.error('Error creating vehicle folder structure:', error);

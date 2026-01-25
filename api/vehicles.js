@@ -66,6 +66,7 @@ module.exports = async (req, res) => {
           insuranceFolderId: folderData.insuranceFolderId,
           archiveFolderId: folderData.archiveFolderId,
           photosFolderId: folderData.photosFolderId,
+          miscFolderId: folderData.miscFolderId,
           updatedBy: user.id,
           updatedAt: new Date()
         });
@@ -97,6 +98,182 @@ module.exports = async (req, res) => {
         success: true,
         message: 'תיקיית רוכב נוצרה בהצלחה',
         data: riderFolderData
+      });
+    }
+
+    // POST /api/vehicles/add-custom-folder - הוספת תיקייה מותאמת אישית
+    if (url.endsWith('/add-custom-folder') && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { vehicleId, folderName } = req.body;
+
+      if (!vehicleId || !folderName) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה כלי ושם תיקייה הם שדות חובה'
+        });
+      }
+
+      // שליפת מידע הכלי
+      const vehicleRef = db.collection('vehicles').doc(vehicleId);
+      const vehicleDoc = await vehicleRef.get();
+
+      if (!vehicleDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'כלי לא נמצא'
+        });
+      }
+
+      const vehicleData = vehicleDoc.data();
+      const mainFolderId = vehicleData.driveFolderData?.mainFolderId;
+
+      if (!mainFolderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'לא קיים מבנה תיקיות עבור כלי זה'
+        });
+      }
+
+      // יצירת התיקייה החדשה
+      const newFolder = await googleDriveService.createFolder(folderName, mainFolderId);
+
+      // עדכון הכלי עם התיקייה החדשה
+      const customFolders = vehicleData.driveFolderData?.customFolders || [];
+      customFolders.push({
+        id: newFolder.id,
+        name: folderName,
+        link: newFolder.webViewLink,
+        createdAt: new Date(),
+        createdBy: user.id
+      });
+
+      await vehicleRef.update({
+        'driveFolderData.customFolders': customFolders,
+        updatedBy: user.id,
+        updatedAt: new Date()
+      });
+
+      return res.json({
+        success: true,
+        message: 'תיקייה נוצרה בהצלחה',
+        data: {
+          folderId: newFolder.id,
+          folderName: folderName,
+          folderLink: newFolder.webViewLink
+        }
+      });
+    }
+
+    // POST /api/vehicles/refresh-folders - ריענון מבנה התיקיות (הוספת תיקיות חסרות)
+    if (url.endsWith('/refresh-folders') && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { vehicleId } = req.body;
+
+      if (!vehicleId) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה כלי הוא שדה חובה'
+        });
+      }
+
+      const vehicleRef = db.collection('vehicles').doc(vehicleId);
+      const vehicleDoc = await vehicleRef.get();
+
+      if (!vehicleDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'כלי לא נמצא'
+        });
+      }
+
+      const vehicleData = vehicleDoc.data();
+      const folderData = vehicleData.driveFolderData || {};
+      const mainFolderId = folderData.mainFolderId;
+
+      if (!mainFolderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'לא קיים מבנה תיקיות עבור כלי זה. יש ליצור מבנה תיקיות חדש.'
+        });
+      }
+
+      const updatedFolderData = { ...folderData };
+      const foldersCreated = [];
+
+      // בדיקה והוספת תיקיית שונות אם חסרה
+      if (!folderData.miscFolderId) {
+        const miscFolder = await googleDriveService.createFolder('שונות', mainFolderId);
+        updatedFolderData.miscFolderId = miscFolder.id;
+        updatedFolderData.miscFolderLink = miscFolder.webViewLink;
+        foldersCreated.push('שונות');
+      }
+
+      // אתחול מערך תיקיות מותאמות אם לא קיים
+      if (!updatedFolderData.customFolders) {
+        updatedFolderData.customFolders = [];
+      }
+
+      // עדכון הכלי
+      await vehicleRef.update({
+        driveFolderData: updatedFolderData,
+        miscFolderId: updatedFolderData.miscFolderId || null,
+        updatedBy: user.id,
+        updatedAt: new Date()
+      });
+
+      return res.json({
+        success: true,
+        message: foldersCreated.length > 0
+          ? `התיקיות הבאות נוספו: ${foldersCreated.join(', ')}`
+          : 'מבנה התיקיות עדכני, לא נדרשו שינויים',
+        data: updatedFolderData,
+        foldersCreated
+      });
+    }
+
+    // POST /api/vehicles/delete-custom-folder - מחיקת תיקייה מותאמת אישית
+    if (url.endsWith('/delete-custom-folder') && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { vehicleId, folderId } = req.body;
+
+      if (!vehicleId || !folderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה כלי ומזהה תיקייה הם שדות חובה'
+        });
+      }
+
+      const vehicleRef = db.collection('vehicles').doc(vehicleId);
+      const vehicleDoc = await vehicleRef.get();
+
+      if (!vehicleDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'כלי לא נמצא'
+        });
+      }
+
+      const vehicleData = vehicleDoc.data();
+      const customFolders = vehicleData.driveFolderData?.customFolders || [];
+
+      // מחיקת התיקייה מ-Google Drive
+      await googleDriveService.deleteFile(folderId, true);
+
+      // הסרת התיקייה מהמערך
+      const updatedCustomFolders = customFolders.filter(f => f.id !== folderId);
+
+      await vehicleRef.update({
+        'driveFolderData.customFolders': updatedCustomFolders,
+        updatedBy: user.id,
+        updatedAt: new Date()
+      });
+
+      return res.json({
+        success: true,
+        message: 'תיקייה נמחקה בהצלחה'
       });
     }
 
