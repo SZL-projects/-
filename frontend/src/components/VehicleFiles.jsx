@@ -19,6 +19,11 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
 import {
   CloudUpload,
@@ -33,14 +38,15 @@ import {
   DriveFileMove,
   DeleteForever,
   Folder,
+  Edit,
 } from '@mui/icons-material';
 import { vehiclesAPI } from '../services/api';
 
 const defaultCategories = [
-  { id: 'insurance', label: 'ביטוחים נוכחיים', folderKey: 'insuranceFolderId' },
-  { id: 'archive', label: 'ביטוחים ישנים', folderKey: 'archiveFolderId' },
-  { id: 'photos', label: 'תמונות כלי', folderKey: 'photosFolderId' },
-  { id: 'misc', label: 'שונות', folderKey: 'miscFolderId' },
+  { id: 'insurance', label: 'ביטוחים נוכחיים', folderKey: 'insuranceFolderId', isFixed: true },
+  { id: 'archive', label: 'ביטוחים ישנים', folderKey: 'archiveFolderId', isFixed: true },
+  { id: 'photos', label: 'תמונות כלי', folderKey: 'photosFolderId', isFixed: false },
+  { id: 'misc', label: 'שונות', folderKey: 'miscFolderId', isFixed: false },
 ];
 
 export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicleId, onFolderDeleted }) {
@@ -52,6 +58,9 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
   const [moveMenuAnchor, setMoveMenuAnchor] = useState(null);
   const [selectedFileForMove, setSelectedFileForMove] = useState(null);
   const [deletingFolder, setDeletingFolder] = useState(false);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [renamingFolder, setRenamingFolder] = useState(false);
 
   // בניית רשימת הקטגוריות - כולל תיקיות מותאמות אישית
   const categories = [
@@ -198,18 +207,43 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
     }
   };
 
-  // מחיקת תיקייה מותאמת אישית
-  const handleDeleteCustomFolder = async () => {
+  // בדיקה אם התיקייה ניתנת לעריכה (לא קבועה)
+  const isFolderEditable = () => {
     const currentCategory = categories[currentTab];
-    if (!currentCategory.isCustom) return;
+    return currentCategory && !currentCategory.isFixed;
+  };
 
-    if (!window.confirm(`האם אתה בטוח שברצונך למחוק את התיקייה "${currentCategory.label}"? כל הקבצים בתוכה יימחקו!`)) {
+  // קבלת מזהה התיקייה הנוכחית
+  const getCurrentFolderInfo = () => {
+    const currentCategory = categories[currentTab];
+    if (!currentCategory) return null;
+
+    const folderId = currentCategory.folderId || vehicleFolderData[currentCategory.folderKey];
+    return {
+      ...currentCategory,
+      folderId,
+      folderKey: currentCategory.folderKey
+    };
+  };
+
+  // מחיקת תיקייה (לא קבועה)
+  const handleDeleteFolder = async () => {
+    const folderInfo = getCurrentFolderInfo();
+    if (!folderInfo || folderInfo.isFixed) return;
+
+    if (!window.confirm(`האם אתה בטוח שברצונך למחוק את התיקייה "${folderInfo.label}"? כל הקבצים בתוכה יימחקו!`)) {
       return;
     }
 
     setDeletingFolder(true);
     try {
-      await vehiclesAPI.deleteCustomFolder(vehicleId, currentCategory.folderId);
+      // אם זו תיקייה מותאמת אישית
+      if (folderInfo.isCustom) {
+        await vehiclesAPI.deleteCustomFolder(vehicleId, folderInfo.folderId);
+      } else {
+        // תיקייה דיפולטית (לא קבועה) כמו "תמונות" או "שונות"
+        await vehiclesAPI.deleteDefaultFolder(vehicleId, folderInfo.folderKey, folderInfo.folderId);
+      }
       showSnackbar('התיקייה נמחקה בהצלחה', 'success');
       setCurrentTab(0); // חזרה לטאב הראשון
       if (onFolderDeleted) {
@@ -220,6 +254,36 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
       showSnackbar('שגיאה במחיקת התיקייה', 'error');
     } finally {
       setDeletingFolder(false);
+    }
+  };
+
+  // פתיחת דיאלוג שינוי שם
+  const handleOpenRenameDialog = () => {
+    const folderInfo = getCurrentFolderInfo();
+    if (!folderInfo || folderInfo.isFixed) return;
+    setNewFolderName(folderInfo.label);
+    setRenameDialogOpen(true);
+  };
+
+  // שינוי שם תיקייה
+  const handleRenameFolder = async () => {
+    const folderInfo = getCurrentFolderInfo();
+    if (!folderInfo || !newFolderName.trim()) return;
+
+    setRenamingFolder(true);
+    try {
+      await vehiclesAPI.renameFolder(vehicleId, folderInfo.folderId, newFolderName.trim(), folderInfo.folderKey, folderInfo.isCustom);
+      showSnackbar('שם התיקייה שונה בהצלחה', 'success');
+      setRenameDialogOpen(false);
+      setNewFolderName('');
+      if (onFolderDeleted) {
+        onFolderDeleted(); // רענון נתוני הכלי
+      }
+    } catch (error) {
+      console.error('Error renaming folder:', error);
+      showSnackbar('שגיאה בשינוי שם התיקייה', 'error');
+    } finally {
+      setRenamingFolder(false);
     }
   };
 
@@ -298,18 +362,29 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
             </Button>
           </label>
 
-          {/* כפתור מחיקת תיקייה מותאמת אישית */}
-          {categories[currentTab]?.isCustom && (
-            <Button
-              variant="outlined"
-              color="error"
-              size="small"
-              startIcon={deletingFolder ? <CircularProgress size={16} /> : <DeleteForever />}
-              onClick={handleDeleteCustomFolder}
-              disabled={deletingFolder}
-            >
-              {deletingFolder ? 'מוחק...' : 'מחק תיקייה'}
-            </Button>
+          {/* כפתורי עריכת תיקייה - רק לתיקיות לא קבועות */}
+          {isFolderEditable() && (
+            <>
+              <Button
+                variant="outlined"
+                color="primary"
+                size="small"
+                startIcon={<Edit />}
+                onClick={handleOpenRenameDialog}
+              >
+                שנה שם
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                startIcon={deletingFolder ? <CircularProgress size={16} /> : <DeleteForever />}
+                onClick={handleDeleteFolder}
+                disabled={deletingFolder}
+              >
+                {deletingFolder ? 'מוחק...' : 'מחק תיקייה'}
+              </Button>
+            </>
           )}
         </Box>
 
@@ -450,6 +525,47 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
             </MenuItem>
           ))}
         </Menu>
+
+        {/* דיאלוג שינוי שם תיקייה */}
+        <Dialog
+          open={renameDialogOpen}
+          onClose={() => {
+            setRenameDialogOpen(false);
+            setNewFolderName('');
+          }}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>שינוי שם תיקייה</DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="שם חדש"
+              fullWidth
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              sx={{ mt: 1 }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setRenameDialogOpen(false);
+                setNewFolderName('');
+              }}
+            >
+              ביטול
+            </Button>
+            <Button
+              onClick={handleRenameFolder}
+              variant="contained"
+              disabled={renamingFolder || !newFolderName.trim()}
+            >
+              {renamingFolder ? 'משנה...' : 'שנה שם'}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </CardContent>
     </Card>
   );

@@ -187,6 +187,14 @@ export const vehiclesAPI = {
     invalidateCache('/vehicles');
     return api.post('/vehicles/delete-custom-folder', { vehicleId, folderId });
   },
+  deleteDefaultFolder: (vehicleId, folderKey, folderId) => {
+    invalidateCache('/vehicles');
+    return api.post('/vehicles/delete-default-folder', { vehicleId, folderKey, folderId });
+  },
+  renameFolder: (vehicleId, folderId, newName, folderKey, isCustom) => {
+    invalidateCache('/vehicles');
+    return api.post('/vehicles/rename-folder', { vehicleId, folderId, newName, folderKey, isCustom });
+  },
   refreshFolders: (vehicleId) => {
     invalidateCache('/vehicles');
     return api.post('/vehicles/refresh-folders', { vehicleId });

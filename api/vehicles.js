@@ -277,6 +277,116 @@ module.exports = async (req, res) => {
       });
     }
 
+    // POST /api/vehicles/delete-default-folder - מחיקת תיקייה דיפולטית (לא קבועה)
+    if (url.endsWith('/delete-default-folder') && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { vehicleId, folderKey, folderId } = req.body;
+
+      // בדיקה שזו לא תיקייה קבועה (ביטוחים)
+      const fixedFolders = ['insuranceFolderId', 'archiveFolderId'];
+      if (fixedFolders.includes(folderKey)) {
+        return res.status(400).json({
+          success: false,
+          message: 'לא ניתן למחוק תיקיות ביטוח קבועות'
+        });
+      }
+
+      if (!vehicleId || !folderKey || !folderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה כלי, מפתח תיקייה ומזהה תיקייה הם שדות חובה'
+        });
+      }
+
+      const vehicleRef = db.collection('vehicles').doc(vehicleId);
+      const vehicleDoc = await vehicleRef.get();
+
+      if (!vehicleDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'כלי לא נמצא'
+        });
+      }
+
+      // מחיקת התיקייה מ-Google Drive
+      await googleDriveService.deleteFile(folderId, true);
+
+      // עדכון ה-folderData - הסרת התיקייה
+      const updateData = {
+        [`driveFolderData.${folderKey}`]: null,
+        [`driveFolderData.${folderKey.replace('Id', 'Link')}`]: null,
+        [folderKey]: null,
+        updatedBy: user.id,
+        updatedAt: new Date()
+      };
+
+      await vehicleRef.update(updateData);
+
+      return res.json({
+        success: true,
+        message: 'תיקייה נמחקה בהצלחה'
+      });
+    }
+
+    // POST /api/vehicles/rename-folder - שינוי שם תיקייה
+    if (url.endsWith('/rename-folder') && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { vehicleId, folderId, newName, folderKey, isCustom } = req.body;
+
+      // בדיקה שזו לא תיקייה קבועה (ביטוחים)
+      const fixedFolders = ['insuranceFolderId', 'archiveFolderId'];
+      if (folderKey && fixedFolders.includes(folderKey)) {
+        return res.status(400).json({
+          success: false,
+          message: 'לא ניתן לשנות שם לתיקיות ביטוח קבועות'
+        });
+      }
+
+      if (!vehicleId || !folderId || !newName) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה כלי, מזהה תיקייה ושם חדש הם שדות חובה'
+        });
+      }
+
+      const vehicleRef = db.collection('vehicles').doc(vehicleId);
+      const vehicleDoc = await vehicleRef.get();
+
+      if (!vehicleDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'כלי לא נמצא'
+        });
+      }
+
+      // שינוי שם התיקייה ב-Google Drive
+      await googleDriveService.renameFile(folderId, newName);
+
+      // עדכון השם ב-Firestore
+      if (isCustom) {
+        // תיקייה מותאמת אישית - עדכון במערך customFolders
+        const vehicleData = vehicleDoc.data();
+        const customFolders = vehicleData.driveFolderData?.customFolders || [];
+        const updatedCustomFolders = customFolders.map(f =>
+          f.id === folderId ? { ...f, name: newName } : f
+        );
+
+        await vehicleRef.update({
+          'driveFolderData.customFolders': updatedCustomFolders,
+          updatedBy: user.id,
+          updatedAt: new Date()
+        });
+      }
+      // תיקיות דיפולטיות לא צריכות עדכון שם ב-Firestore (השם נקבע לפי ה-label ב-frontend)
+
+      return res.json({
+        success: true,
+        message: 'שם התיקייה שונה בהצלחה'
+      });
+    }
+
     // POST /api/vehicles/upload-file
     if (url.endsWith('/upload-file') && req.method === 'POST') {
       return new Promise(async (resolve, reject) => {
