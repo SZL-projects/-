@@ -65,6 +65,7 @@ module.exports = async (req, res) => {
           driveFolderData: folderData,
           insuranceFolderId: folderData.insuranceFolderId,
           archiveFolderId: folderData.archiveFolderId,
+          extrasFolderId: folderData.extrasFolderId,
           photosFolderId: folderData.photosFolderId,
           miscFolderId: folderData.miscFolderId,
           updatedBy: user.id,
@@ -126,17 +127,17 @@ module.exports = async (req, res) => {
       }
 
       const vehicleData = vehicleDoc.data();
-      const mainFolderId = vehicleData.driveFolderData?.mainFolderId;
+      const extrasFolderId = vehicleData.driveFolderData?.extrasFolderId;
 
-      if (!mainFolderId) {
+      if (!extrasFolderId) {
         return res.status(400).json({
           success: false,
-          message: 'לא קיים מבנה תיקיות עבור כלי זה'
+          message: 'לא קיים מבנה תיקיות עבור כלי זה. יש ליצור מבנה תיקיות או לרענן תיקיות קיימות.'
         });
       }
 
-      // יצירת התיקייה החדשה
-      const newFolder = await googleDriveService.createFolder(folderName, mainFolderId);
+      // יצירת התיקייה החדשה בתוך תיקיית "נוספים"
+      const newFolder = await googleDriveService.createFolder(folderName, extrasFolderId);
 
       // עדכון הכלי עם התיקייה החדשה
       const customFolders = vehicleData.driveFolderData?.customFolders || [];
@@ -202,9 +203,27 @@ module.exports = async (req, res) => {
       const updatedFolderData = { ...folderData };
       const foldersCreated = [];
 
-      // בדיקה והוספת תיקיית שונות אם חסרה
+      // בדיקה והוספת תיקיית "נוספים" אם חסרה
+      let extrasFolderId = folderData.extrasFolderId;
+      if (!extrasFolderId) {
+        const extrasFolder = await googleDriveService.createFolder('נוספים', mainFolderId);
+        updatedFolderData.extrasFolderId = extrasFolder.id;
+        updatedFolderData.extrasFolderLink = extrasFolder.webViewLink;
+        extrasFolderId = extrasFolder.id;
+        foldersCreated.push('נוספים');
+      }
+
+      // בדיקה והוספת תיקיית תמונות בתוך "נוספים" אם חסרה
+      if (!folderData.photosFolderId) {
+        const photosFolder = await googleDriveService.createFolder('תמונות כלי', extrasFolderId);
+        updatedFolderData.photosFolderId = photosFolder.id;
+        updatedFolderData.photosFolderLink = photosFolder.webViewLink;
+        foldersCreated.push('תמונות כלי');
+      }
+
+      // בדיקה והוספת תיקיית שונות בתוך "נוספים" אם חסרה
       if (!folderData.miscFolderId) {
-        const miscFolder = await googleDriveService.createFolder('שונות', mainFolderId);
+        const miscFolder = await googleDriveService.createFolder('שונות', extrasFolderId);
         updatedFolderData.miscFolderId = miscFolder.id;
         updatedFolderData.miscFolderLink = miscFolder.webViewLink;
         foldersCreated.push('שונות');
@@ -218,6 +237,8 @@ module.exports = async (req, res) => {
       // עדכון הכלי
       await vehicleRef.update({
         driveFolderData: updatedFolderData,
+        extrasFolderId: updatedFolderData.extrasFolderId || null,
+        photosFolderId: updatedFolderData.photosFolderId || null,
         miscFolderId: updatedFolderData.miscFolderId || null,
         updatedBy: user.id,
         updatedAt: new Date()

@@ -142,8 +142,7 @@ export default function VehicleDetails() {
       const foldersToDelete = [
         folderData.insuranceFolderId,
         folderData.archiveFolderId,
-        folderData.photosFolderId,
-        folderData.miscFolderId,
+        folderData.extrasFolderId, // תיקיית "נוספים" - תמחק גם את כל התת-תיקיות בתוכה
         ...(folderData.customFolders || []).map(f => f.id)
       ].filter(Boolean); // מסנן רק IDs שקיימים
 
@@ -171,6 +170,7 @@ export default function VehicleDetails() {
         driveFolderData: null,
         insuranceFolderId: null,
         archiveFolderId: null,
+        extrasFolderId: null,
         photosFolderId: null,
         miscFolderId: null
       });

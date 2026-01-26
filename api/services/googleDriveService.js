@@ -218,12 +218,16 @@ class GoogleDriveService {
       const archiveFolder = await this.createFolder('ביטוחים ישנים', mainFolder.id);
       console.log(`Created archive folder: ${archiveFolder.name} (${archiveFolder.id})`);
 
-      // תיקיית תמונות
-      const photosFolder = await this.createFolder('תמונות כלי', mainFolder.id);
+      // תיקיית "נוספים" - מכילה את כל התיקיות הלא-קבועות
+      const extrasFolder = await this.createFolder('נוספים', mainFolder.id);
+      console.log(`Created extras folder: ${extrasFolder.name} (${extrasFolder.id})`);
+
+      // תיקיית תמונות - בתוך "נוספים"
+      const photosFolder = await this.createFolder('תמונות כלי', extrasFolder.id);
       console.log(`Created photos folder: ${photosFolder.name} (${photosFolder.id})`);
 
-      // תיקיית שונות
-      const miscFolder = await this.createFolder('שונות', mainFolder.id);
+      // תיקיית שונות - בתוך "נוספים"
+      const miscFolder = await this.createFolder('שונות', extrasFolder.id);
       console.log(`Created misc folder: ${miscFolder.name} (${miscFolder.id})`);
 
       return {
@@ -233,11 +237,13 @@ class GoogleDriveService {
         insuranceFolderLink: insuranceFolder.webViewLink,
         archiveFolderId: archiveFolder.id,
         archiveFolderLink: archiveFolder.webViewLink,
+        extrasFolderId: extrasFolder.id,
+        extrasFolderLink: extrasFolder.webViewLink,
         photosFolderId: photosFolder.id,
         photosFolderLink: photosFolder.webViewLink,
         miscFolderId: miscFolder.id,
         miscFolderLink: miscFolder.webViewLink,
-        customFolders: [] // מערך לתיקיות מותאמות אישית
+        customFolders: [] // מערך לתיקיות מותאמות אישית (בתוך "נוספים")
       };
     } catch (error) {
       console.error('Error creating vehicle folder structure:', error);
