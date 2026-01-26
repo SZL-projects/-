@@ -16,6 +16,9 @@ import {
   Alert,
   Snackbar,
   Tooltip,
+  Menu,
+  MenuItem,
+  ListItemIcon,
 } from '@mui/material';
 import {
   CloudUpload,
@@ -27,6 +30,9 @@ import {
   Archive,
   Visibility,
   VisibilityOff,
+  DriveFileMove,
+  DeleteForever,
+  Folder,
 } from '@mui/icons-material';
 import { vehiclesAPI } from '../services/api';
 
@@ -37,12 +43,15 @@ const defaultCategories = [
   { id: 'misc', label: 'שונות', folderKey: 'miscFolderId' },
 ];
 
-export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicleId }) {
+export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicleId, onFolderDeleted }) {
   const [currentTab, setCurrentTab] = useState(0);
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [moveMenuAnchor, setMoveMenuAnchor] = useState(null);
+  const [selectedFileForMove, setSelectedFileForMove] = useState(null);
+  const [deletingFolder, setDeletingFolder] = useState(false);
 
   // בניית רשימת הקטגוריות - כולל תיקיות מותאמות אישית
   const categories = [
@@ -162,6 +171,71 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
     }
   };
 
+  // פתיחת תפריט העברת קובץ
+  const handleOpenMoveMenu = (event, fileId) => {
+    setMoveMenuAnchor(event.currentTarget);
+    setSelectedFileForMove(fileId);
+  };
+
+  // סגירת תפריט העברת קובץ
+  const handleCloseMoveMenu = () => {
+    setMoveMenuAnchor(null);
+    setSelectedFileForMove(null);
+  };
+
+  // העברת קובץ לתיקייה אחרת
+  const handleMoveToFolder = async (targetFolderId, targetFolderName) => {
+    if (!selectedFileForMove) return;
+
+    try {
+      await vehiclesAPI.moveFile(vehicleId, selectedFileForMove, targetFolderId);
+      showSnackbar(`הקובץ הועבר ל${targetFolderName} בהצלחה`, 'success');
+      handleCloseMoveMenu();
+      loadFiles();
+    } catch (error) {
+      console.error('Error moving file:', error);
+      showSnackbar('שגיאה בהעברת הקובץ', 'error');
+    }
+  };
+
+  // מחיקת תיקייה מותאמת אישית
+  const handleDeleteCustomFolder = async () => {
+    const currentCategory = categories[currentTab];
+    if (!currentCategory.isCustom) return;
+
+    if (!window.confirm(`האם אתה בטוח שברצונך למחוק את התיקייה "${currentCategory.label}"? כל הקבצים בתוכה יימחקו!`)) {
+      return;
+    }
+
+    setDeletingFolder(true);
+    try {
+      await vehiclesAPI.deleteCustomFolder(vehicleId, currentCategory.folderId);
+      showSnackbar('התיקייה נמחקה בהצלחה', 'success');
+      setCurrentTab(0); // חזרה לטאב הראשון
+      if (onFolderDeleted) {
+        onFolderDeleted(); // רענון נתוני הכלי
+      }
+    } catch (error) {
+      console.error('Error deleting folder:', error);
+      showSnackbar('שגיאה במחיקת התיקייה', 'error');
+    } finally {
+      setDeletingFolder(false);
+    }
+  };
+
+  // קבלת רשימת תיקיות יעד להעברה (כל התיקיות חוץ מהנוכחית)
+  const getMoveTargetFolders = () => {
+    return categories.filter((cat, index) => {
+      if (index === currentTab) return false; // לא התיקייה הנוכחית
+      // קבלת ה-folderId של התיקייה
+      const folderId = cat.folderId || vehicleFolderData[cat.folderKey];
+      return !!folderId; // רק תיקיות עם ID
+    }).map(cat => ({
+      ...cat,
+      folderId: cat.folderId || vehicleFolderData[cat.folderKey]
+    }));
+  };
+
 
   const showSnackbar = (message, severity) => {
     setSnackbar({ open: true, message, severity });
@@ -206,7 +280,7 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
           ))}
         </Tabs>
 
-        <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
           <Input
             type="file"
             onChange={handleFileUpload}
@@ -224,6 +298,19 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
             </Button>
           </label>
 
+          {/* כפתור מחיקת תיקייה מותאמת אישית */}
+          {categories[currentTab]?.isCustom && (
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              startIcon={deletingFolder ? <CircularProgress size={16} /> : <DeleteForever />}
+              onClick={handleDeleteCustomFolder}
+              disabled={deletingFolder}
+            >
+              {deletingFolder ? 'מוחק...' : 'מחק תיקייה'}
+            </Button>
+          )}
         </Box>
 
         {loading ? (
@@ -279,6 +366,17 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
                         </IconButton>
                       </Tooltip>
 
+                      {/* כפתור העברה לתיקייה אחרת */}
+                      <Tooltip title="העבר לתיקייה אחרת">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => handleOpenMoveMenu(e, file.id)}
+                          color="primary"
+                        >
+                          <DriveFileMove fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+
                       {/* כפתור ארכיון - רק בביטוחים נוכחיים */}
                       {isInsuranceTab && (
                         <Tooltip title="העבר לארכיון">
@@ -328,6 +426,30 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
             {snackbar.message}
           </Alert>
         </Snackbar>
+
+        {/* תפריט העברה לתיקייה */}
+        <Menu
+          anchorEl={moveMenuAnchor}
+          open={Boolean(moveMenuAnchor)}
+          onClose={handleCloseMoveMenu}
+        >
+          <MenuItem disabled>
+            <Typography variant="body2" color="textSecondary">
+              העבר לתיקייה:
+            </Typography>
+          </MenuItem>
+          {getMoveTargetFolders().map((folder) => (
+            <MenuItem
+              key={folder.id}
+              onClick={() => handleMoveToFolder(folder.folderId, folder.label)}
+            >
+              <ListItemIcon>
+                <Folder fontSize="small" />
+              </ListItemIcon>
+              {folder.label}
+            </MenuItem>
+          ))}
+        </Menu>
       </CardContent>
     </Card>
   );

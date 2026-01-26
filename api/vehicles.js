@@ -574,6 +574,39 @@ module.exports = async (req, res) => {
       });
     }
 
+    // POST /api/vehicles/move-file - העברת קובץ לתיקייה אחרת
+    if (url.endsWith('/move-file') && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { vehicleId, fileId, targetFolderId } = req.body;
+
+      if (!vehicleId || !fileId || !targetFolderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה כלי, מזהה קובץ ומזהה תיקיית יעד הם שדות חובה'
+        });
+      }
+
+      // שליפת מידע הכלי לוודא שהתיקייה שייכת לו
+      const vehicleRef = db.collection('vehicles').doc(vehicleId);
+      const vehicleDoc = await vehicleRef.get();
+
+      if (!vehicleDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'כלי לא נמצא'
+        });
+      }
+
+      // העברת הקובץ לתיקייה החדשה
+      await googleDriveService.moveFile(fileId, targetFolderId);
+
+      return res.json({
+        success: true,
+        message: 'הקובץ הועבר בהצלחה'
+      });
+    }
+
     // DELETE /api/vehicles/delete-file
     if (url.endsWith('/delete-file') && req.method === 'DELETE') {
       checkAuthorization(user, ['super_admin', 'manager', 'secretary']);

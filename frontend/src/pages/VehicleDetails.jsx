@@ -377,6 +377,7 @@ export default function VehicleDetails() {
               vehicleNumber={vehicle.internalNumber || vehicle.licensePlate}
               vehicleFolderData={folderData}
               vehicleId={id}
+              onFolderDeleted={loadVehicle}
             />
           </Box>
         )}

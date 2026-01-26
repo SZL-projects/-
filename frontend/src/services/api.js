@@ -175,6 +175,10 @@ export const vehiclesAPI = {
     invalidateCache('/vehicles');
     return api.post('/vehicles/move-to-archive', { vehicleId, fileId });
   },
+  moveFile: (vehicleId, fileId, targetFolderId) => {
+    invalidateCache('/vehicles');
+    return api.post('/vehicles/move-file', { vehicleId, fileId, targetFolderId });
+  },
   addCustomFolder: (vehicleId, folderName) => {
     invalidateCache('/vehicles');
     return api.post('/vehicles/add-custom-folder', { vehicleId, folderName });
