@@ -81,40 +81,84 @@ export default function Login() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%)',
+        position: 'relative',
         p: { xs: 2, sm: 3 },
         overflow: 'auto',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'radial-gradient(circle at 30% 20%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(circle at 70% 80%, rgba(255,255,255,0.08) 0%, transparent 50%)',
+          pointerEvents: 'none',
+        },
       }}
     >
-      <Container maxWidth="sm" sx={{ my: 'auto' }}>
+      <Container maxWidth="sm" sx={{ my: 'auto', position: 'relative', zIndex: 1 }}>
         <Paper
-          elevation={10}
+          elevation={0}
           sx={{
-            p: { xs: 3, sm: 4 },
-            borderRadius: 3,
+            p: { xs: 4, sm: 5 },
+            borderRadius: '24px',
             maxWidth: '100%',
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255,255,255,0.1)',
           }}
         >
           {/* Logo & Title */}
-          <Box sx={{ textAlign: 'center', mb: { xs: 3, sm: 4 } }}>
-            <TwoWheeler
+          <Box sx={{ textAlign: 'center', mb: { xs: 4, sm: 5 } }}>
+            <Box sx={{
+              width: { xs: 80, sm: 100 },
+              height: { xs: 80, sm: 100 },
+              borderRadius: '24px',
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto',
+              mb: 3,
+              boxShadow: '0 10px 40px rgba(99, 102, 241, 0.4)',
+            }}>
+              <TwoWheeler sx={{ fontSize: { xs: 40, sm: 50 }, color: '#ffffff' }} />
+            </Box>
+            <Typography
+              variant="h4"
+              component="h1"
               sx={{
-                fontSize: { xs: 60, sm: 80 },
-                color: 'primary.main',
-                mb: 2,
+                fontWeight: 700,
+                fontSize: { xs: '1.75rem', sm: '2rem' },
+                color: '#1e293b',
+                mb: 1,
               }}
-            />
-            <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
-              מערכת CRM
-            </Typography>
-            <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+            >
               צי לוג ידידים
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{
+                color: '#64748b',
+                fontSize: { xs: '0.9rem', sm: '1rem' },
+              }}
+            >
+              מערכת ניהול צי רכב
             </Typography>
           </Box>
 
           {/* Error Alert */}
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
+            <Alert
+              severity="error"
+              sx={{
+                mb: 3,
+                borderRadius: '12px',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+              }}
+            >
               {error}
             </Alert>
           )}
@@ -131,6 +175,14 @@ export default function Login() {
               margin="normal"
               autoFocus
               dir="rtl"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '12px',
+                  bgcolor: '#f8fafc',
+                  '&:hover': { bgcolor: '#f1f5f9' },
+                  '&.Mui-focused': { bgcolor: '#ffffff' },
+                },
+              }}
             />
 
             <TextField
@@ -143,12 +195,21 @@ export default function Login() {
               required
               margin="normal"
               dir="rtl"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '12px',
+                  bgcolor: '#f8fafc',
+                  '&:hover': { bgcolor: '#f1f5f9' },
+                  '&.Mui-focused': { bgcolor: '#ffffff' },
+                },
+              }}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton
                       onClick={() => setShowPassword(!showPassword)}
                       edge="end"
+                      sx={{ color: '#64748b' }}
                     >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
@@ -158,23 +219,27 @@ export default function Login() {
             />
 
             {/* Remember Me & Forgot Password */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, mb: 1 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 1 }}>
               <FormControlLabel
                 control={
                   <Checkbox
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    color="primary"
+                    sx={{
+                      color: '#6366f1',
+                      '&.Mui-checked': { color: '#6366f1' },
+                    }}
                   />
                 }
-                label="זכור אותי"
+                label={<Typography sx={{ color: '#64748b', fontSize: '0.9rem' }}>זכור אותי</Typography>}
               />
               <Link
                 to="/forgot-password"
                 style={{
-                  color: '#1976d2',
+                  color: '#6366f1',
                   textDecoration: 'none',
                   fontSize: '0.9rem',
+                  fontWeight: 500,
                 }}
               >
                 שכחתי סיסמה
@@ -189,10 +254,24 @@ export default function Login() {
               disabled={loading}
               onClick={handleSubmit}
               sx={{
-                mt: 2,
+                mt: 3,
                 mb: 2,
-                py: 1.5,
-                fontSize: '1.1rem',
+                py: 1.75,
+                fontSize: '1rem',
+                fontWeight: 600,
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                  boxShadow: '0 6px 20px rgba(99, 102, 241, 0.5)',
+                  transform: 'translateY(-1px)',
+                },
+                '&:disabled': {
+                  background: '#e2e8f0',
+                  boxShadow: 'none',
+                },
+                transition: 'all 0.2s ease-in-out',
               }}
             >
               {loading ? 'מתחבר...' : 'התחבר'}
@@ -202,11 +281,14 @@ export default function Login() {
           {/* Footer */}
           <Typography
             variant="body2"
-            color="text.secondary"
             align="center"
-            sx={{ mt: 3 }}
+            sx={{
+              mt: 4,
+              color: '#94a3b8',
+              fontSize: '0.8rem',
+            }}
           >
-            גרסה 3.23.0 - Firebase
+            גרסה 3.23.0
           </Typography>
         </Paper>
       </Container>

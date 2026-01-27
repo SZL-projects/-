@@ -1,3 +1,40 @@
+/* Modern Design System - Tzi Log Yedidim */
+
+/* Import Inter font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* CSS Variables */
+:root {
+  --primary: #6366f1;
+  --primary-light: #818cf8;
+  --primary-dark: #4f46e5;
+  --secondary: #ec4899;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #3b82f6;
+
+  --bg-primary: #f8fafc;
+  --bg-paper: #ffffff;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  --transition-fast: 0.15s ease-in-out;
+  --transition-normal: 0.2s ease-in-out;
+  --transition-slow: 0.3s ease-in-out;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -7,13 +44,14 @@
 html {
   height: 100%;
   overflow-x: hidden;
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
   min-height: 100%;
   min-height: 100dvh;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -22,6 +60,8 @@ body {
   overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 #root {
@@ -63,9 +103,23 @@ a,
   user-select: none;
 }
 
-/* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* Hide scrollbars on mobile but allow scrolling */
@@ -91,8 +145,6 @@ html, body, #root {
   overflow-x: auto !important;
 }
 
-
-
 /* Fix input zoom on iOS */
 @media screen and (max-width: 600px) {
   input[type="text"],
@@ -108,11 +160,162 @@ html, body, #root {
 
 /* Better focus styles for accessibility */
 :focus-visible {
-  outline: 2px solid #1976d2;
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
+/* Modern selection color */
+::selection {
+  background-color: rgba(99, 102, 241, 0.2);
+  color: inherit;
+}
+
+/* Glassmorphism utility class */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Animation utilities */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideIn {
+  animation: slideInRight 0.3s ease-out;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Loading skeleton */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: all var(--transition-normal);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+}
+
+/* Smooth page transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.3s ease-out;
+}
+
+/* Modern badge/chip styles */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge.success {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.status-badge.warning {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+.status-badge.error {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.status-badge.info {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+
+/* Code blocks */
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: 'Fira Code', source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  background-color: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.875em;
+}
+
+/* Print styles */
+@media print {
+  .MuiDrawer-root,
+  .MuiAppBar-root {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+  }
 }

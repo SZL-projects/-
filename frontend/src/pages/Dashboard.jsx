@@ -42,7 +42,7 @@ import { ridersAPI, vehiclesAPI, tasksAPI, faultsAPI } from '../services/api';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 // פונקציה להמרת תאריך לזמן יחסי (לפני שעה, לפני יום וכו')
 const formatTimeAgo = (date) => {
@@ -360,26 +360,63 @@ export default function Dashboard() {
   };
 
   const StatCard = ({ title, value, icon: Icon, color, trend }) => (
-    <Card sx={{ height: '100%' }}>
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+    <Card sx={{
+      height: '100%',
+      position: 'relative',
+      overflow: 'hidden',
+      border: 'none',
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        width: '100%',
+        height: '4px',
+        background: `linear-gradient(90deg, ${color}, ${color}88)`,
+      },
+    }}>
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <Box sx={{ flex: 1 }}>
-            <Typography color="textSecondary" gutterBottom variant="body2">
+            <Typography sx={{ color: '#64748b', fontWeight: 500, fontSize: '0.85rem', mb: 1 }}>
               {title}
             </Typography>
-            <Typography variant={isMobile ? 'h4' : 'h3'} component="div" sx={{ fontWeight: 'bold' }}>
+            <Typography
+              variant={isMobile ? 'h4' : 'h3'}
+              component="div"
+              sx={{ fontWeight: 700, color: '#1e293b', lineHeight: 1 }}
+            >
               {loading ? <CircularProgress size={30} /> : value}
             </Typography>
             {trend && (
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                <TrendingUp sx={{ fontSize: 16, color: 'success.main', mr: 0.5 }} />
-                <Typography variant="caption" color="success.main">
-                  {trend}
-                </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1.5 }}>
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  bgcolor: 'rgba(16, 185, 129, 0.1)',
+                  px: 1,
+                  py: 0.5,
+                  borderRadius: '6px',
+                }}>
+                  <TrendingUp sx={{ fontSize: 14, color: '#10b981', mr: 0.5 }} />
+                  <Typography variant="caption" sx={{ color: '#10b981', fontWeight: 600 }}>
+                    {trend}
+                  </Typography>
+                </Box>
               </Box>
             )}
           </Box>
-          <Icon sx={{ fontSize: { xs: 40, sm: 60 }, color, opacity: 0.3 }} />
+          <Box sx={{
+            width: { xs: 48, sm: 56 },
+            height: { xs: 48, sm: 56 },
+            borderRadius: '14px',
+            background: `linear-gradient(135deg, ${color}15, ${color}25)`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Icon sx={{ fontSize: { xs: 24, sm: 28 }, color }} />
+          </Box>
         </Box>
       </CardContent>
     </Card>
@@ -396,20 +433,35 @@ export default function Dashboard() {
   };
 
   return (
-    <Box>
+    <Box sx={{ animation: 'fadeIn 0.3s ease-out' }}>
       {/* Header with Refresh */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box>
-          <Typography variant={isMobile ? 'h5' : 'h4'} gutterBottom fontWeight="bold">
+          <Typography
+            variant={isMobile ? 'h5' : 'h4'}
+            sx={{
+              fontWeight: 700,
+              color: '#1e293b',
+              mb: 0.5,
+            }}
+          >
             דשבורד ראשי
           </Typography>
-          <Typography variant="body2" color="textSecondary">
+          <Typography variant="body2" sx={{ color: '#64748b' }}>
             עדכון אחרון: {new Date().toLocaleTimeString('he-IL')}
           </Typography>
         </Box>
         <MuiTooltip title="רענן נתונים">
-          <IconButton onClick={loadDashboardData} disabled={loading}>
-            <Refresh />
+          <IconButton
+            onClick={loadDashboardData}
+            disabled={loading}
+            sx={{
+              bgcolor: 'rgba(99, 102, 241, 0.1)',
+              '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.2)', transform: 'rotate(180deg)' },
+              transition: 'all 0.3s ease-in-out',
+            }}
+          >
+            <Refresh sx={{ color: '#6366f1' }} />
           </IconButton>
         </MuiTooltip>
       </Box>
@@ -438,13 +490,13 @@ export default function Dashboard() {
       )}
 
       {/* Stats Cards */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
+      <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mb: 4 }}>
         <Grid item xs={6} sm={6} md={4} lg={3}>
           <StatCard
             title="סה''כ רוכבים"
             value={stats.totalRiders}
             icon={Person}
-            color="#3f51b5"
+            color="#6366f1"
           />
         </Grid>
 
@@ -453,7 +505,7 @@ export default function Dashboard() {
             title="רוכבים פעילים"
             value={stats.activeRiders}
             icon={CheckCircle}
-            color="#4caf50"
+            color="#10b981"
           />
         </Grid>
 
@@ -462,7 +514,7 @@ export default function Dashboard() {
             title="סה''כ כלים"
             value={stats.totalVehicles}
             icon={TwoWheeler}
-            color="#ff9800"
+            color="#f59e0b"
           />
         </Grid>
 
@@ -471,7 +523,7 @@ export default function Dashboard() {
             title="כלים פעילים"
             value={stats.activeVehicles}
             icon={Speed}
-            color="#2196f3"
+            color="#3b82f6"
           />
         </Grid>
 
@@ -480,7 +532,7 @@ export default function Dashboard() {
             title="כלים ללא רוכב"
             value={stats.vehiclesWaitingForRider}
             icon={TwoWheeler}
-            color="#607d8b"
+            color="#64748b"
           />
         </Grid>
 
@@ -489,7 +541,7 @@ export default function Dashboard() {
             title="תקלות פתוחות"
             value={stats.openFaults}
             icon={Warning}
-            color="#ff9800"
+            color="#f59e0b"
           />
         </Grid>
 
@@ -498,7 +550,7 @@ export default function Dashboard() {
             title="תקלות קריטיות"
             value={stats.criticalFaults}
             icon={ErrorOutline}
-            color="#f44336"
+            color="#ef4444"
           />
         </Grid>
 
@@ -507,7 +559,7 @@ export default function Dashboard() {
             title="משימות פתוחות"
             value={stats.pendingTasks}
             icon={Assignment}
-            color="#9c27b0"
+            color="#8b5cf6"
           />
         </Grid>
 
@@ -517,7 +569,7 @@ export default function Dashboard() {
               title="ביטוחים שפוקעים"
               value={stats.expiringInsurance}
               icon={EventAvailable}
-              color="#ff5722"
+              color="#ec4899"
             />
           </Grid>
         )}
@@ -527,11 +579,11 @@ export default function Dashboard() {
       <Grid container spacing={3}>
         {/* Monthly Trend */}
         <Grid item xs={12} lg={8}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom fontWeight="bold">
+          <Paper sx={{ p: 3, borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, color: '#1e293b', mb: 2 }}>
               מגמות חודשיות
             </Typography>
-            <Divider sx={{ mb: 2 }} />
+            <Divider sx={{ mb: 3, borderColor: '#e2e8f0' }} />
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={monthlyTrendData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -548,11 +600,11 @@ export default function Dashboard() {
 
         {/* Vehicle Status */}
         <Grid item xs={12} md={6} lg={4}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom fontWeight="bold">
+          <Paper sx={{ p: 3, borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, color: '#1e293b', mb: 2 }}>
               סטטוס כלים
             </Typography>
-            <Divider sx={{ mb: 2 }} />
+            <Divider sx={{ mb: 3, borderColor: '#e2e8f0' }} />
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -577,14 +629,25 @@ export default function Dashboard() {
 
         {/* Recent Activity */}
         <Grid item xs={12} md={6} lg={6}>
-          <Paper sx={{ p: 3 }}>
+          <Paper sx={{ p: 3, borderRadius: '16px', border: '1px solid #e2e8f0' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <CalendarToday sx={{ mr: 1 }} />
-              <Typography variant="h6" fontWeight="bold">
+              <Box sx={{
+                width: 36,
+                height: 36,
+                borderRadius: '10px',
+                bgcolor: 'rgba(99, 102, 241, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mr: 1.5,
+              }}>
+                <CalendarToday sx={{ color: '#6366f1', fontSize: 20 }} />
+              </Box>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: '#1e293b' }}>
                 פעילות אחרונה
               </Typography>
             </Box>
-            <Divider sx={{ mb: 2 }} />
+            <Divider sx={{ mb: 2, borderColor: '#e2e8f0' }} />
             <List>
               {recentActivity.map((activity) => (
                 <ListItem key={activity.id} sx={{ px: 0 }}>
@@ -653,23 +716,57 @@ export default function Dashboard() {
 
         {/* Quick Actions */}
         <Grid item xs={12} md={6} lg={criticalFaultsList.length > 0 ? 6 : 12}>
-          <Paper sx={{ p: 3 }}>
+          <Paper sx={{ p: 3, borderRadius: '16px', border: '1px solid #e2e8f0' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <Speed sx={{ mr: 1 }} />
-              <Typography variant="h6" fontWeight="bold">
+              <Box sx={{
+                width: 36,
+                height: 36,
+                borderRadius: '10px',
+                bgcolor: 'rgba(139, 92, 246, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mr: 1.5,
+              }}>
+                <Speed sx={{ color: '#8b5cf6', fontSize: 20 }} />
+              </Box>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: '#1e293b' }}>
                 פעולות מהירות
               </Typography>
             </Box>
-            <Divider sx={{ mb: 2 }} />
+            <Divider sx={{ mb: 3, borderColor: '#e2e8f0' }} />
             <Grid container spacing={2}>
               <Grid item xs={6} sm={3} md={6} lg={3}>
                 <Card
-                  sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover', transform: 'translateY(-4px)' }, transition: 'all 0.2s' }}
+                  sx={{
+                    cursor: 'pointer',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: 'none',
+                    '&:hover': {
+                      borderColor: '#6366f1',
+                      boxShadow: '0 8px 25px rgba(99, 102, 241, 0.15)',
+                      transform: 'translateY(-4px)',
+                      '& .action-icon': { transform: 'scale(1.1)' },
+                    },
+                    transition: 'all 0.3s ease-in-out',
+                  }}
                   onClick={() => navigate('/vehicles')}
                 >
                   <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                    <TwoWheeler sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
-                    <Typography variant="body2" fontWeight="500">
+                    <Box sx={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: '14px',
+                      bgcolor: 'rgba(99, 102, 241, 0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto',
+                      mb: 1.5,
+                    }}>
+                      <TwoWheeler className="action-icon" sx={{ fontSize: 28, color: '#6366f1', transition: 'transform 0.3s' }} />
+                    </Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
                       ניהול כלים
                     </Typography>
                   </CardContent>
@@ -677,12 +774,35 @@ export default function Dashboard() {
               </Grid>
               <Grid item xs={6} sm={3} md={6} lg={3}>
                 <Card
-                  sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover', transform: 'translateY(-4px)' }, transition: 'all 0.2s' }}
+                  sx={{
+                    cursor: 'pointer',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: 'none',
+                    '&:hover': {
+                      borderColor: '#10b981',
+                      boxShadow: '0 8px 25px rgba(16, 185, 129, 0.15)',
+                      transform: 'translateY(-4px)',
+                      '& .action-icon': { transform: 'scale(1.1)' },
+                    },
+                    transition: 'all 0.3s ease-in-out',
+                  }}
                   onClick={() => navigate('/riders')}
                 >
                   <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                    <Person sx={{ fontSize: 48, color: 'success.main', mb: 1 }} />
-                    <Typography variant="body2" fontWeight="500">
+                    <Box sx={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: '14px',
+                      bgcolor: 'rgba(16, 185, 129, 0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto',
+                      mb: 1.5,
+                    }}>
+                      <Person className="action-icon" sx={{ fontSize: 28, color: '#10b981', transition: 'transform 0.3s' }} />
+                    </Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
                       ניהול רוכבים
                     </Typography>
                   </CardContent>
@@ -690,12 +810,35 @@ export default function Dashboard() {
               </Grid>
               <Grid item xs={6} sm={3} md={6} lg={3}>
                 <Card
-                  sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover', transform: 'translateY(-4px)' }, transition: 'all 0.2s' }}
+                  sx={{
+                    cursor: 'pointer',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: 'none',
+                    '&:hover': {
+                      borderColor: '#f59e0b',
+                      boxShadow: '0 8px 25px rgba(245, 158, 11, 0.15)',
+                      transform: 'translateY(-4px)',
+                      '& .action-icon': { transform: 'scale(1.1)' },
+                    },
+                    transition: 'all 0.3s ease-in-out',
+                  }}
                   onClick={() => navigate('/tasks')}
                 >
                   <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                    <Assignment sx={{ fontSize: 48, color: 'warning.main', mb: 1 }} />
-                    <Typography variant="body2" fontWeight="500">
+                    <Box sx={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: '14px',
+                      bgcolor: 'rgba(245, 158, 11, 0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto',
+                      mb: 1.5,
+                    }}>
+                      <Assignment className="action-icon" sx={{ fontSize: 28, color: '#f59e0b', transition: 'transform 0.3s' }} />
+                    </Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
                       משימות
                     </Typography>
                   </CardContent>
@@ -703,12 +846,35 @@ export default function Dashboard() {
               </Grid>
               <Grid item xs={6} sm={3} md={6} lg={3}>
                 <Card
-                  sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover', transform: 'translateY(-4px)' }, transition: 'all 0.2s' }}
+                  sx={{
+                    cursor: 'pointer',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: 'none',
+                    '&:hover': {
+                      borderColor: '#3b82f6',
+                      boxShadow: '0 8px 25px rgba(59, 130, 246, 0.15)',
+                      transform: 'translateY(-4px)',
+                      '& .action-icon': { transform: 'scale(1.1)' },
+                    },
+                    transition: 'all 0.3s ease-in-out',
+                  }}
                   onClick={() => navigate('/monthly-checks')}
                 >
                   <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                    <Build sx={{ fontSize: 48, color: 'info.main', mb: 1 }} />
-                    <Typography variant="body2" fontWeight="500">
+                    <Box sx={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: '14px',
+                      bgcolor: 'rgba(59, 130, 246, 0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto',
+                      mb: 1.5,
+                    }}>
+                      <Build className="action-icon" sx={{ fontSize: 28, color: '#3b82f6', transition: 'transform 0.3s' }} />
+                    </Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
                       בקרה חודשית
                     </Typography>
                   </CardContent>
