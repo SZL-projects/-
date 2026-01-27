@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -16,8 +16,22 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Card,
+  CardContent,
 } from '@mui/material';
-import { ArrowBack, Edit, Refresh, CreateNewFolder } from '@mui/icons-material';
+import {
+  ArrowBack,
+  Edit,
+  Refresh,
+  CreateNewFolder,
+  TwoWheeler,
+  Speed,
+  CalendarMonth,
+  Badge as BadgeIcon,
+  Factory,
+  DirectionsCar,
+  FolderOpen,
+} from '@mui/icons-material';
 import { vehiclesAPI } from '../services/api';
 import VehicleFiles from '../components/VehicleFiles';
 import VehicleDialog from '../components/VehicleDialog';
@@ -35,6 +49,16 @@ export default function VehicleDetails() {
   const [addFolderDialogOpen, setAddFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [refreshingFolders, setRefreshingFolders] = useState(false);
+
+  // מפת סטטוסים מודרנית
+  const statusMap = useMemo(() => ({
+    active: { label: 'פעיל', bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#059669' },
+    waiting_for_rider: { label: 'ממתין לרוכב', bgcolor: 'rgba(245, 158, 11, 0.1)', color: '#d97706' },
+    faulty: { label: 'תקול', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#dc2626' },
+    unfit: { label: 'לא כשיר', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#dc2626' },
+    stolen_lost: { label: 'גנוב/אבוד', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#dc2626' },
+    decommissioned: { label: 'מושבת', bgcolor: 'rgba(148, 163, 184, 0.1)', color: '#64748b' },
+  }), []);
 
   useEffect(() => {
     loadVehicle();
@@ -84,7 +108,6 @@ export default function VehicleDetails() {
       );
       setFolderData(response.data.data);
       showSnackbar('תיקיות נוצרו בהצלחה', 'success');
-      // רענון נתוני הכלי
       await loadVehicle();
     } catch (err) {
       console.error('Error creating folders:', err);
@@ -138,34 +161,29 @@ export default function VehicleDetails() {
 
     setCreatingFolders(true);
     try {
-      // מחיקת כל תת-התיקיות אחת אחת
       const foldersToDelete = [
         folderData.insuranceFolderId,
         folderData.archiveFolderId,
-        folderData.extrasFolderId, // תיקיית "נוספים" - תמחק גם את כל התת-תיקיות בתוכה
+        folderData.extrasFolderId,
         ...(folderData.customFolders || []).map(f => f.id)
-      ].filter(Boolean); // מסנן רק IDs שקיימים
+      ].filter(Boolean);
 
-      // מחיקת כל תת-תיקייה (רקורסיבית - כולל כל הקבצים בתוכה)
       for (const folderId of foldersToDelete) {
         try {
-          await vehiclesAPI.deleteFile(folderId, true); // recursive=true
+          await vehiclesAPI.deleteFile(folderId, true);
         } catch (err) {
           console.warn('⚠️ Failed to delete folder:', folderId, err.message);
-          // ממשיכים גם אם נכשל
         }
       }
 
-      // מחיקת התיקייה הראשית (רקורסיבית)
       if (folderData.mainFolderId) {
         try {
-          await vehiclesAPI.deleteFile(folderData.mainFolderId, true); // recursive=true
+          await vehiclesAPI.deleteFile(folderData.mainFolderId, true);
         } catch (err) {
           console.warn('⚠️ Failed to delete main folder:', err.message);
         }
       }
 
-      // עדכון הכלי - הסרת נתוני התיקיות
       await vehiclesAPI.update(id, {
         driveFolderData: null,
         insuranceFolderId: null,
@@ -187,32 +205,51 @@ export default function VehicleDetails() {
   };
 
   const getStatusChip = (status) => {
-    const statusMap = {
-      active: { label: 'פעיל', color: 'success' },
-      waiting_for_rider: { label: 'ממתין לרוכב', color: 'warning' },
-      faulty: { label: 'תקול', color: 'error' },
-      unfit: { label: 'לא כשיר', color: 'error' },
-      stolen_lost: { label: 'גנוב/אבוד', color: 'error' },
-      decommissioned: { label: 'מושבת', color: 'default' },
-    };
-
-    const { label, color } = statusMap[status] || { label: status, color: 'default' };
-    return <Chip label={label} color={color} />;
+    const statusInfo = statusMap[status] || { label: status, bgcolor: 'rgba(148, 163, 184, 0.1)', color: '#64748b' };
+    return (
+      <Chip
+        label={statusInfo.label}
+        sx={{
+          bgcolor: statusInfo.bgcolor,
+          color: statusInfo.color,
+          fontWeight: 600,
+          fontSize: '0.85rem',
+        }}
+      />
+    );
   };
 
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <CircularProgress />
+        <CircularProgress sx={{ color: '#6366f1' }} />
       </Box>
     );
   }
 
   if (error || !vehicle) {
     return (
-      <Box>
-        <Alert severity="error">{error || 'לא נמצא כלי'}</Alert>
-        <Button sx={{ mt: 2 }} onClick={() => navigate('/vehicles')}>
+      <Box sx={{ animation: 'fadeIn 0.3s ease-out' }}>
+        <Alert
+          severity="error"
+          sx={{
+            borderRadius: '12px',
+            border: '1px solid rgba(239, 68, 68, 0.2)',
+            mb: 3,
+          }}
+        >
+          {error || 'לא נמצא כלי'}
+        </Alert>
+        <Button
+          onClick={() => navigate('/vehicles')}
+          startIcon={<ArrowBack />}
+          sx={{
+            borderRadius: '12px',
+            fontWeight: 600,
+            color: '#6366f1',
+            '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.1)' },
+          }}
+        >
           חזרה לרשימת כלים
         </Button>
       </Box>
@@ -220,154 +257,412 @@ export default function VehicleDetails() {
   }
 
   return (
-    <Box>
-      {/* כותרת */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+    <Box sx={{ animation: 'fadeIn 0.3s ease-out' }}>
+      {/* Header */}
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', md: 'row' },
+        alignItems: { xs: 'stretch', md: 'center' },
+        gap: 2,
+        mb: 3,
+      }}>
         <Button
           startIcon={<ArrowBack />}
           onClick={() => navigate('/vehicles')}
-          sx={{ mr: 2 }}
+          sx={{
+            borderRadius: '12px',
+            fontWeight: 600,
+            color: '#64748b',
+            '&:hover': { bgcolor: '#f8fafc' },
+            alignSelf: { xs: 'flex-start', md: 'center' },
+          }}
         >
           חזרה
         </Button>
-        <Typography variant="h4" fontWeight="bold">
-          פרטי כלי - {vehicle.licensePlate}
-        </Typography>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+          <Box sx={{
+            width: 56,
+            height: 56,
+            borderRadius: '16px',
+            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 8px 24px rgba(99, 102, 241, 0.3)',
+          }}>
+            <TwoWheeler sx={{ fontSize: 28, color: '#ffffff' }} />
+          </Box>
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: '#1e293b', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+              {vehicle.licensePlate}
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#64748b' }}>
+              {vehicle.manufacturer} {vehicle.model} • {vehicle.year}
+            </Typography>
+          </Box>
+        </Box>
+
         <Button
-          variant="outlined"
+          variant="contained"
           startIcon={<Edit />}
-          sx={{ mr: 'auto' }}
           onClick={() => setEditDialogOpen(true)}
+          sx={{
+            borderRadius: '12px',
+            px: 3,
+            py: 1.5,
+            fontWeight: 600,
+            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+            boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+              boxShadow: '0 6px 20px rgba(99, 102, 241, 0.4)',
+              transform: 'translateY(-1px)',
+            },
+            transition: 'all 0.2s ease-in-out',
+          }}
         >
           עריכה
         </Button>
       </Box>
 
       {/* פרטים כלליים */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
+      <Paper sx={{
+        p: 3,
+        mb: 3,
+        borderRadius: '16px',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+      }}>
+        <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b', mb: 2 }}>
           פרטים כלליים
         </Typography>
-        <Divider sx={{ mb: 2 }} />
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={6}>
-            <Typography variant="body2" color="textSecondary">
-              מספר רישוי
-            </Typography>
-            <Typography variant="body1" fontWeight="500">
-              {vehicle.licensePlate}
-            </Typography>
+        <Divider sx={{ mb: 3, borderColor: '#e2e8f0' }} />
+
+        <Grid container spacing={3}>
+          <Grid item xs={12} sm={6} md={4}>
+            <Card sx={{
+              borderRadius: '12px',
+              border: '1px solid #e2e8f0',
+              boxShadow: 'none',
+              height: '100%',
+            }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '10px',
+                  bgcolor: 'rgba(99, 102, 241, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <BadgeIcon sx={{ color: '#6366f1', fontSize: 20 }} />
+                </Box>
+                <Box>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>מספר רישוי</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                    {vehicle.licensePlate}
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
           </Grid>
-          <Grid item xs={12} md={6}>
-            <Typography variant="body2" color="textSecondary">
-              מספר פנימי
-            </Typography>
-            <Typography variant="body1" fontWeight="500">
-              {vehicle.internalNumber || '-'}
-            </Typography>
+
+          <Grid item xs={12} sm={6} md={4}>
+            <Card sx={{
+              borderRadius: '12px',
+              border: '1px solid #e2e8f0',
+              boxShadow: 'none',
+              height: '100%',
+            }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '10px',
+                  bgcolor: 'rgba(139, 92, 246, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <BadgeIcon sx={{ color: '#8b5cf6', fontSize: 20 }} />
+                </Box>
+                <Box>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>מספר פנימי</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                    {vehicle.internalNumber || '-'}
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
           </Grid>
-          <Grid item xs={12} md={6}>
-            <Typography variant="body2" color="textSecondary">
-              סוג
-            </Typography>
-            <Typography variant="body1" fontWeight="500">
-              {vehicle.type === 'scooter' ? 'קטנוע' : 'אופנוע'}
-            </Typography>
+
+          <Grid item xs={12} sm={6} md={4}>
+            <Card sx={{
+              borderRadius: '12px',
+              border: '1px solid #e2e8f0',
+              boxShadow: 'none',
+              height: '100%',
+            }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '10px',
+                  bgcolor: 'rgba(16, 185, 129, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <TwoWheeler sx={{ color: '#059669', fontSize: 20 }} />
+                </Box>
+                <Box>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>סוג</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                    {vehicle.type === 'scooter' ? 'קטנוע' : 'אופנוע'}
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
           </Grid>
-          <Grid item xs={12} md={6}>
-            <Typography variant="body2" color="textSecondary">
-              סטטוס
-            </Typography>
-            <Box sx={{ mt: 0.5 }}>
+
+          <Grid item xs={12} sm={6} md={4}>
+            <Card sx={{
+              borderRadius: '12px',
+              border: '1px solid #e2e8f0',
+              boxShadow: 'none',
+              height: '100%',
+            }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '10px',
+                  bgcolor: 'rgba(245, 158, 11, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Factory sx={{ color: '#d97706', fontSize: 20 }} />
+                </Box>
+                <Box>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>יצרן ודגם</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                    {vehicle.manufacturer} {vehicle.model}
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={4}>
+            <Card sx={{
+              borderRadius: '12px',
+              border: '1px solid #e2e8f0',
+              boxShadow: 'none',
+              height: '100%',
+            }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '10px',
+                  bgcolor: 'rgba(59, 130, 246, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <CalendarMonth sx={{ color: '#2563eb', fontSize: 20 }} />
+                </Box>
+                <Box>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>שנת ייצור</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                    {vehicle.year}
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={4}>
+            <Card sx={{
+              borderRadius: '12px',
+              border: '1px solid #e2e8f0',
+              boxShadow: 'none',
+              height: '100%',
+            }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '10px',
+                  bgcolor: 'rgba(236, 72, 153, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Speed sx={{ color: '#db2777', fontSize: 20 }} />
+                </Box>
+                <Box>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>קילומטרז נוכחי</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                    {vehicle.currentKilometers?.toLocaleString('he-IL') || '0'} ק"מ
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+              <Typography variant="body2" sx={{ color: '#64748b' }}>סטטוס:</Typography>
               {getStatusChip(vehicle.status)}
             </Box>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Typography variant="body2" color="textSecondary">
-              יצרן
-            </Typography>
-            <Typography variant="body1" fontWeight="500">
-              {vehicle.manufacturer}
-            </Typography>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Typography variant="body2" color="textSecondary">
-              דגם
-            </Typography>
-            <Typography variant="body1" fontWeight="500">
-              {vehicle.model}
-            </Typography>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Typography variant="body2" color="textSecondary">
-              שנת ייצור
-            </Typography>
-            <Typography variant="body1" fontWeight="500">
-              {vehicle.year}
-            </Typography>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Typography variant="body2" color="textSecondary">
-              קילומטרז נוכחי
-            </Typography>
-            <Typography variant="body1" fontWeight="500">
-              {vehicle.currentKilometers?.toLocaleString('he-IL') || '0'} ק"מ
-            </Typography>
           </Grid>
         </Grid>
       </Paper>
 
       {/* קבצים ומסמכים */}
-      <Box sx={{ mb: 3 }}>
+      <Paper sx={{
+        p: 3,
+        mb: 3,
+        borderRadius: '16px',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+      }}>
         {!folderData ? (
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              קבצים ומסמכים
-            </Typography>
-            <Alert severity="info" sx={{ mb: 2 }}>
+          <>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+              <Box sx={{
+                width: 40,
+                height: 40,
+                borderRadius: '10px',
+                bgcolor: 'rgba(99, 102, 241, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <FolderOpen sx={{ color: '#6366f1', fontSize: 20 }} />
+              </Box>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                קבצים ומסמכים
+              </Typography>
+            </Box>
+            <Alert
+              severity="info"
+              sx={{
+                mb: 3,
+                borderRadius: '12px',
+                border: '1px solid rgba(59, 130, 246, 0.2)',
+              }}
+            >
               טרם נוצרה מבנה תיקיות עבור כלי זה. לחץ על הכפתור ליצירת תיקיות ב-Google Drive.
             </Alert>
             <Button
               variant="contained"
               onClick={createFolderStructure}
               disabled={creatingFolders}
+              startIcon={creatingFolders ? <CircularProgress size={20} color="inherit" /> : <CreateNewFolder />}
+              sx={{
+                borderRadius: '12px',
+                px: 3,
+                py: 1.5,
+                fontWeight: 600,
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                },
+                '&:disabled': {
+                  background: '#e2e8f0',
+                  boxShadow: 'none',
+                },
+              }}
             >
               {creatingFolders ? 'יוצר תיקיות...' : 'צור מבנה תיקיות'}
             </Button>
-          </Paper>
+          </>
         ) : (
-          <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
-              <Typography variant="h6">
-                קבצים ומסמכים
-              </Typography>
+          <>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'stretch', sm: 'center' },
+              gap: 2,
+              mb: 3,
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '10px',
+                  bgcolor: 'rgba(99, 102, 241, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <FolderOpen sx={{ color: '#6366f1', fontSize: 20 }} />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                  קבצים ומסמכים
+                </Typography>
+              </Box>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 <Button
                   variant="outlined"
-                  color="primary"
                   onClick={refreshFolders}
                   disabled={refreshingFolders || creatingFolders}
                   size="small"
-                  startIcon={refreshingFolders ? <CircularProgress size={16} /> : <Refresh />}
+                  startIcon={refreshingFolders ? <CircularProgress size={16} sx={{ color: '#6366f1' }} /> : <Refresh />}
+                  sx={{
+                    borderRadius: '10px',
+                    fontWeight: 600,
+                    borderColor: '#e2e8f0',
+                    color: '#6366f1',
+                    '&:hover': {
+                      borderColor: '#6366f1',
+                      bgcolor: 'rgba(99, 102, 241, 0.05)',
+                    },
+                  }}
                 >
                   {refreshingFolders ? 'מרענן...' : 'רענן תיקיות'}
                 </Button>
                 <Button
                   variant="outlined"
-                  color="success"
                   onClick={() => setAddFolderDialogOpen(true)}
                   disabled={creatingFolders}
                   size="small"
                   startIcon={<CreateNewFolder />}
+                  sx={{
+                    borderRadius: '10px',
+                    fontWeight: 600,
+                    borderColor: '#e2e8f0',
+                    color: '#059669',
+                    '&:hover': {
+                      borderColor: '#059669',
+                      bgcolor: 'rgba(16, 185, 129, 0.05)',
+                    },
+                  }}
                 >
                   הוסף תיקייה
                 </Button>
                 <Button
                   variant="outlined"
-                  color="error"
                   onClick={deleteFolderStructure}
                   disabled={creatingFolders}
                   size="small"
+                  sx={{
+                    borderRadius: '10px',
+                    fontWeight: 600,
+                    borderColor: '#e2e8f0',
+                    color: '#ef4444',
+                    '&:hover': {
+                      borderColor: '#ef4444',
+                      bgcolor: 'rgba(239, 68, 68, 0.05)',
+                    },
+                  }}
                 >
                   מחק מבנה תיקיות
                 </Button>
@@ -379,9 +674,9 @@ export default function VehicleDetails() {
               vehicleId={id}
               onFolderDeleted={loadVehicle}
             />
-          </Box>
+          </>
         )}
-      </Box>
+      </Paper>
 
       {/* Snackbar */}
       <Snackbar
@@ -393,6 +688,11 @@ export default function VehicleDetails() {
         <Alert
           severity={snackbar.severity}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
+          sx={{
+            borderRadius: '12px',
+            fontWeight: 500,
+            boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+          }}
         >
           {snackbar.message}
         </Alert>
@@ -415,9 +715,31 @@ export default function VehicleDetails() {
         }}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '20px',
+          },
+        }}
       >
-        <DialogTitle>הוספת תיקייה חדשה</DialogTitle>
-        <DialogContent>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{
+              width: 48,
+              height: 48,
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <CreateNewFolder sx={{ fontSize: 24, color: '#ffffff' }} />
+            </Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+              הוספת תיקייה חדשה
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
           <TextField
             autoFocus
             margin="dense"
@@ -426,14 +748,32 @@ export default function VehicleDetails() {
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
             placeholder="לדוגמה: תאונה, מסמכים נוספים..."
-            sx={{ mt: 1 }}
+            sx={{
+              mt: 2,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '12px',
+              },
+            }}
           />
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 3, gap: 2 }}>
           <Button
             onClick={() => {
               setAddFolderDialogOpen(false);
               setNewFolderName('');
+            }}
+            variant="outlined"
+            sx={{
+              borderRadius: '12px',
+              px: 4,
+              py: 1.2,
+              fontWeight: 600,
+              borderColor: '#e2e8f0',
+              color: '#64748b',
+              '&:hover': {
+                borderColor: '#cbd5e1',
+                bgcolor: '#f8fafc',
+              },
             }}
           >
             ביטול
@@ -442,6 +782,21 @@ export default function VehicleDetails() {
             onClick={addCustomFolder}
             variant="contained"
             disabled={creatingFolders || !newFolderName.trim()}
+            sx={{
+              borderRadius: '12px',
+              px: 4,
+              py: 1.2,
+              fontWeight: 600,
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+              },
+              '&:disabled': {
+                background: '#e2e8f0',
+                boxShadow: 'none',
+              },
+            }}
           >
             {creatingFolders ? 'יוצר...' : 'צור תיקייה'}
           </Button>

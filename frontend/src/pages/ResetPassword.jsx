@@ -16,6 +16,8 @@ import {
   Visibility,
   VisibilityOff,
   CheckCircle,
+  Lock,
+  LockReset,
 } from '@mui/icons-material';
 import axios from 'axios';
 
@@ -77,36 +79,70 @@ export default function ResetPassword() {
     }
   };
 
+  const textFieldSx = {
+    mb: 2,
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '12px',
+      bgcolor: '#f8fafc',
+      '&:hover fieldset': { borderColor: '#6366f1' },
+      '&.Mui-focused fieldset': { borderColor: '#6366f1', borderWidth: 2 },
+    },
+    '& .MuiInputLabel-root.Mui-focused': { color: '#6366f1' },
+    '& .MuiFormHelperText-root': { color: '#64748b' },
+  };
+
   return (
     <Box
       sx={{
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+        py: 4,
       }}
     >
       <Container maxWidth="sm">
         <Paper
-          elevation={10}
           sx={{
-            p: 4,
-            borderRadius: 3,
+            p: { xs: 3, sm: 5 },
+            borderRadius: '24px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            animation: 'fadeIn 0.5s ease-out',
+            '@keyframes fadeIn': {
+              from: { opacity: 0, transform: 'translateY(20px)' },
+              to: { opacity: 1, transform: 'translateY(0)' },
+            },
           }}
         >
           {/* Logo & Title */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <TwoWheeler
+            <Box
               sx={{
-                fontSize: 80,
-                color: 'primary.main',
-                mb: 2,
+                width: 80,
+                height: 80,
+                borderRadius: '20px',
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 8px 24px rgba(99, 102, 241, 0.4)',
+                mx: 'auto',
+                mb: 3,
               }}
-            />
-            <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+            >
+              <TwoWheeler sx={{ fontSize: 44, color: '#ffffff' }} />
+            </Box>
+            <Typography
+              variant="h4"
+              component="h1"
+              gutterBottom
+              fontWeight="bold"
+              sx={{ color: '#1e293b' }}
+            >
               איפוס סיסמה
             </Typography>
-            <Typography variant="body1" color="text.secondary">
+            <Typography variant="body1" sx={{ color: '#64748b' }}>
               הזן סיסמה חדשה לחשבון שלך
             </Typography>
           </Box>
@@ -115,13 +151,19 @@ export default function ResetPassword() {
           {success && (
             <Alert
               severity="success"
-              icon={<CheckCircle />}
-              sx={{ mb: 3 }}
+              icon={<CheckCircle sx={{ color: '#059669' }} />}
+              sx={{
+                mb: 3,
+                borderRadius: '12px',
+                bgcolor: 'rgba(16, 185, 129, 0.1)',
+                border: '1px solid rgba(16, 185, 129, 0.2)',
+                '& .MuiAlert-message': { color: '#059669' },
+              }}
             >
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                <strong>הסיסמה אופסה בהצלחה!</strong>
+              <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 600, color: '#059669' }}>
+                הסיסמה אופסה בהצלחה!
               </Typography>
-              <Typography variant="body2">
+              <Typography variant="body2" sx={{ color: '#059669' }}>
                 מעביר אותך למסך התחברות...
               </Typography>
             </Alert>
@@ -129,7 +171,16 @@ export default function ResetPassword() {
 
           {/* Error Alert */}
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
+            <Alert
+              severity="error"
+              sx={{
+                mb: 3,
+                borderRadius: '12px',
+                bgcolor: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                '& .MuiAlert-message': { color: '#dc2626' },
+              }}
+            >
               {error}
             </Alert>
           )}
@@ -145,22 +196,28 @@ export default function ResetPassword() {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                margin="normal"
                 autoFocus
                 dir="rtl"
                 helperText="לפחות 6 תווים"
                 InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Lock sx={{ color: '#6366f1' }} />
+                    </InputAdornment>
+                  ),
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
                         onClick={() => setShowPassword(!showPassword)}
                         edge="end"
+                        sx={{ color: '#64748b' }}
                       >
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
                     </InputAdornment>
                   ),
                 }}
+                sx={textFieldSx}
               />
 
               <TextField
@@ -171,21 +228,27 @@ export default function ResetPassword() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
-                margin="normal"
                 dir="rtl"
                 helperText="הזן את הסיסמה שוב לאימות"
                 InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Lock sx={{ color: '#6366f1' }} />
+                    </InputAdornment>
+                  ),
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                         edge="end"
+                        sx={{ color: '#64748b' }}
                       >
                         {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
                     </InputAdornment>
                   ),
                 }}
+                sx={textFieldSx}
               />
 
               <Button
@@ -194,11 +257,26 @@ export default function ResetPassword() {
                 variant="contained"
                 size="large"
                 disabled={loading}
+                startIcon={!loading && <LockReset />}
                 sx={{
-                  mt: 3,
-                  mb: 2,
+                  mt: 2,
                   py: 1.5,
                   fontSize: '1.1rem',
+                  fontWeight: 600,
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                  boxShadow: '0 8px 20px rgba(99, 102, 241, 0.3)',
+                  textTransform: 'none',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                    boxShadow: '0 12px 24px rgba(99, 102, 241, 0.4)',
+                    transform: 'translateY(-2px)',
+                  },
+                  '&:disabled': {
+                    background: '#e2e8f0',
+                    color: '#94a3b8',
+                  },
+                  transition: 'all 0.2s ease-in-out',
                 }}
               >
                 {loading ? 'מאפס סיסמה...' : 'אפס סיסמה'}
@@ -209,9 +287,8 @@ export default function ResetPassword() {
           {/* Footer */}
           <Typography
             variant="body2"
-            color="text.secondary"
             align="center"
-            sx={{ mt: 4 }}
+            sx={{ mt: 4, color: '#94a3b8' }}
           >
             © {new Date().getFullYear()} צי לוג ידידים
           </Typography>

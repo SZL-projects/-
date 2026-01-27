@@ -139,19 +139,19 @@ export default function Faults() {
     return dateFormatter.format(date);
   }, [dateFormatter]);
 
-  // מיפויי סטטוסים וחומרות - מוגדרים מחוץ לרנדר
+  // מיפויי סטטוסים וחומרות - עם צבעים מודרניים
   const statusMap = useMemo(() => ({
-    open: { label: 'פתוחה', color: 'error', icon: <Warning /> },
-    in_progress: { label: 'בטיפול', color: 'warning', icon: <Build /> },
-    resolved: { label: 'נפתרה', color: 'success', icon: <CheckCircle /> },
-    closed: { label: 'סגורה', color: 'default', icon: <CheckCircle /> },
+    open: { label: 'פתוחה', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', icon: <Warning sx={{ fontSize: 16 }} /> },
+    in_progress: { label: 'בטיפול', bgcolor: 'rgba(245, 158, 11, 0.1)', color: '#d97706', icon: <Build sx={{ fontSize: 16 }} /> },
+    resolved: { label: 'נפתרה', bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#059669', icon: <CheckCircle sx={{ fontSize: 16 }} /> },
+    closed: { label: 'סגורה', bgcolor: 'rgba(100, 116, 139, 0.1)', color: '#64748b', icon: <CheckCircle sx={{ fontSize: 16 }} /> },
   }), []);
 
   const severityMap = useMemo(() => ({
-    critical: { label: 'קריטית', color: 'error' },
-    high: { label: 'גבוהה', color: 'error' },
-    medium: { label: 'בינונית', color: 'warning' },
-    low: { label: 'נמוכה', color: 'info' },
+    critical: { label: 'קריטית', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#dc2626' },
+    high: { label: 'גבוהה', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#dc2626' },
+    medium: { label: 'בינונית', bgcolor: 'rgba(245, 158, 11, 0.1)', color: '#d97706' },
+    low: { label: 'נמוכה', bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#2563eb' },
   }), []);
 
   const categoryMap = useMemo(() => ({
@@ -164,13 +164,41 @@ export default function Faults() {
   }), []);
 
   const getStatusChip = useCallback((status) => {
-    const { label, color, icon } = statusMap[status] || { label: status, color: 'default', icon: null };
-    return <Chip label={label} color={color} size="small" icon={icon} />;
+    const { label, bgcolor, color, icon } = statusMap[status] || { label: status, bgcolor: '#f1f5f9', color: '#64748b', icon: null };
+    return (
+      <Chip
+        label={label}
+        size="small"
+        icon={icon}
+        sx={{
+          bgcolor,
+          color,
+          fontWeight: 600,
+          fontSize: '0.75rem',
+          border: 'none',
+          '& .MuiChip-label': { px: 1 },
+          '& .MuiChip-icon': { color: 'inherit' },
+        }}
+      />
+    );
   }, [statusMap]);
 
   const getSeverityChip = useCallback((severity) => {
-    const { label, color } = severityMap[severity] || { label: severity, color: 'default' };
-    return <Chip label={label} color={color} size="small" variant="outlined" />;
+    const { label, bgcolor, color } = severityMap[severity] || { label: severity, bgcolor: '#f1f5f9', color: '#64748b' };
+    return (
+      <Chip
+        label={label}
+        size="small"
+        sx={{
+          bgcolor,
+          color,
+          fontWeight: 600,
+          fontSize: '0.75rem',
+          border: 'none',
+          '& .MuiChip-label': { px: 1.5 },
+        }}
+      />
+    );
   }, [severityMap]);
 
   const getCategoryLabel = useCallback((category) => {
@@ -207,88 +235,179 @@ export default function Faults() {
   }, [faults, searchTerm, filterStatus, filterSeverity, filterCanRide, viewMode]);
 
   return (
-    <Box>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Warning /> ניהול תקלות
-          </Typography>
-          <Typography variant="body2" color="textSecondary">
-            ניהול ומעקב אחר תקלות בכלים
-          </Typography>
+    <Box sx={{ animation: 'fadeIn 0.3s ease-out' }}>
+      {/* Modern Header */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{
+            width: 56,
+            height: 56,
+            borderRadius: '16px',
+            background: 'linear-gradient(135deg, #ef4444 0%, #f97316 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 8px 24px rgba(239, 68, 68, 0.3)',
+          }}>
+            <Warning sx={{ fontSize: 28, color: '#ffffff' }} />
+          </Box>
+          <Box>
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 700,
+                color: '#1e293b',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              ניהול תקלות
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5 }}>
+              ניהול ומעקב אחר תקלות בכלים
+            </Typography>
+          </Box>
         </Box>
         <Button
           variant="outlined"
           startIcon={<Refresh />}
           onClick={loadData}
           disabled={loading}
+          sx={{
+            borderRadius: '12px',
+            borderColor: '#e2e8f0',
+            color: '#64748b',
+            fontWeight: 600,
+            '&:hover': {
+              borderColor: '#6366f1',
+              color: '#6366f1',
+              bgcolor: 'rgba(99, 102, 241, 0.04)',
+            },
+          }}
         >
           רענן
         </Button>
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert
+          severity="error"
+          sx={{
+            mb: 3,
+            borderRadius: '12px',
+            border: '1px solid rgba(239, 68, 68, 0.2)',
+          }}
+        >
           {error}
         </Alert>
       )}
 
-      {/* סטטיסטיקות */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
+      {/* Modern Stats Cards */}
+      <Grid container spacing={2} sx={{ mb: 4 }}>
         <Grid item xs={6} sm={4} md={2}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography color="textSecondary" variant="body2">סה"כ</Typography>
-              <Typography variant="h4" fontWeight="bold">{stats.total}</Typography>
+          <Card
+            elevation={0}
+            sx={{
+              borderRadius: '16px',
+              border: '1px solid #e2e8f0',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' },
+            }}
+          >
+            <CardContent sx={{ textAlign: 'center', py: 2.5 }}>
+              <Typography sx={{ color: '#64748b', fontSize: '0.875rem', mb: 1 }}>סה"כ</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#1e293b' }}>{stats.total}</Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={6} sm={4} md={2}>
-          <Card sx={{ cursor: 'pointer' }} onClick={() => setViewMode(1)}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography color="textSecondary" variant="body2">פתוחות</Typography>
-              <Typography variant="h4" fontWeight="bold" color="error.main">
+          <Card
+            elevation={0}
+            sx={{
+              borderRadius: '16px',
+              border: '1px solid #e2e8f0',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 25px -5px rgba(239,68,68,0.2)', borderColor: '#ef4444' },
+            }}
+            onClick={() => setViewMode(1)}
+          >
+            <CardContent sx={{ textAlign: 'center', py: 2.5 }}>
+              <Typography sx={{ color: '#64748b', fontSize: '0.875rem', mb: 1 }}>פתוחות</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#ef4444' }}>
                 {stats.open}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={6} sm={4} md={2}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography color="textSecondary" variant="body2">בטיפול</Typography>
-              <Typography variant="h4" fontWeight="bold" color="warning.main">
+          <Card
+            elevation={0}
+            sx={{
+              borderRadius: '16px',
+              border: '1px solid #e2e8f0',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' },
+            }}
+          >
+            <CardContent sx={{ textAlign: 'center', py: 2.5 }}>
+              <Typography sx={{ color: '#64748b', fontSize: '0.875rem', mb: 1 }}>בטיפול</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#f59e0b' }}>
                 {stats.inProgress}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={6} sm={4} md={2}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography color="textSecondary" variant="body2">נפתרו</Typography>
-              <Typography variant="h4" fontWeight="bold" color="success.main">
+          <Card
+            elevation={0}
+            sx={{
+              borderRadius: '16px',
+              border: '1px solid #e2e8f0',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' },
+            }}
+          >
+            <CardContent sx={{ textAlign: 'center', py: 2.5 }}>
+              <Typography sx={{ color: '#64748b', fontSize: '0.875rem', mb: 1 }}>נפתרו</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#10b981' }}>
                 {stats.resolved}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={6} sm={4} md={2}>
-          <Card sx={{ cursor: 'pointer' }} onClick={() => setViewMode(2)}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography color="textSecondary" variant="body2">קריטיות</Typography>
-              <Typography variant="h4" fontWeight="bold" color="error.main">
+          <Card
+            elevation={0}
+            sx={{
+              borderRadius: '16px',
+              border: '1px solid #e2e8f0',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 25px -5px rgba(239,68,68,0.2)', borderColor: '#ef4444' },
+            }}
+            onClick={() => setViewMode(2)}
+          >
+            <CardContent sx={{ textAlign: 'center', py: 2.5 }}>
+              <Typography sx={{ color: '#64748b', fontSize: '0.875rem', mb: 1 }}>קריטיות</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#ef4444' }}>
                 {stats.critical}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={6} sm={4} md={2}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Typography color="textSecondary" variant="body2">לא ניתן לרכב</Typography>
-              <Typography variant="h4" fontWeight="bold" color="error.main">
+          <Card
+            elevation={0}
+            sx={{
+              borderRadius: '16px',
+              border: '1px solid #e2e8f0',
+              transition: 'all 0.2s ease-in-out',
+              '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' },
+            }}
+          >
+            <CardContent sx={{ textAlign: 'center', py: 2.5 }}>
+              <Typography sx={{ color: '#64748b', fontSize: '0.875rem', mb: 1 }}>לא ניתן לרכב</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#ef4444' }}>
                 {stats.cannotRide}
               </Typography>
             </CardContent>
@@ -296,20 +415,63 @@ export default function Faults() {
         </Grid>
       </Grid>
 
-      {/* Tabs */}
-      <Paper sx={{ mb: 2 }}>
-        <Tabs value={viewMode} onChange={(e, v) => setViewMode(v)}>
+      {/* Modern Tabs */}
+      <Paper
+        elevation={0}
+        sx={{
+          mb: 3,
+          borderRadius: '16px',
+          border: '1px solid #e2e8f0',
+          overflow: 'hidden',
+        }}
+      >
+        <Tabs
+          value={viewMode}
+          onChange={(e, v) => setViewMode(v)}
+          sx={{
+            '& .MuiTab-root': {
+              fontWeight: 600,
+              color: '#64748b',
+              '&.Mui-selected': {
+                color: '#6366f1',
+              },
+            },
+            '& .MuiTabs-indicator': {
+              bgcolor: '#6366f1',
+              height: 3,
+              borderRadius: '3px 3px 0 0',
+            },
+          }}
+        >
           <Tab label="כל התקלות" />
           <Tab
             label={
-              <Badge badgeContent={stats.open + stats.inProgress} color="error">
+              <Badge
+                badgeContent={stats.open + stats.inProgress}
+                sx={{
+                  '& .MuiBadge-badge': {
+                    bgcolor: '#ef4444',
+                    color: '#fff',
+                    fontWeight: 600,
+                  }
+                }}
+              >
                 תקלות פתוחות
               </Badge>
             }
           />
           <Tab
             label={
-              <Badge badgeContent={stats.critical} color="error">
+              <Badge
+                badgeContent={stats.critical}
+                sx={{
+                  '& .MuiBadge-badge': {
+                    bgcolor: '#ef4444',
+                    color: '#fff',
+                    fontWeight: 600,
+                  }
+                }}
+              >
                 תקלות קריטיות
               </Badge>
             }
@@ -317,8 +479,17 @@ export default function Faults() {
         </Tabs>
       </Paper>
 
-      {/* סינון וחיפוש */}
-      <Paper sx={{ p: 2, mb: 3 }}>
+      {/* Modern Filter Section */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2.5,
+          mb: 3,
+          borderRadius: '16px',
+          border: '1px solid #e2e8f0',
+          background: '#ffffff',
+        }}
+      >
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6} md={3}>
             <TextField
@@ -329,9 +500,17 @@ export default function Faults() {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <Search />
+                    <Search sx={{ color: '#94a3b8' }} />
                   </InputAdornment>
                 ),
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '12px',
+                  bgcolor: '#f8fafc',
+                  '&:hover': { bgcolor: '#f1f5f9' },
+                  '&.Mui-focused': { bgcolor: '#ffffff' },
+                },
               }}
             />
           </Grid>
@@ -342,6 +521,12 @@ export default function Faults() {
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 label="סטטוס"
+                sx={{
+                  borderRadius: '12px',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e2e8f0',
+                  },
+                }}
               >
                 <MenuItem value="all">הכל</MenuItem>
                 <MenuItem value="open">פתוחה</MenuItem>
@@ -358,6 +543,12 @@ export default function Faults() {
                 value={filterSeverity}
                 onChange={(e) => setFilterSeverity(e.target.value)}
                 label="חומרה"
+                sx={{
+                  borderRadius: '12px',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e2e8f0',
+                  },
+                }}
               >
                 <MenuItem value="all">הכל</MenuItem>
                 <MenuItem value="critical">קריטית</MenuItem>
@@ -374,6 +565,12 @@ export default function Faults() {
                 value={filterCanRide}
                 onChange={(e) => setFilterCanRide(e.target.value)}
                 label="ניתן לרכב?"
+                sx={{
+                  borderRadius: '12px',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e2e8f0',
+                  },
+                }}
               >
                 <MenuItem value="all">הכל</MenuItem>
                 <MenuItem value="yes">כן</MenuItem>
@@ -384,55 +581,82 @@ export default function Faults() {
         </Grid>
       </Paper>
 
-      {/* טבלת תקלות */}
-      <TableContainer component={Paper}>
+      {/* Modern Table */}
+      <TableContainer
+        component={Paper}
+        elevation={0}
+        sx={{
+          borderRadius: '16px',
+          border: '1px solid #e2e8f0',
+          overflow: 'hidden',
+        }}
+      >
         <Table>
           <TableHead>
-            <TableRow>
-              <TableCell>כלי</TableCell>
-              <TableCell>כותרת</TableCell>
-              <TableCell>קטגוריה</TableCell>
-              <TableCell>חומרה</TableCell>
-              <TableCell>ניתן לרכב?</TableCell>
-              <TableCell>סטטוס</TableCell>
-              <TableCell>תאריך דיווח</TableCell>
-              <TableCell align="center">פעולות</TableCell>
+            <TableRow sx={{ bgcolor: '#f8fafc' }}>
+              <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>כלי</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>כותרת</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>קטגוריה</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>חומרה</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>ניתן לרכב?</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>סטטוס</TableCell>
+              <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>תאריך דיווח</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 600, color: '#475569', py: 2 }}>פעולות</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
-                  <CircularProgress />
+                <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                  <CircularProgress sx={{ color: '#6366f1' }} />
                 </TableCell>
               </TableRow>
             ) : filteredFaults.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} align="center">
-                  <Box sx={{ py: 4 }}>
-                    <Warning sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
-                    <Typography color="textSecondary">
+                  <Box sx={{ py: 6 }}>
+                    <Box sx={{
+                      width: 80,
+                      height: 80,
+                      borderRadius: '20px',
+                      background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto',
+                      mb: 3,
+                    }}>
+                      <Warning sx={{ fontSize: 40, color: '#6366f1' }} />
+                    </Box>
+                    <Typography variant="h6" sx={{ color: '#1e293b', fontWeight: 600, mb: 1 }}>
                       לא נמצאו תקלות
+                    </Typography>
+                    <Typography sx={{ color: '#64748b' }}>
+                      אין תקלות התואמות לחיפוש
                     </Typography>
                   </Box>
                 </TableCell>
               </TableRow>
             ) : (
-              filteredFaults.map((fault) => (
+              filteredFaults.map((fault, index) => (
                 <TableRow
                   key={fault._id || fault.id}
-                  hover
                   sx={{
-                    bgcolor: fault.canRide === false ? 'error.lighter' : 'inherit'
+                    animation: `fadeIn 0.3s ease-out ${index * 0.03}s both`,
+                    bgcolor: fault.canRide === false ? 'rgba(239, 68, 68, 0.04)' : 'inherit',
+                    '&:hover': {
+                      bgcolor: fault.canRide === false ? 'rgba(239, 68, 68, 0.08)' : 'rgba(99, 102, 241, 0.04)',
+                    },
+                    transition: 'background-color 0.2s ease-in-out',
                   }}
                 >
                   <TableCell>
-                    <Typography variant="body1" fontWeight="500">
+                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
                       {fault.vehicleLicensePlate || fault.vehicleNumber || '-'}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2" fontWeight="500">
+                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#1e293b' }}>
                       {fault.title || fault.description?.substring(0, 50) || '-'}
                     </Typography>
                   </TableCell>
@@ -440,47 +664,90 @@ export default function Faults() {
                     <Chip
                       label={getCategoryLabel(fault.category)}
                       size="small"
-                      variant="outlined"
+                      sx={{
+                        bgcolor: 'rgba(99, 102, 241, 0.1)',
+                        color: '#6366f1',
+                        fontWeight: 600,
+                        fontSize: '0.75rem',
+                        border: 'none',
+                      }}
                     />
                   </TableCell>
                   <TableCell>{getSeverityChip(fault.severity)}</TableCell>
                   <TableCell>
                     {fault.canRide === true ? (
-                      <Chip icon={<CheckCircle />} label="כן" color="success" size="small" />
+                      <Chip
+                        icon={<CheckCircle sx={{ fontSize: 16 }} />}
+                        label="כן"
+                        size="small"
+                        sx={{
+                          bgcolor: 'rgba(16, 185, 129, 0.1)',
+                          color: '#059669',
+                          fontWeight: 600,
+                          '& .MuiChip-icon': { color: 'inherit' },
+                        }}
+                      />
                     ) : fault.canRide === false ? (
-                      <Chip icon={<Cancel />} label="לא" color="error" size="small" />
+                      <Chip
+                        icon={<Cancel sx={{ fontSize: 16 }} />}
+                        label="לא"
+                        size="small"
+                        sx={{
+                          bgcolor: 'rgba(239, 68, 68, 0.1)',
+                          color: '#dc2626',
+                          fontWeight: 600,
+                          '& .MuiChip-icon': { color: 'inherit' },
+                        }}
+                      />
                     ) : (
-                      <Chip label="לא ידוע" size="small" />
+                      <Chip
+                        label="לא ידוע"
+                        size="small"
+                        sx={{
+                          bgcolor: 'rgba(100, 116, 139, 0.1)',
+                          color: '#64748b',
+                          fontWeight: 600,
+                        }}
+                      />
                     )}
                   </TableCell>
                   <TableCell>{getStatusChip(fault.status)}</TableCell>
-                  <TableCell>
+                  <TableCell sx={{ color: '#64748b' }}>
                     {formatDate(fault.reportedDate || fault.createdAt)}
                   </TableCell>
                   <TableCell align="center">
                     <IconButton
-                      color="primary"
                       size="small"
                       onClick={() => handleViewDetails(fault)}
+                      sx={{
+                        color: '#6366f1',
+                        '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.08)' },
+                      }}
                     >
                       <Visibility />
                     </IconButton>
                     {fault.status === 'open' && (
                       <IconButton
-                        color="warning"
                         size="small"
                         onClick={() => handleUpdateStatus(fault._id || fault.id, 'in_progress')}
                         title="העבר לטיפול"
+                        sx={{
+                          color: '#f59e0b',
+                          '&:hover': { bgcolor: 'rgba(245, 158, 11, 0.08)' },
+                        }}
                       >
                         <Build />
                       </IconButton>
                     )}
                     {fault.status === 'in_progress' && (
                       <IconButton
-                        color="success"
                         size="small"
                         onClick={() => handleUpdateStatus(fault._id || fault.id, 'resolved')}
                         title="סמן כנפתר"
+                        sx={{
+                          color: '#10b981',
+                          '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.08)' },
+                        }}
                       >
                         <CheckCircle />
                       </IconButton>
@@ -494,44 +761,75 @@ export default function Faults() {
       </TableContainer>
 
       {!loading && filteredFaults.length > 0 && (
-        <Box sx={{ mt: 2, textAlign: 'center' }}>
-          <Typography variant="body2" color="textSecondary">
+        <Box sx={{ mt: 3, textAlign: 'center' }}>
+          <Typography variant="body2" sx={{ color: '#64748b' }}>
             מציג {filteredFaults.length} מתוך {faults.length} תקלות
           </Typography>
         </Box>
       )}
 
-      {/* Details Dialog */}
+      {/* Modern Details Dialog */}
       <Dialog
         open={detailsDialogOpen}
         onClose={() => setDetailsDialogOpen(false)}
         maxWidth="md"
         fullWidth
         dir="rtl"
+        PaperProps={{
+          sx: {
+            borderRadius: '20px',
+            p: 1,
+          }
+        }}
       >
-        <DialogTitle>
-          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Warning /> פרטי תקלה
-          </Typography>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{
+              width: 40,
+              height: 40,
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #ef4444 0%, #f97316 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Warning sx={{ color: '#fff', fontSize: 22 }} />
+            </Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+              פרטי תקלה
+            </Typography>
+          </Box>
         </DialogTitle>
         <DialogContent>
           {selectedFault && (
             <Grid container spacing={2} sx={{ mt: 1 }}>
               <Grid item xs={12} sm={6}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="subtitle2" color="textSecondary">כלי</Typography>
-                    <Typography variant="body1" fontWeight="500">
+                <Card
+                  elevation={0}
+                  sx={{
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
+                  }}
+                >
+                  <CardContent sx={{ py: 2 }}>
+                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>כלי</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
                       {selectedFault.vehicleLicensePlate || selectedFault.vehicleNumber}
                     </Typography>
                   </CardContent>
                 </Card>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="subtitle2" color="textSecondary">תאריך דיווח</Typography>
-                    <Typography variant="body1" fontWeight="500">
+                <Card
+                  elevation={0}
+                  sx={{
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
+                  }}
+                >
+                  <CardContent sx={{ py: 2 }}>
+                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>תאריך דיווח</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
                       {formatDate(selectedFault.reportedDate || selectedFault.createdAt)}
                     </Typography>
                   </CardContent>
@@ -539,41 +837,75 @@ export default function Faults() {
               </Grid>
 
               <Grid item xs={12}>
-                <Card variant="outlined" sx={{
-                  bgcolor: selectedFault.canRide === false ? 'error.light' : 'background.paper'
-                }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>פרטי תקלה</Typography>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                <Card
+                  elevation={0}
+                  sx={{
+                    borderRadius: '16px',
+                    border: '1px solid',
+                    borderColor: selectedFault.canRide === false ? 'rgba(239, 68, 68, 0.3)' : '#e2e8f0',
+                    bgcolor: selectedFault.canRide === false ? 'rgba(239, 68, 68, 0.04)' : '#fff',
+                  }}
+                >
+                  <CardContent sx={{ p: 3 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: '#1e293b', mb: 2 }}>פרטי תקלה</Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
                       {getSeverityChip(selectedFault.severity)}
-                      <Chip label={getCategoryLabel(selectedFault.category)} color="primary" size="small" />
+                      <Chip
+                        label={getCategoryLabel(selectedFault.category)}
+                        size="small"
+                        sx={{
+                          bgcolor: 'rgba(99, 102, 241, 0.1)',
+                          color: '#6366f1',
+                          fontWeight: 600,
+                        }}
+                      />
                       {getStatusChip(selectedFault.status)}
                       {selectedFault.canRide === true ? (
-                        <Chip icon={<CheckCircle />} label="ניתן לרכב" color="success" size="small" />
+                        <Chip
+                          icon={<CheckCircle sx={{ fontSize: 16 }} />}
+                          label="ניתן לרכב"
+                          size="small"
+                          sx={{
+                            bgcolor: 'rgba(16, 185, 129, 0.1)',
+                            color: '#059669',
+                            fontWeight: 600,
+                            '& .MuiChip-icon': { color: 'inherit' },
+                          }}
+                        />
                       ) : selectedFault.canRide === false ? (
-                        <Chip icon={<Cancel />} label="לא ניתן לרכב" color="error" size="small" />
+                        <Chip
+                          icon={<Cancel sx={{ fontSize: 16 }} />}
+                          label="לא ניתן לרכב"
+                          size="small"
+                          sx={{
+                            bgcolor: 'rgba(239, 68, 68, 0.1)',
+                            color: '#dc2626',
+                            fontWeight: 600,
+                            '& .MuiChip-icon': { color: 'inherit' },
+                          }}
+                        />
                       ) : null}
                     </Box>
-                    <Typography variant="subtitle1" fontWeight="500" gutterBottom>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#1e293b', mb: 1 }}>
                       {selectedFault.title}
                     </Typography>
-                    <Typography variant="body2" color="textSecondary">
+                    <Typography variant="body2" sx={{ color: '#64748b', lineHeight: 1.7 }}>
                       {selectedFault.description}
                     </Typography>
 
                     {selectedFault.location && (
                       <>
-                        <Divider sx={{ my: 2 }} />
-                        <Typography variant="subtitle2">מיקום:</Typography>
-                        <Typography variant="body2">{selectedFault.location}</Typography>
+                        <Divider sx={{ my: 2, borderColor: '#e2e8f0' }} />
+                        <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>מיקום:</Typography>
+                        <Typography variant="body2" sx={{ color: '#1e293b' }}>{selectedFault.location}</Typography>
                       </>
                     )}
 
                     {selectedFault.currentKm && (
                       <>
-                        <Divider sx={{ my: 2 }} />
-                        <Typography variant="subtitle2">קילומטראז':</Typography>
-                        <Typography variant="body2">{selectedFault.currentKm.toLocaleString()} ק"מ</Typography>
+                        <Divider sx={{ my: 2, borderColor: '#e2e8f0' }} />
+                        <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>קילומטראז':</Typography>
+                        <Typography variant="body2" sx={{ color: '#1e293b' }}>{selectedFault.currentKm.toLocaleString()} ק"מ</Typography>
                       </>
                     )}
                   </CardContent>
@@ -582,9 +914,15 @@ export default function Faults() {
 
               {selectedFault.canRide === false && (
                 <Grid item xs={12}>
-                  <Alert severity="error">
-                    <Typography variant="body2" fontWeight="500">
-                      <ErrorOutline sx={{ verticalAlign: 'middle', mr: 0.5 }} />
+                  <Alert
+                    severity="error"
+                    sx={{
+                      borderRadius: '12px',
+                      border: '1px solid rgba(239, 68, 68, 0.2)',
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      <ErrorOutline sx={{ verticalAlign: 'middle', mr: 0.5, fontSize: 18 }} />
                       שים לב: דווח שלא ניתן לרכב על כלי זה!
                     </Typography>
                   </Alert>
@@ -592,19 +930,28 @@ export default function Faults() {
               )}
 
               <Grid item xs={12}>
-                <Divider />
+                <Divider sx={{ borderColor: '#e2e8f0' }} />
                 <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>פעולות זמינות:</Typography>
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 600, mb: 1.5 }}>פעולות זמינות:</Typography>
+                  <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
                     {selectedFault.status === 'open' && (
                       <Button
                         variant="contained"
-                        color="warning"
                         size="small"
                         startIcon={<Build />}
                         onClick={() => {
                           handleUpdateStatus(selectedFault._id || selectedFault.id, 'in_progress');
                           setDetailsDialogOpen(false);
+                        }}
+                        sx={{
+                          bgcolor: '#f59e0b',
+                          borderRadius: '10px',
+                          fontWeight: 600,
+                          boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
+                          '&:hover': {
+                            bgcolor: '#d97706',
+                            boxShadow: '0 6px 16px rgba(245, 158, 11, 0.4)',
+                          },
                         }}
                       >
                         העבר לטיפול
@@ -613,12 +960,21 @@ export default function Faults() {
                     {selectedFault.status === 'in_progress' && (
                       <Button
                         variant="contained"
-                        color="success"
                         size="small"
                         startIcon={<CheckCircle />}
                         onClick={() => {
                           handleUpdateStatus(selectedFault._id || selectedFault.id, 'resolved');
                           setDetailsDialogOpen(false);
+                        }}
+                        sx={{
+                          bgcolor: '#10b981',
+                          borderRadius: '10px',
+                          fontWeight: 600,
+                          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                          '&:hover': {
+                            bgcolor: '#059669',
+                            boxShadow: '0 6px 16px rgba(16, 185, 129, 0.4)',
+                          },
                         }}
                       >
                         סמן כנפתר
@@ -630,8 +986,19 @@ export default function Faults() {
             </Grid>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDetailsDialogOpen(false)}>סגור</Button>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setDetailsDialogOpen(false)}
+            sx={{
+              color: '#64748b',
+              fontWeight: 600,
+              borderRadius: '10px',
+              px: 3,
+              '&:hover': { bgcolor: '#f1f5f9' },
+            }}
+          >
+            סגור
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

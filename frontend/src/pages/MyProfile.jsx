@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -18,10 +18,6 @@ import {
   DialogActions,
   TextField,
   Snackbar,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
 } from '@mui/material';
 import {
   Person,
@@ -36,6 +32,9 @@ import {
   CheckCircle,
   HourglassEmpty,
   Warning,
+  Home,
+  CreditCard,
+  TwoWheeler,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { ridersAPI, vehiclesAPI, monthlyChecksAPI } from '../services/api';
@@ -61,6 +60,23 @@ export default function MyProfile() {
     },
   });
 
+  // מפת סטטוסים מודרנית
+  const statusMap = useMemo(() => ({
+    active: { label: 'פעיל', bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#059669' },
+    inactive: { label: 'לא פעיל', bgcolor: 'rgba(148, 163, 184, 0.1)', color: '#64748b' },
+    suspended: { label: 'מושעה', bgcolor: 'rgba(245, 158, 11, 0.1)', color: '#d97706' },
+  }), []);
+
+  // מפת תפקידים
+  const roleMap = useMemo(() => ({
+    super_admin: { label: 'מנהל על', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#dc2626' },
+    manager: { label: 'מנהל', bgcolor: 'rgba(245, 158, 11, 0.1)', color: '#d97706' },
+    secretary: { label: 'מזכירה', bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#2563eb' },
+    logistics: { label: 'לוגיסטיקה', bgcolor: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' },
+    rider: { label: 'רוכב', bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#059669' },
+    regional_manager: { label: 'מנהל אזורי', bgcolor: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6' },
+  }), []);
+
   useEffect(() => {
     loadMyProfile();
   }, [user]);
@@ -68,10 +84,8 @@ export default function MyProfile() {
   const loadMyProfile = async () => {
     try {
       setLoading(true);
-
       let riderData = null;
 
-      // נסיון 1: אם למשתמש יש riderId - טען לפי ID
       if (user?.riderId) {
         try {
           const riderResponse = await ridersAPI.getById(user.riderId);
@@ -82,17 +96,14 @@ export default function MyProfile() {
         }
       }
 
-      // נסיון 2: אם אין riderId, חפש לפי username או שם
       if (!riderData && user?.username) {
         try {
           const ridersResponse = await ridersAPI.getAll();
           const allRiders = ridersResponse.data.riders || ridersResponse.data;
-
           const matchedRider = allRiders.find(r =>
             (r.username && r.username.toLowerCase() === user.username.toLowerCase()) ||
             (`${r.firstName} ${r.lastName}`.toLowerCase() === `${user.firstName} ${user.lastName}`.toLowerCase())
           );
-
           if (matchedRider) {
             riderData = matchedRider;
             setRider(matchedRider);
@@ -102,14 +113,12 @@ export default function MyProfile() {
         }
       }
 
-      // אם לא נמצא רוכב - הצג שגיאה ידידותית
       if (!riderData) {
         setError('לא נמצא פרופיל רוכב למשתמש זה. אנא פנה למנהל המערכת.');
         setLoading(false);
         return;
       }
 
-      // טעינת פרטי הכלי אם משויך
       if (riderData.assignmentStatus === 'assigned' && riderData.assignedVehicleId) {
         try {
           const vehicleResponse = await vehiclesAPI.getById(riderData.assignedVehicleId);
@@ -119,11 +128,9 @@ export default function MyProfile() {
         }
       }
 
-      // טעינת בקרות חודשיות של הרוכב
       try {
         const checksResponse = await monthlyChecksAPI.getAll({ riderId: riderData.id });
         const checks = checksResponse.data.monthlyChecks || [];
-        // מיון לפי תאריך - החדשות קודם
         checks.sort((a, b) => {
           const dateA = a.checkDate?.seconds ? new Date(a.checkDate.seconds * 1000) : new Date(a.checkDate);
           const dateB = b.checkDate?.seconds ? new Date(b.checkDate.seconds * 1000) : new Date(b.checkDate);
@@ -134,7 +141,6 @@ export default function MyProfile() {
         console.error('Error loading monthly checks:', err);
       }
 
-      // אתחול טופס העריכה
       setEditForm({
         phone: riderData.phone || '',
         email: riderData.email || '',
@@ -161,13 +167,11 @@ export default function MyProfile() {
   const handleEditProfile = async () => {
     try {
       setEditingProfile(true);
-
       await ridersAPI.update(rider.id, {
         phone: editForm.phone,
         email: editForm.email,
         address: editForm.address,
       });
-
       showSnackbar('הפרופיל עודכן בהצלחה', 'success');
       setEditDialogOpen(false);
       loadMyProfile();
@@ -180,30 +184,43 @@ export default function MyProfile() {
   };
 
   const getStatusChip = (status) => {
-    const statusMap = {
-      active: { label: 'פעיל', color: 'success' },
-      inactive: { label: 'לא פעיל', color: 'default' },
-      suspended: { label: 'מושעה', color: 'warning' },
-    };
-    const { label, color } = statusMap[status] || { label: status, color: 'default' };
-    return <Chip label={label} color={color} size="small" />;
+    const statusInfo = statusMap[status] || { label: status, bgcolor: 'rgba(148, 163, 184, 0.1)', color: '#64748b' };
+    return (
+      <Chip
+        label={statusInfo.label}
+        size="small"
+        sx={{
+          bgcolor: statusInfo.bgcolor,
+          color: statusInfo.color,
+          fontWeight: 600,
+          fontSize: '0.75rem',
+        }}
+      />
+    );
   };
 
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-        <CircularProgress />
+        <CircularProgress sx={{ color: '#6366f1' }} />
       </Box>
     );
   }
 
   if (error) {
     return (
-      <Box>
-        <Alert severity="warning" sx={{ mb: 3 }}>
+      <Box sx={{ animation: 'fadeIn 0.3s ease-out' }}>
+        <Alert
+          severity="warning"
+          sx={{
+            mb: 3,
+            borderRadius: '12px',
+            border: '1px solid rgba(245, 158, 11, 0.2)',
+          }}
+        >
           {error}
         </Alert>
-        <Typography variant="body2" color="textSecondary">
+        <Typography variant="body2" sx={{ color: '#64748b' }}>
           אם אתה אמור להיות רוכב, אנא פנה למנהל המערכת לשיוך חשבון המשתמש לרוכב
         </Typography>
       </Box>
@@ -212,12 +229,12 @@ export default function MyProfile() {
 
   if (!rider) {
     return (
-      <Box sx={{ textAlign: 'center', mt: 4 }}>
-        <Person sx={{ fontSize: 80, color: 'text.secondary', mb: 2 }} />
-        <Typography variant="h5" gutterBottom>
+      <Box sx={{ textAlign: 'center', mt: 4, animation: 'fadeIn 0.3s ease-out' }}>
+        <Person sx={{ fontSize: 80, color: '#cbd5e1', mb: 2 }} />
+        <Typography variant="h5" sx={{ fontWeight: 600, color: '#1e293b', mb: 1 }}>
           לא נמצא פרופיל
         </Typography>
-        <Typography color="textSecondary">
+        <Typography sx={{ color: '#64748b' }}>
           לא נמצא פרופיל רוכב למשתמש זה
         </Typography>
       </Box>
@@ -225,16 +242,57 @@ export default function MyProfile() {
   }
 
   return (
-    <Box>
+    <Box sx={{ animation: 'fadeIn 0.3s ease-out' }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" fontWeight="bold">
-          הפרופיל שלי
-        </Typography>
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', sm: 'center' },
+        gap: 2,
+        mb: 3,
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{
+            width: 56,
+            height: 56,
+            borderRadius: '16px',
+            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 8px 24px rgba(99, 102, 241, 0.3)',
+          }}>
+            <Person sx={{ fontSize: 28, color: '#ffffff' }} />
+          </Box>
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: '#1e293b', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+              הפרופיל שלי
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#64748b' }}>
+              {rider.firstName} {rider.lastName}
+            </Typography>
+          </Box>
+        </Box>
+
         <Button
           variant="contained"
           startIcon={<Edit />}
           onClick={() => setEditDialogOpen(true)}
+          sx={{
+            borderRadius: '12px',
+            px: 3,
+            py: 1.5,
+            fontWeight: 600,
+            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+            boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+              boxShadow: '0 6px 20px rgba(99, 102, 241, 0.4)',
+              transform: 'translateY(-1px)',
+            },
+            transition: 'all 0.2s ease-in-out',
+          }}
         >
           עריכת פרטים
         </Button>
@@ -243,62 +301,68 @@ export default function MyProfile() {
       <Grid container spacing={3}>
         {/* פרטים אישיים */}
         <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Person /> פרטים אישיים
-              </Typography>
-              <Divider sx={{ my: 2 }} />
+          <Card sx={{
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            height: '100%',
+          }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Box sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '10px',
+                  bgcolor: 'rgba(99, 102, 241, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Person sx={{ color: '#6366f1', fontSize: 20 }} />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                  פרטים אישיים
+                </Typography>
+              </Box>
+              <Divider sx={{ mb: 3, borderColor: '#e2e8f0' }} />
 
               <Grid container spacing={2}>
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="textSecondary">
-                    שם פרטי
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500">
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>שם פרטי</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
                     {rider.firstName}
                   </Typography>
                 </Grid>
-
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="textSecondary">
-                    שם משפחה
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500">
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>שם משפחה</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
                     {rider.lastName}
                   </Typography>
                 </Grid>
-
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="textSecondary">
-                    תעודת זהות
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500">
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>תעודת זהות</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
                     {rider.idNumber || '-'}
                   </Typography>
                 </Grid>
-
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="textSecondary">
-                    סטטוס
-                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>סטטוס</Typography>
                   <Box sx={{ mt: 0.5 }}>
                     {getStatusChip(rider.status)}
                   </Box>
                 </Grid>
-
                 <Grid item xs={12}>
-                  <Typography variant="body2" color="textSecondary">
-                    תאריך הצטרפות
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <CalendarMonth fontSize="small" />
-                    {rider.joinDate
-                      ? new Date(rider.joinDate).toLocaleDateString('he-IL')
-                      : rider.createdAt
-                      ? new Date(rider.createdAt).toLocaleDateString('he-IL')
-                      : '-'}
-                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>תאריך הצטרפות</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <CalendarMonth sx={{ fontSize: 16, color: '#94a3b8' }} />
+                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                      {rider.joinDate
+                        ? new Date(rider.joinDate).toLocaleDateString('he-IL')
+                        : rider.createdAt
+                        ? new Date(rider.createdAt).toLocaleDateString('he-IL')
+                        : '-'}
+                    </Typography>
+                  </Box>
                 </Grid>
               </Grid>
             </CardContent>
@@ -307,56 +371,67 @@ export default function MyProfile() {
 
         {/* פרטי קשר */}
         <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Phone /> פרטי קשר
-              </Typography>
-              <Divider sx={{ my: 2 }} />
+          <Card sx={{
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            height: '100%',
+          }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Box sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '10px',
+                  bgcolor: 'rgba(16, 185, 129, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Phone sx={{ color: '#059669', fontSize: 20 }} />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                  פרטי קשר
+                </Typography>
+              </Box>
+              <Divider sx={{ mb: 3, borderColor: '#e2e8f0' }} />
 
               <Grid container spacing={2}>
                 <Grid item xs={12}>
-                  <Typography variant="body2" color="textSecondary">
-                    טלפון
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Phone fontSize="small" />
-                    {rider.phone || '-'}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                    <Phone sx={{ color: '#94a3b8', fontSize: 18 }} />
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>טלפון</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                        {rider.phone || '-'}
+                      </Typography>
+                    </Box>
+                  </Box>
                 </Grid>
-
                 <Grid item xs={12}>
-                  <Typography variant="body2" color="textSecondary">
-                    אימייל
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Email fontSize="small" />
-                    {rider.email || '-'}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                    <Email sx={{ color: '#94a3b8', fontSize: 18 }} />
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>אימייל</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                        {rider.email || '-'}
+                      </Typography>
+                    </Box>
+                  </Box>
                 </Grid>
-
                 <Grid item xs={12}>
-                  <Typography variant="body2" color="textSecondary">
-                    כתובת
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <LocationOn fontSize="small" />
-                    {rider.address?.street || rider.address?.city
-                      ? `${rider.address.street || ''} ${rider.address.city || ''}`.trim()
-                      : '-'}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Home sx={{ color: '#94a3b8', fontSize: 18 }} />
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>כתובת</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                        {rider.address?.street || rider.address?.city
+                          ? `${rider.address.street || ''} ${rider.address.city || ''}`.trim()
+                          : '-'}
+                      </Typography>
+                    </Box>
+                  </Box>
                 </Grid>
-
-                {rider.address?.postalCode && (
-                  <Grid item xs={12}>
-                    <Typography variant="body2" color="textSecondary">
-                      מיקוד
-                    </Typography>
-                    <Typography variant="body1" fontWeight="500">
-                      {rider.address.postalCode}
-                    </Typography>
-                  </Grid>
-                )}
               </Grid>
             </CardContent>
           </Card>
@@ -364,42 +439,60 @@ export default function MyProfile() {
 
         {/* רישיון ואישורים */}
         <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Badge /> רישיון ואישורים
-              </Typography>
-              <Divider sx={{ my: 2 }} />
+          <Card sx={{
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            height: '100%',
+          }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Box sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '10px',
+                  bgcolor: 'rgba(245, 158, 11, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <CreditCard sx={{ color: '#d97706', fontSize: 20 }} />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                  רישיון ואישורים
+                </Typography>
+              </Box>
+              <Divider sx={{ mb: 3, borderColor: '#e2e8f0' }} />
 
               <Grid container spacing={2}>
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="textSecondary">
-                    מספר רישיון
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500">
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>מספר רישיון</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
                     {rider.licenseNumber || '-'}
                   </Typography>
                 </Grid>
-
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="textSecondary">
-                    תוקף רישיון
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500">
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>תוקף רישיון</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
                     {rider.licenseExpiry
                       ? new Date(rider.licenseExpiry).toLocaleDateString('he-IL')
                       : '-'}
                   </Typography>
                 </Grid>
-
                 {rider.licenseExpiry && (
                   <Grid item xs={12}>
                     {new Date(rider.licenseExpiry) < new Date() ? (
-                      <Alert severity="error">רישיון הנהיגה פג תוקף!</Alert>
+                      <Alert severity="error" sx={{ borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                        רישיון הנהיגה פג תוקף!
+                      </Alert>
                     ) : new Date(rider.licenseExpiry) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) ? (
-                      <Alert severity="warning">רישיון הנהיגה עומד לפוג בקרוב</Alert>
+                      <Alert severity="warning" sx={{ borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                        רישיון הנהיגה עומד לפוג בקרוב
+                      </Alert>
                     ) : (
-                      <Alert severity="success">רישיון הנהיגה בתוקף</Alert>
+                      <Alert severity="success" sx={{ borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                        רישיון הנהיגה בתוקף
+                      </Alert>
                     )}
                   </Grid>
                 )}
@@ -410,52 +503,77 @@ export default function MyProfile() {
 
         {/* שיוך לכלי */}
         <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <DirectionsCar /> שיוך לכלי
-              </Typography>
-              <Divider sx={{ my: 2 }} />
+          <Card sx={{
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            height: '100%',
+          }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Box sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '10px',
+                  bgcolor: 'rgba(139, 92, 246, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <TwoWheeler sx={{ color: '#8b5cf6', fontSize: 20 }} />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                  שיוך לכלי
+                </Typography>
+              </Box>
+              <Divider sx={{ mb: 3, borderColor: '#e2e8f0' }} />
 
               <Grid container spacing={2}>
                 <Grid item xs={12}>
-                  <Typography variant="body2" color="textSecondary">
-                    סטטוס שיוך
-                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>סטטוס שיוך</Typography>
                   <Box sx={{ mt: 0.5 }}>
                     <Chip
                       label={rider.assignmentStatus === 'assigned' ? 'משויך' : 'לא משויך'}
-                      color={rider.assignmentStatus === 'assigned' ? 'primary' : 'default'}
                       size="small"
+                      sx={{
+                        bgcolor: rider.assignmentStatus === 'assigned' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(148, 163, 184, 0.1)',
+                        color: rider.assignmentStatus === 'assigned' ? '#8b5cf6' : '#64748b',
+                        fontWeight: 600,
+                        fontSize: '0.75rem',
+                      }}
                     />
                   </Box>
                 </Grid>
-
                 {rider.assignmentStatus === 'assigned' && vehicle && (
                   <>
                     <Grid item xs={12}>
-                      <Typography variant="body2" color="textSecondary">
-                        מספר כלי
-                      </Typography>
-                      <Typography variant="body1" fontWeight="500">
+                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>מספר כלי</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
                         {vehicle.vehicleNumber || vehicle.internalNumber || '-'}
                       </Typography>
                     </Grid>
-
                     <Grid item xs={12}>
-                      <Typography variant="body2" color="textSecondary">
-                        סוג כלי
-                      </Typography>
-                      <Typography variant="body1" fontWeight="500">
+                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>סוג כלי</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
                         {vehicle.type || 'אופנוע'}
                       </Typography>
                     </Grid>
-
                     <Grid item xs={12}>
                       <Button
                         variant="outlined"
                         fullWidth
                         onClick={() => navigate('/my-vehicle')}
+                        sx={{
+                          mt: 1,
+                          borderRadius: '12px',
+                          fontWeight: 600,
+                          borderColor: '#e2e8f0',
+                          color: '#6366f1',
+                          '&:hover': {
+                            borderColor: '#6366f1',
+                            bgcolor: 'rgba(99, 102, 241, 0.05)',
+                          },
+                        }}
                       >
                         צפה בפרטי הכלי
                       </Button>
@@ -469,17 +587,37 @@ export default function MyProfile() {
 
         {/* בקרות חודשיות */}
         <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Assignment /> בקרות חודשיות
-              </Typography>
-              <Divider sx={{ my: 2 }} />
+          <Card sx={{
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Box sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '10px',
+                  bgcolor: 'rgba(59, 130, 246, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Assignment sx={{ color: '#2563eb', fontSize: 20 }} />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                  בקרות חודשיות
+                </Typography>
+              </Box>
+              <Divider sx={{ mb: 3, borderColor: '#e2e8f0' }} />
 
               {monthlyChecks.length === 0 ? (
-                <Typography color="textSecondary" sx={{ textAlign: 'center', py: 2 }}>
-                  אין בקרות חודשיות
-                </Typography>
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Assignment sx={{ fontSize: 64, color: '#cbd5e1', mb: 2 }} />
+                  <Typography sx={{ color: '#64748b' }}>
+                    אין בקרות חודשיות
+                  </Typography>
+                </Box>
               ) : (
                 <Grid container spacing={2}>
                   {monthlyChecks.slice(0, 6).map((check) => {
@@ -491,26 +629,28 @@ export default function MyProfile() {
                     const year = checkDate.getFullYear();
 
                     const statusConfig = {
-                      pending: { label: 'ממתין', color: 'warning', icon: <HourglassEmpty fontSize="small" /> },
-                      in_progress: { label: 'בתהליך', color: 'info', icon: <HourglassEmpty fontSize="small" /> },
-                      completed: { label: 'הושלם', color: 'success', icon: <CheckCircle fontSize="small" /> },
-                      overdue: { label: 'באיחור', color: 'error', icon: <Warning fontSize="small" /> },
+                      pending: { label: 'ממתין', bgcolor: 'rgba(245, 158, 11, 0.1)', color: '#d97706', icon: <HourglassEmpty fontSize="small" /> },
+                      in_progress: { label: 'בתהליך', bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', icon: <HourglassEmpty fontSize="small" /> },
+                      completed: { label: 'הושלם', bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#059669', icon: <CheckCircle fontSize="small" /> },
+                      overdue: { label: 'באיחור', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', icon: <Warning fontSize="small" /> },
                     };
                     const status = statusConfig[check.status] || statusConfig.pending;
 
                     return (
                       <Grid item xs={12} sm={6} md={4} key={check.id}>
                         <Paper
-                          variant="outlined"
                           sx={{
                             p: 2,
                             display: 'flex',
                             flexDirection: 'column',
                             gap: 1,
+                            borderRadius: '12px',
+                            border: '1px solid #e2e8f0',
                             cursor: check.status === 'pending' ? 'pointer' : 'default',
+                            transition: 'all 0.2s ease-in-out',
                             '&:hover': check.status === 'pending' ? {
-                              backgroundColor: 'action.hover',
-                              borderColor: 'primary.main',
+                              borderColor: '#6366f1',
+                              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.15)',
                             } : {},
                           }}
                           onClick={() => {
@@ -520,17 +660,22 @@ export default function MyProfile() {
                           }}
                         >
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Typography variant="subtitle1" fontWeight="bold">
+                            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1e293b' }}>
                               {monthName} {year}
                             </Typography>
                             <Chip
                               label={status.label}
-                              color={status.color}
                               size="small"
                               icon={status.icon}
+                              sx={{
+                                bgcolor: status.bgcolor,
+                                color: status.color,
+                                fontWeight: 600,
+                                '& .MuiChip-icon': { color: status.color },
+                              }}
                             />
                           </Box>
-                          <Typography variant="body2" color="textSecondary">
+                          <Typography variant="body2" sx={{ color: '#64748b' }}>
                             כלי: {check.vehicleLicensePlate || check.vehiclePlate || '-'}
                           </Typography>
                           {check.status === 'pending' && (
@@ -538,17 +683,25 @@ export default function MyProfile() {
                               variant="contained"
                               size="small"
                               fullWidth
-                              sx={{ mt: 1 }}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigate(`/monthly-check/${check.id}`);
+                              }}
+                              sx={{
+                                mt: 1,
+                                borderRadius: '10px',
+                                fontWeight: 600,
+                                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                                '&:hover': {
+                                  background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                                },
                               }}
                             >
                               מלא בקרה
                             </Button>
                           )}
                           {check.status === 'completed' && check.completedAt && (
-                            <Typography variant="caption" color="textSecondary">
+                            <Typography variant="caption" sx={{ color: '#94a3b8' }}>
                               הושלם: {new Date(check.completedAt?.seconds ? check.completedAt.seconds * 1000 : check.completedAt).toLocaleDateString('he-IL')}
                             </Typography>
                           )}
@@ -560,8 +713,16 @@ export default function MyProfile() {
               )}
 
               {monthlyChecks.length > 6 && (
-                <Box sx={{ mt: 2, textAlign: 'center' }}>
-                  <Button variant="text" onClick={() => navigate('/my-checks')}>
+                <Box sx={{ mt: 3, textAlign: 'center' }}>
+                  <Button
+                    variant="text"
+                    onClick={() => navigate('/my-checks')}
+                    sx={{
+                      color: '#6366f1',
+                      fontWeight: 600,
+                      '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.1)' },
+                    }}
+                  >
                     הצג את כל הבקרות ({monthlyChecks.length})
                   </Button>
                 </Box>
@@ -572,54 +733,73 @@ export default function MyProfile() {
 
         {/* פרטי משתמש */}
         <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Person /> פרטי משתמש במערכת
-              </Typography>
-              <Divider sx={{ my: 2 }} />
+          <Card sx={{
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Box sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '10px',
+                  bgcolor: 'rgba(236, 72, 153, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Person sx={{ color: '#db2777', fontSize: 20 }} />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                  פרטי משתמש במערכת
+                </Typography>
+              </Box>
+              <Divider sx={{ mb: 3, borderColor: '#e2e8f0' }} />
 
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={4}>
-                  <Typography variant="body2" color="textSecondary">
-                    שם משתמש
-                  </Typography>
-                  <Typography variant="body1" fontWeight="500">
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>שם משתמש</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
                     {user?.username || '-'}
                   </Typography>
                 </Grid>
-
                 <Grid item xs={12} sm={4}>
-                  <Typography variant="body2" color="textSecondary">
-                    תפקידים במערכת
-                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>תפקידים במערכת</Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
                     {(() => {
                       const userRoles = Array.isArray(user?.roles) ? user.roles : [user?.role];
-                      const roleLabels = {
-                        'super_admin': 'מנהל על',
-                        'manager': 'מנהל',
-                        'secretary': 'מזכירה',
-                        'logistics': 'לוגיסטיקה',
-                        'rider': 'רוכב',
-                        'regional_manager': 'מנהל אזורי'
-                      };
-                      return userRoles.map((r, index) => (
-                        <Chip key={index} label={roleLabels[r] || r} size="small" />
-                      ));
+                      return userRoles.map((r, index) => {
+                        const roleInfo = roleMap[r] || { label: r, bgcolor: 'rgba(148, 163, 184, 0.1)', color: '#64748b' };
+                        return (
+                          <Chip
+                            key={index}
+                            label={roleInfo.label}
+                            size="small"
+                            sx={{
+                              bgcolor: roleInfo.bgcolor,
+                              color: roleInfo.color,
+                              fontWeight: 600,
+                              fontSize: '0.75rem',
+                            }}
+                          />
+                        );
+                      });
                     })()}
                   </Box>
                 </Grid>
-
                 <Grid item xs={12} sm={4}>
-                  <Typography variant="body2" color="textSecondary">
-                    סטטוס חשבון
-                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>סטטוס חשבון</Typography>
                   <Box sx={{ mt: 0.5 }}>
                     <Chip
                       label={user?.isActive ? 'פעיל' : 'לא פעיל'}
-                      color={user?.isActive ? 'success' : 'default'}
                       size="small"
+                      sx={{
+                        bgcolor: user?.isActive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(148, 163, 184, 0.1)',
+                        color: user?.isActive ? '#059669' : '#64748b',
+                        fontWeight: 600,
+                        fontSize: '0.75rem',
+                      }}
                     />
                   </Box>
                 </Grid>
@@ -636,25 +816,47 @@ export default function MyProfile() {
         maxWidth="sm"
         fullWidth
         dir="rtl"
+        PaperProps={{
+          sx: {
+            borderRadius: '20px',
+          },
+        }}
       >
-        <DialogTitle>עריכת פרטים</DialogTitle>
-        <DialogContent>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{
+              width: 48,
+              height: 48,
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Edit sx={{ fontSize: 24, color: '#ffffff' }} />
+            </Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+              עריכת פרטים
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
           <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <TextField
               label="טלפון"
               value={editForm.phone}
               onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
               fullWidth
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
             />
-
             <TextField
               label="אימייל"
               type="email"
               value={editForm.email}
               onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
               fullWidth
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
             />
-
             <TextField
               label="רחוב"
               value={editForm.address.street}
@@ -663,8 +865,8 @@ export default function MyProfile() {
                 address: { ...editForm.address, street: e.target.value }
               })}
               fullWidth
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
             />
-
             <TextField
               label="עיר"
               value={editForm.address.city}
@@ -673,8 +875,8 @@ export default function MyProfile() {
                 address: { ...editForm.address, city: e.target.value }
               })}
               fullWidth
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
             />
-
             <TextField
               label="מיקוד"
               value={editForm.address.postalCode}
@@ -683,19 +885,57 @@ export default function MyProfile() {
                 address: { ...editForm.address, postalCode: e.target.value }
               })}
               fullWidth
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
             />
-
-            <Alert severity="info">
+            <Alert
+              severity="info"
+              sx={{
+                borderRadius: '12px',
+                border: '1px solid rgba(59, 130, 246, 0.2)',
+              }}
+            >
               שינויים אחרים יכולים להיעשות רק על ידי מנהל המערכת
             </Alert>
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>ביטול</Button>
+        <DialogActions sx={{ px: 3, pb: 3, gap: 2 }}>
+          <Button
+            onClick={() => setEditDialogOpen(false)}
+            variant="outlined"
+            sx={{
+              borderRadius: '12px',
+              px: 4,
+              py: 1.2,
+              fontWeight: 600,
+              borderColor: '#e2e8f0',
+              color: '#64748b',
+              '&:hover': {
+                borderColor: '#cbd5e1',
+                bgcolor: '#f8fafc',
+              },
+            }}
+          >
+            ביטול
+          </Button>
           <Button
             onClick={handleEditProfile}
             variant="contained"
             disabled={editingProfile}
+            sx={{
+              borderRadius: '12px',
+              px: 4,
+              py: 1.2,
+              fontWeight: 600,
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+              },
+              '&:disabled': {
+                background: '#e2e8f0',
+                boxShadow: 'none',
+              },
+            }}
           >
             {editingProfile ? 'שומר...' : 'שמור שינויים'}
           </Button>
@@ -712,6 +952,11 @@ export default function MyProfile() {
         <Alert
           severity={snackbar.severity}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
+          sx={{
+            borderRadius: '12px',
+            fontWeight: 500,
+            boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+          }}
         >
           {snackbar.message}
         </Alert>
