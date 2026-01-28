@@ -55,6 +55,86 @@ router.get('/', async (req, res) => {
   }
 });
 
+// ==================== Google Drive Endpoints (Static routes MUST come before /:id) ====================
+
+// @route   GET /api/vehicles/list-files
+// @desc    קבלת רשימת קבצים בתיקייה
+// @access  Private
+router.get('/list-files', async (req, res) => {
+  try {
+    const { folderId } = req.query;
+
+    if (!folderId) {
+      return res.status(400).json({
+        success: false,
+        message: 'מזהה תיקייה הוא שדה חובה'
+      });
+    }
+
+    const files = await googleDriveService.listFiles(folderId);
+
+    res.json({
+      success: true,
+      files
+    });
+  } catch (error) {
+    console.error('Error listing files:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה בקבלת רשימת קבצים'
+    });
+  }
+});
+
+// @route   GET /api/vehicles/drive-structure
+// @desc    קבלת מבנה התיקיות הנוכחי בדרייב
+// @access  Private (מנהלים בלבד)
+router.get('/drive-structure', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+  try {
+    const structure = await googleDriveService.getDriveFolderStructure();
+
+    res.json({
+      success: true,
+      data: structure
+    });
+  } catch (error) {
+    console.error('Error getting Drive structure:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה בקבלת מבנה הדרייב'
+    });
+  }
+});
+
+// @route   DELETE /api/vehicles/delete-file
+// @desc    מחיקת קובץ מ-Drive
+// @access  Private (מנהלים בלבד)
+router.delete('/delete-file', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+  try {
+    const { fileId } = req.query;
+
+    if (!fileId) {
+      return res.status(400).json({
+        success: false,
+        message: 'מזהה קובץ הוא שדה חובה'
+      });
+    }
+
+    await googleDriveService.deleteFile(fileId);
+
+    res.json({
+      success: true,
+      message: 'קובץ נמחק בהצלחה'
+    });
+  } catch (error) {
+    console.error('Error deleting file:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה במחיקת קובץ'
+    });
+  }
+});
+
 // @route   GET /api/vehicles/:id
 // @desc    קבלת כלי לפי ID
 // @access  Private
@@ -288,64 +368,6 @@ router.post('/upload-file', upload.single('file'), async (req, res) => {
   }
 });
 
-// @route   GET /api/vehicles/list-files
-// @desc    קבלת רשימת קבצים בתיקייה
-// @access  Private
-router.get('/list-files', async (req, res) => {
-  try {
-    const { folderId } = req.query;
-
-    if (!folderId) {
-      return res.status(400).json({
-        success: false,
-        message: 'מזהה תיקייה הוא שדה חובה'
-      });
-    }
-
-    const files = await googleDriveService.listFiles(folderId);
-
-    res.json({
-      success: true,
-      files
-    });
-  } catch (error) {
-    console.error('Error listing files:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'שגיאה בקבלת רשימת קבצים'
-    });
-  }
-});
-
-// @route   DELETE /api/vehicles/delete-file
-// @desc    מחיקת קובץ מ-Drive
-// @access  Private (מנהלים בלבד)
-router.delete('/delete-file', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
-  try {
-    const { fileId } = req.query;
-
-    if (!fileId) {
-      return res.status(400).json({
-        success: false,
-        message: 'מזהה קובץ הוא שדה חובה'
-      });
-    }
-
-    const result = await googleDriveService.deleteFile(fileId);
-
-    res.json({
-      success: true,
-      message: 'קובץ נמחק בהצלחה'
-    });
-  } catch (error) {
-    console.error('Error deleting file:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'שגיאה במחיקת קובץ'
-    });
-  }
-});
-
 // @route   POST /api/vehicles/create-rider-folder-structure
 // @desc    יצירת מבנה תיקיות עצמאי לרוכב (תחת תיקיית "רוכבים")
 // @access  Private (מנהלים בלבד)
@@ -429,26 +451,6 @@ router.post('/refresh-drive-folders', authorize('super_admin', 'manager'), async
     res.status(500).json({
       success: false,
       message: error.message || 'שגיאה בריענון תיקיות הדרייב'
-    });
-  }
-});
-
-// @route   GET /api/vehicles/drive-structure
-// @desc    קבלת מבנה התיקיות הנוכחי בדרייב
-// @access  Private (מנהלים בלבד)
-router.get('/drive-structure', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
-  try {
-    const structure = await googleDriveService.getDriveFolderStructure();
-
-    res.json({
-      success: true,
-      data: structure
-    });
-  } catch (error) {
-    console.error('Error getting Drive structure:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'שגיאה בקבלת מבנה הדרייב'
     });
   }
 });
