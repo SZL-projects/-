@@ -17,7 +17,7 @@ import {
   Refresh,
   Link as LinkIcon,
   Settings as SettingsIcon,
-  FolderSync,
+  Sync,
 } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -323,7 +323,7 @@ const Settings = () => {
                     </Button>
                     <Button
                       variant="contained"
-                      startIcon={refreshingFolders ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : <FolderSync />}
+                      startIcon={refreshingFolders ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : <Sync />}
                       onClick={handleRefreshFolders}
                       disabled={refreshingFolders}
                       sx={{
