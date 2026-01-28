@@ -141,9 +141,33 @@ export const ridersAPI = {
     if (riderId) params += `&riderId=${riderId}`;
     return cachedGet(`/riders/list-files?${params}`);
   },
-  deleteFile: (fileId) => {
+  deleteFile: (fileId, recursive = false) => {
     invalidateCache('/riders');
-    return api.delete(`/riders/delete-file?fileId=${fileId}`);
+    return api.delete(`/riders/delete-file?fileId=${fileId}${recursive ? '&recursive=true' : ''}`);
+  },
+  updateFileVisibility: (riderId, fileId, visibleToRider) => {
+    invalidateCache('/riders');
+    return api.patch('/riders/update-file-visibility', { riderId, fileId, visibleToRider });
+  },
+  moveFile: (riderId, fileId, targetFolderId) => {
+    invalidateCache('/riders');
+    return api.post('/riders/move-file', { riderId, fileId, targetFolderId });
+  },
+  addCustomFolder: (riderId, folderName) => {
+    invalidateCache('/riders');
+    return api.post('/riders/add-custom-folder', { riderId, folderName });
+  },
+  deleteCustomFolder: (riderId, folderId) => {
+    invalidateCache('/riders');
+    return api.post('/riders/delete-custom-folder', { riderId, folderId });
+  },
+  deleteDefaultFolder: (riderId, folderKey, folderId) => {
+    invalidateCache('/riders');
+    return api.post('/riders/delete-default-folder', { riderId, folderKey, folderId });
+  },
+  renameFolder: (riderId, folderId, newName, folderKey, isCustom) => {
+    invalidateCache('/riders');
+    return api.post('/riders/rename-folder', { riderId, folderId, newName, folderKey, isCustom });
   },
 };
 

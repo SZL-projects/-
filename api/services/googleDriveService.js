@@ -421,13 +421,17 @@ class GoogleDriveService {
       const mainFolder = await this.findOrCreateFolder(riderName, ridersFolderId);
       console.log(`Created/Found rider main folder: ${mainFolder.name} (${mainFolder.id})`);
 
-      // תיקיית מסמכים
+      // תיקיית מסמכים (קבועה)
       const documentsFolder = await this.findOrCreateFolder('מסמכים', mainFolder.id);
       console.log(`Created/Found documents folder: ${documentsFolder.name} (${documentsFolder.id})`);
 
-      // תיקיית רישיונות
+      // תיקיית רישיונות (קבועה)
       const licensesFolder = await this.findOrCreateFolder('רישיונות', mainFolder.id);
       console.log(`Created/Found licenses folder: ${licensesFolder.name} (${licensesFolder.id})`);
+
+      // תיקיית "נוספים" - מכילה תיקיות מותאמות אישית
+      const extrasFolder = await this.findOrCreateFolder('נוספים', mainFolder.id);
+      console.log(`Created/Found extras folder: ${extrasFolder.name} (${extrasFolder.id})`);
 
       return {
         mainFolderId: mainFolder.id,
@@ -435,7 +439,10 @@ class GoogleDriveService {
         documentsFolderId: documentsFolder.id,
         documentsFolderLink: documentsFolder.webViewLink,
         licensesFolderId: licensesFolder.id,
-        licensesFolderLink: licensesFolder.webViewLink
+        licensesFolderLink: licensesFolder.webViewLink,
+        extrasFolderId: extrasFolder.id,
+        extrasFolderLink: extrasFolder.webViewLink,
+        customFolders: [] // מערך לתיקיות מותאמות אישית (בתוך "נוספים")
       };
     } catch (error) {
       console.error('Error creating rider folder structure:', error);

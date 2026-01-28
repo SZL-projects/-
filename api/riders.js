@@ -50,7 +50,7 @@ module.exports = async (req, res) => {
 
     // GET /api/riders/list-files
     if (url.endsWith('/list-files') && req.method === 'GET') {
-      const { folderId, riderId } = req.query;
+      const { folderId, riderId, viewAsRider } = req.query;
 
       if (!folderId) {
         return res.status(400).json({
@@ -61,9 +61,51 @@ module.exports = async (req, res) => {
 
       const files = await googleDriveService.listFiles(folderId);
 
+      // בדיקת תפקיד משתמש
+      const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
+      const isAdminOrManager = userRoles.some(role =>
+        ['super_admin', 'manager', 'secretary'].includes(role)
+      );
+
+      // אם viewAsRider=true - רוכב רואה רק קבצים גלויים
+      if (viewAsRider === 'true') {
+        const filesWithMetadata = files.map(file => ({
+          ...file,
+          visibleToRider: true
+        }));
+        return res.json({
+          success: true,
+          files: filesWithMetadata
+        });
+      }
+
+      // מצב מנהל - טוען מטא-דאטה מ-Firestore לניהול נראות
+      let filesWithMetadata = [];
+      if (riderId) {
+        const riderRef = db.collection('riders').doc(riderId);
+        const riderDoc = await riderRef.get();
+        const riderData = riderDoc.exists ? riderDoc.data() : {};
+        const fileSettings = riderData.fileSettings || {};
+
+        filesWithMetadata = files.map(file => {
+          const hasExplicitSetting = fileSettings[file.id] !== undefined;
+          const visibleToRider = hasExplicitSetting
+            ? fileSettings[file.id].visibleToRider
+            : true;
+          return { ...file, visibleToRider };
+        });
+      } else {
+        filesWithMetadata = files.map(file => ({ ...file, visibleToRider: true }));
+      }
+
+      // מנהלים רואים הכל, רוכבים רק גלויים
+      const filteredFiles = isAdminOrManager
+        ? filesWithMetadata
+        : filesWithMetadata.filter(f => f.visibleToRider);
+
       return res.json({
         success: true,
-        files
+        files: filteredFiles
       });
     }
 
@@ -163,7 +205,7 @@ module.exports = async (req, res) => {
     if (url.endsWith('/delete-file') && req.method === 'DELETE') {
       checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
 
-      const { fileId } = req.query;
+      const { fileId, recursive } = req.query;
 
       if (!fileId) {
         return res.status(400).json({
@@ -172,11 +214,293 @@ module.exports = async (req, res) => {
         });
       }
 
-      await googleDriveService.deleteFile(fileId);
+      await googleDriveService.deleteFile(fileId, recursive === 'true');
 
       return res.json({
         success: true,
         message: 'הקובץ נמחק בהצלחה'
+      });
+    }
+
+    // PATCH /api/riders/update-file-visibility - עדכון נראות קובץ לרוכב
+    if (url.endsWith('/update-file-visibility') && req.method === 'PATCH') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { riderId, fileId, visibleToRider } = req.body;
+
+      if (!riderId || !fileId || visibleToRider === undefined) {
+        return res.status(400).json({
+          success: false,
+          message: 'חסרים פרמטרים: riderId, fileId, visibleToRider'
+        });
+      }
+
+      const riderRef = db.collection('riders').doc(riderId);
+      const riderDoc = await riderRef.get();
+
+      if (!riderDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'רוכב לא נמצא'
+        });
+      }
+
+      const riderData = riderDoc.data();
+      const fileSettings = riderData.fileSettings || {};
+
+      fileSettings[fileId] = {
+        ...fileSettings[fileId],
+        visibleToRider,
+        updatedBy: user.id,
+        updatedAt: new Date()
+      };
+
+      await riderRef.update({
+        fileSettings,
+        updatedBy: user.id,
+        updatedAt: new Date()
+      });
+
+      return res.json({
+        success: true,
+        message: 'הגדרות הקובץ עודכנו בהצלחה'
+      });
+    }
+
+    // POST /api/riders/move-file - העברת קובץ לתיקייה אחרת
+    if (url.endsWith('/move-file') && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { riderId, fileId, targetFolderId } = req.body;
+
+      if (!riderId || !fileId || !targetFolderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה רוכב, מזהה קובץ ומזהה תיקיית יעד הם שדות חובה'
+        });
+      }
+
+      const riderRef = db.collection('riders').doc(riderId);
+      const riderDoc = await riderRef.get();
+
+      if (!riderDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'רוכב לא נמצא'
+        });
+      }
+
+      await googleDriveService.moveFile(fileId, targetFolderId);
+
+      return res.json({
+        success: true,
+        message: 'הקובץ הועבר בהצלחה'
+      });
+    }
+
+    // POST /api/riders/add-custom-folder - הוספת תיקייה מותאמת אישית
+    if (url.endsWith('/add-custom-folder') && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { riderId, folderName } = req.body;
+
+      if (!riderId || !folderName) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה רוכב ושם תיקייה הם שדות חובה'
+        });
+      }
+
+      const riderRef = db.collection('riders').doc(riderId);
+      const riderDoc = await riderRef.get();
+
+      if (!riderDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'רוכב לא נמצא'
+        });
+      }
+
+      const riderData = riderDoc.data();
+      const extrasFolderId = riderData.driveFolderData?.extrasFolderId;
+
+      if (!extrasFolderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'לא קיים מבנה תיקיות עבור רוכב זה. יש ליצור מבנה תיקיות או לרענן תיקיות קיימות.'
+        });
+      }
+
+      const newFolder = await googleDriveService.createFolder(folderName, extrasFolderId);
+
+      const customFolders = riderData.driveFolderData?.customFolders || [];
+      customFolders.push({
+        id: newFolder.id,
+        name: folderName,
+        link: newFolder.webViewLink,
+        createdAt: new Date(),
+        createdBy: user.id
+      });
+
+      await riderRef.update({
+        'driveFolderData.customFolders': customFolders,
+        updatedBy: user.id,
+        updatedAt: new Date()
+      });
+
+      return res.json({
+        success: true,
+        message: 'תיקייה נוצרה בהצלחה',
+        data: {
+          folderId: newFolder.id,
+          folderName: folderName,
+          folderLink: newFolder.webViewLink
+        }
+      });
+    }
+
+    // POST /api/riders/delete-custom-folder - מחיקת תיקייה מותאמת אישית
+    if (url.endsWith('/delete-custom-folder') && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { riderId, folderId } = req.body;
+
+      if (!riderId || !folderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה רוכב ומזהה תיקייה הם שדות חובה'
+        });
+      }
+
+      const riderRef = db.collection('riders').doc(riderId);
+      const riderDoc = await riderRef.get();
+
+      if (!riderDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'רוכב לא נמצא'
+        });
+      }
+
+      const riderData = riderDoc.data();
+      const customFolders = riderData.driveFolderData?.customFolders || [];
+
+      await googleDriveService.deleteFile(folderId, true);
+
+      const updatedCustomFolders = customFolders.filter(f => f.id !== folderId);
+
+      await riderRef.update({
+        'driveFolderData.customFolders': updatedCustomFolders,
+        updatedBy: user.id,
+        updatedAt: new Date()
+      });
+
+      return res.json({
+        success: true,
+        message: 'תיקייה נמחקה בהצלחה'
+      });
+    }
+
+    // POST /api/riders/delete-default-folder - מחיקת תיקייה דיפולטית (לא קבועה)
+    if (url.endsWith('/delete-default-folder') && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { riderId, folderKey, folderId } = req.body;
+
+      // בדיקה שזו לא תיקייה קבועה
+      const fixedFolders = ['documentsFolderId', 'licensesFolderId'];
+      if (fixedFolders.includes(folderKey)) {
+        return res.status(400).json({
+          success: false,
+          message: 'לא ניתן למחוק תיקיות קבועות (מסמכים/רישיונות)'
+        });
+      }
+
+      if (!riderId || !folderKey || !folderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה רוכב, מפתח תיקייה ומזהה תיקייה הם שדות חובה'
+        });
+      }
+
+      const riderRef = db.collection('riders').doc(riderId);
+      const riderDoc = await riderRef.get();
+
+      if (!riderDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'רוכב לא נמצא'
+        });
+      }
+
+      await googleDriveService.deleteFile(folderId, true);
+
+      const updateData = {
+        [`driveFolderData.${folderKey}`]: null,
+        [`driveFolderData.${folderKey.replace('Id', 'Link')}`]: null,
+        updatedBy: user.id,
+        updatedAt: new Date()
+      };
+
+      await riderRef.update(updateData);
+
+      return res.json({
+        success: true,
+        message: 'תיקייה נמחקה בהצלחה'
+      });
+    }
+
+    // POST /api/riders/rename-folder - שינוי שם תיקייה
+    if (url.endsWith('/rename-folder') && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { riderId, folderId, newName, folderKey, isCustom } = req.body;
+
+      // בדיקה שזו לא תיקייה קבועה
+      const fixedFolders = ['documentsFolderId', 'licensesFolderId'];
+      if (folderKey && fixedFolders.includes(folderKey)) {
+        return res.status(400).json({
+          success: false,
+          message: 'לא ניתן לשנות שם לתיקיות קבועות (מסמכים/רישיונות)'
+        });
+      }
+
+      if (!riderId || !folderId || !newName) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה רוכב, מזהה תיקייה ושם חדש הם שדות חובה'
+        });
+      }
+
+      const riderRef = db.collection('riders').doc(riderId);
+      const riderDoc = await riderRef.get();
+
+      if (!riderDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'רוכב לא נמצא'
+        });
+      }
+
+      await googleDriveService.renameFile(folderId, newName);
+
+      if (isCustom) {
+        const riderData = riderDoc.data();
+        const customFolders = riderData.driveFolderData?.customFolders || [];
+        const updatedCustomFolders = customFolders.map(f =>
+          f.id === folderId ? { ...f, name: newName } : f
+        );
+
+        await riderRef.update({
+          'driveFolderData.customFolders': updatedCustomFolders,
+          updatedBy: user.id,
+          updatedAt: new Date()
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: 'שם התיקייה שונה בהצלחה'
       });
     }
 

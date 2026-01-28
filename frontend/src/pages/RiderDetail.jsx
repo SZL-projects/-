@@ -586,6 +586,7 @@ export default function RiderDetail() {
             riderFolderData={rider.driveFolderData}
             riderId={id}
             onFolderCreated={loadRider}
+            onFolderDeleted={loadRider}
           />
         </Grid>
       </Grid>

@@ -16,6 +16,14 @@ import {
   Alert,
   Snackbar,
   Tooltip,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
 import {
   CloudUpload,
@@ -26,21 +34,49 @@ import {
   Description,
   FolderOpen,
   CreateNewFolder,
+  Visibility,
+  VisibilityOff,
+  DriveFileMove,
+  DeleteForever,
+  Folder,
+  Edit,
+  Add,
 } from '@mui/icons-material';
 import { ridersAPI } from '../services/api';
 
-const categories = [
-  { id: 'documents', label: 'מסמכים', folderKey: 'documentsFolderId' },
-  { id: 'licenses', label: 'רישיונות', folderKey: 'licensesFolderId' },
+const defaultCategories = [
+  { id: 'documents', label: 'מסמכים', folderKey: 'documentsFolderId', isFixed: true },
+  { id: 'licenses', label: 'רישיונות', folderKey: 'licensesFolderId', isFixed: true },
 ];
 
-export default function RiderFiles({ riderName, riderFolderData, riderId, onFolderCreated }) {
+export default function RiderFiles({ riderName, riderFolderData, riderId, onFolderCreated, onFolderDeleted }) {
   const [currentTab, setCurrentTab] = useState(0);
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [moveMenuAnchor, setMoveMenuAnchor] = useState(null);
+  const [selectedFileForMove, setSelectedFileForMove] = useState(null);
+  const [deletingFolder, setDeletingFolder] = useState(false);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [renamingFolder, setRenamingFolder] = useState(false);
+  const [addFolderDialogOpen, setAddFolderDialogOpen] = useState(false);
+  const [customFolderName, setCustomFolderName] = useState('');
+  const [addingFolder, setAddingFolder] = useState(false);
+
+  // בניית רשימת הקטגוריות - כולל תיקיות מותאמות אישית
+  const categories = [
+    ...defaultCategories,
+    ...(riderFolderData?.customFolders || []).map(folder => ({
+      id: `custom_${folder.id}`,
+      label: folder.name,
+      folderKey: null,
+      folderId: folder.id,
+      isCustom: true
+    }))
+  ];
 
   useEffect(() => {
     if (riderFolderData) {
@@ -51,6 +87,10 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
   const getCurrentFolderId = () => {
     if (!riderFolderData) return null;
     const currentCategory = categories[currentTab];
+    if (!currentCategory) return null;
+    if (currentCategory.folderId) {
+      return currentCategory.folderId;
+    }
     return riderFolderData[currentCategory.folderKey];
   };
 
@@ -127,6 +167,159 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
     } finally {
       setCreatingFolder(false);
     }
+  };
+
+  // עדכון נראות קובץ לרוכב
+  const handleToggleVisibility = async (fileId, currentVisibility) => {
+    try {
+      await ridersAPI.updateFileVisibility(riderId, fileId, !currentVisibility);
+      showSnackbar(
+        !currentVisibility ? 'הקובץ יוצג לרוכב' : 'הקובץ הוסתר מהרוכב',
+        'success'
+      );
+      loadFiles();
+    } catch (error) {
+      console.error('Error updating visibility:', error);
+      showSnackbar('שגיאה בעדכון נראות הקובץ', 'error');
+    }
+  };
+
+  // פתיחת תפריט העברת קובץ
+  const handleOpenMoveMenu = (event, fileId) => {
+    setMoveMenuAnchor(event.currentTarget);
+    setSelectedFileForMove(fileId);
+  };
+
+  // סגירת תפריט העברת קובץ
+  const handleCloseMoveMenu = () => {
+    setMoveMenuAnchor(null);
+    setSelectedFileForMove(null);
+  };
+
+  // העברת קובץ לתיקייה אחרת
+  const handleMoveToFolder = async (targetFolderId, targetFolderName) => {
+    if (!selectedFileForMove) return;
+
+    try {
+      await ridersAPI.moveFile(riderId, selectedFileForMove, targetFolderId);
+      showSnackbar(`הקובץ הועבר ל${targetFolderName} בהצלחה`, 'success');
+      handleCloseMoveMenu();
+      loadFiles();
+    } catch (error) {
+      console.error('Error moving file:', error);
+      showSnackbar('שגיאה בהעברת הקובץ', 'error');
+    }
+  };
+
+  // בדיקה אם התיקייה ניתנת לעריכה (לא קבועה)
+  const isFolderEditable = () => {
+    const currentCategory = categories[currentTab];
+    return currentCategory && !currentCategory.isFixed;
+  };
+
+  // קבלת מידע על התיקייה הנוכחית
+  const getCurrentFolderInfo = () => {
+    const currentCategory = categories[currentTab];
+    if (!currentCategory) return null;
+
+    const folderId = currentCategory.folderId || riderFolderData[currentCategory.folderKey];
+    return {
+      ...currentCategory,
+      folderId,
+      folderKey: currentCategory.folderKey
+    };
+  };
+
+  // מחיקת תיקייה (לא קבועה)
+  const handleDeleteFolder = async () => {
+    const folderInfo = getCurrentFolderInfo();
+    if (!folderInfo || folderInfo.isFixed) return;
+
+    if (!window.confirm(`האם אתה בטוח שברצונך למחוק את התיקייה "${folderInfo.label}"? כל הקבצים בתוכה יימחקו!`)) {
+      return;
+    }
+
+    setDeletingFolder(true);
+    try {
+      if (folderInfo.isCustom) {
+        await ridersAPI.deleteCustomFolder(riderId, folderInfo.folderId);
+      } else {
+        await ridersAPI.deleteDefaultFolder(riderId, folderInfo.folderKey, folderInfo.folderId);
+      }
+      showSnackbar('התיקייה נמחקה בהצלחה', 'success');
+      setCurrentTab(0);
+      if (onFolderDeleted) {
+        onFolderDeleted();
+      }
+    } catch (error) {
+      console.error('Error deleting folder:', error);
+      showSnackbar('שגיאה במחיקת התיקייה', 'error');
+    } finally {
+      setDeletingFolder(false);
+    }
+  };
+
+  // פתיחת דיאלוג שינוי שם
+  const handleOpenRenameDialog = () => {
+    const folderInfo = getCurrentFolderInfo();
+    if (!folderInfo || folderInfo.isFixed) return;
+    setNewFolderName(folderInfo.label);
+    setRenameDialogOpen(true);
+  };
+
+  // שינוי שם תיקייה
+  const handleRenameFolder = async () => {
+    const folderInfo = getCurrentFolderInfo();
+    if (!folderInfo || !newFolderName.trim()) return;
+
+    setRenamingFolder(true);
+    try {
+      await ridersAPI.renameFolder(riderId, folderInfo.folderId, newFolderName.trim(), folderInfo.folderKey, folderInfo.isCustom);
+      showSnackbar('שם התיקייה שונה בהצלחה', 'success');
+      setRenameDialogOpen(false);
+      setNewFolderName('');
+      if (onFolderDeleted) {
+        onFolderDeleted(); // רענון נתוני הרוכב
+      }
+    } catch (error) {
+      console.error('Error renaming folder:', error);
+      showSnackbar('שגיאה בשינוי שם התיקייה', 'error');
+    } finally {
+      setRenamingFolder(false);
+    }
+  };
+
+  // הוספת תיקייה מותאמת אישית
+  const handleAddCustomFolder = async () => {
+    if (!customFolderName.trim()) return;
+
+    setAddingFolder(true);
+    try {
+      await ridersAPI.addCustomFolder(riderId, customFolderName.trim());
+      showSnackbar('תיקייה חדשה נוצרה בהצלחה', 'success');
+      setAddFolderDialogOpen(false);
+      setCustomFolderName('');
+      if (onFolderDeleted) {
+        onFolderDeleted(); // רענון נתוני הרוכב
+      }
+    } catch (error) {
+      console.error('Error adding custom folder:', error);
+      showSnackbar(error.response?.data?.message || 'שגיאה ביצירת תיקייה', 'error');
+    } finally {
+      setAddingFolder(false);
+    }
+  };
+
+  // קבלת רשימת תיקיות יעד להעברה (כל התיקיות חוץ מהנוכחית)
+  const getMoveTargetFolders = () => {
+    return categories.filter((cat, index) => {
+      if (index === currentTab) return false;
+      const folderId = cat.folderId || riderFolderData[cat.folderKey];
+      return !!folderId;
+    }).map(cat => ({
+      ...cat,
+      folderId: cat.folderId || riderFolderData[cat.folderKey]
+    }));
   };
 
   const showSnackbar = (message, severity) => {
@@ -239,6 +432,8 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
         <Tabs
           value={currentTab}
           onChange={(e, newValue) => setCurrentTab(newValue)}
+          variant="scrollable"
+          scrollButtons="auto"
           sx={{
             mb: 2,
             '& .MuiTab-root': {
@@ -290,6 +485,53 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
               {uploading ? 'מעלה...' : 'העלה קובץ'}
             </Button>
           </label>
+
+          {/* כפתור הוספת תיקייה מותאמת */}
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<Add />}
+            onClick={() => setAddFolderDialogOpen(true)}
+            sx={{
+              borderRadius: '12px',
+              fontWeight: 600,
+              borderColor: '#6366f1',
+              color: '#6366f1',
+              '&:hover': {
+                borderColor: '#4f46e5',
+                bgcolor: 'rgba(99, 102, 241, 0.04)',
+              },
+            }}
+          >
+            תיקייה חדשה
+          </Button>
+
+          {/* כפתורי עריכת תיקייה - רק לתיקיות לא קבועות */}
+          {isFolderEditable() && (
+            <>
+              <Button
+                variant="outlined"
+                color="primary"
+                size="small"
+                startIcon={<Edit />}
+                onClick={handleOpenRenameDialog}
+                sx={{ borderRadius: '12px', fontWeight: 600 }}
+              >
+                שנה שם
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                startIcon={deletingFolder ? <CircularProgress size={16} /> : <DeleteForever />}
+                onClick={handleDeleteFolder}
+                disabled={deletingFolder}
+                sx={{ borderRadius: '12px', fontWeight: 600 }}
+              >
+                {deletingFolder ? 'מוחק...' : 'מחק תיקייה'}
+              </Button>
+            </>
+          )}
         </Box>
 
         {loading ? (
@@ -317,12 +559,14 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
                   borderRadius: '12px',
                   mb: 1,
                   pl: 2,
-                  pr: '100px',
+                  pr: '180px',
                   py: 1,
                   '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.04)' },
+                  bgcolor: file.visibleToRider === false ? 'rgba(255, 152, 0, 0.08)' : 'inherit',
                 }}
                 secondaryAction={
                   <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                    {/* כפתור צפייה */}
                     <Tooltip title="פתח בחלון חדש">
                       <IconButton
                         size="small"
@@ -336,6 +580,29 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
                       </IconButton>
                     </Tooltip>
 
+                    {/* כפתור נראות לרוכב */}
+                    <Tooltip title={file.visibleToRider ? 'הסתר מהרוכב' : 'הצג לרוכב'}>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleToggleVisibility(file.id, file.visibleToRider)}
+                        color={file.visibleToRider ? 'success' : 'warning'}
+                      >
+                        {file.visibleToRider ? <Visibility fontSize="small" /> : <VisibilityOff fontSize="small" />}
+                      </IconButton>
+                    </Tooltip>
+
+                    {/* כפתור העברה לתיקייה אחרת */}
+                    <Tooltip title="העבר לתיקייה אחרת">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => handleOpenMoveMenu(e, file.id)}
+                        sx={{ color: '#6366f1' }}
+                      >
+                        <DriveFileMove fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+
+                    {/* כפתור מחיקה */}
                     <Tooltip title="מחק קובץ">
                       <IconButton
                         size="small"
@@ -360,6 +627,7 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
                   secondary={
                     <Typography variant="body2" sx={{ color: '#94a3b8' }}>
                       {formatFileSize(file.size)} • {new Date(file.createdTime).toLocaleDateString('he-IL')}
+                      {file.visibleToRider === false ? ' • מוסתר מרוכב' : ''}
                     </Typography>
                   }
                 />
@@ -386,6 +654,118 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
             {snackbar.message}
           </Alert>
         </Snackbar>
+
+        {/* תפריט העברה לתיקייה */}
+        <Menu
+          anchorEl={moveMenuAnchor}
+          open={Boolean(moveMenuAnchor)}
+          onClose={handleCloseMoveMenu}
+        >
+          <MenuItem disabled>
+            <Typography variant="body2" color="textSecondary">
+              העבר לתיקייה:
+            </Typography>
+          </MenuItem>
+          {getMoveTargetFolders().map((folder) => (
+            <MenuItem
+              key={folder.id}
+              onClick={() => handleMoveToFolder(folder.folderId, folder.label)}
+            >
+              <ListItemIcon>
+                <Folder fontSize="small" />
+              </ListItemIcon>
+              {folder.label}
+            </MenuItem>
+          ))}
+        </Menu>
+
+        {/* דיאלוג שינוי שם תיקייה */}
+        <Dialog
+          open={renameDialogOpen}
+          onClose={() => {
+            setRenameDialogOpen(false);
+            setNewFolderName('');
+          }}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>שינוי שם תיקייה</DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="שם חדש"
+              fullWidth
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              sx={{ mt: 1 }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setRenameDialogOpen(false);
+                setNewFolderName('');
+              }}
+            >
+              ביטול
+            </Button>
+            <Button
+              onClick={handleRenameFolder}
+              variant="contained"
+              disabled={renamingFolder || !newFolderName.trim()}
+            >
+              {renamingFolder ? 'משנה...' : 'שנה שם'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* דיאלוג הוספת תיקייה מותאמת אישית */}
+        <Dialog
+          open={addFolderDialogOpen}
+          onClose={() => {
+            setAddFolderDialogOpen(false);
+            setCustomFolderName('');
+          }}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>יצירת תיקייה חדשה</DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="שם התיקייה"
+              fullWidth
+              value={customFolderName}
+              onChange={(e) => setCustomFolderName(e.target.value)}
+              sx={{ mt: 1 }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setAddFolderDialogOpen(false);
+                setCustomFolderName('');
+              }}
+            >
+              ביטול
+            </Button>
+            <Button
+              onClick={handleAddCustomFolder}
+              variant="contained"
+              disabled={addingFolder || !customFolderName.trim()}
+              sx={{
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                },
+              }}
+            >
+              {addingFolder ? 'יוצר...' : 'צור תיקייה'}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </CardContent>
     </Card>
   );
