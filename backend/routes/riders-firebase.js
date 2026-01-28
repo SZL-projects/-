@@ -69,10 +69,10 @@ router.post('/upload-file', authorize('super_admin', 'manager', 'secretary'), up
     }
 
     const uploadedFile = await googleDriveService.uploadFile(
-      file.buffer,
       file.originalname,
-      file.mimetype,
-      folderId
+      file.buffer,
+      folderId,
+      file.mimetype
     );
 
     res.json({

@@ -1,6 +1,10 @@
 // Vercel Serverless Function - /api/riders (all rider endpoints)
 const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkAuthorization } = require('./_utils/auth');
+const googleDriveService = require('./services/googleDriveService');
+const Busboy = require('busboy');
+const getRawBody = require('raw-body');
+const { Readable } = require('stream');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -13,12 +17,12 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
-  // Parse body for POST/PUT/PATCH requests
-  if (['POST', 'PUT', 'PATCH'].includes(req.method) && !req.body) {
-    const getRawBody = require('raw-body');
+  // Parse body for POST/PUT/PATCH requests (except multipart/form-data)
+  if (['POST', 'PUT', 'PATCH'].includes(req.method) && !req.body && !req.headers['content-type']?.includes('multipart/form-data')) {
     try {
       const rawBody = await getRawBody(req);
-      req.body = JSON.parse(rawBody.toString());
+      const bodyText = rawBody.toString();
+      req.body = bodyText && bodyText.trim() !== '' ? JSON.parse(bodyText) : {};
     } catch (e) {
       req.body = {};
     }
@@ -32,9 +36,200 @@ module.exports = async (req, res) => {
     });
 
     const { db } = initFirebase();
+
+    // Initialize Google Drive service with Firestore
+    googleDriveService.setFirestore(db);
+    await googleDriveService.initialize();
+
     const user = await authenticateToken(req, db);
 
-    // Extract ID from URL
+    // Check for special routes first (before extracting ID)
+    const url = req.url.split('?')[0]; // Remove query params for matching
+
+    // ==================== Google Drive File Operations ====================
+
+    // GET /api/riders/list-files
+    if (url.endsWith('/list-files') && req.method === 'GET') {
+      const { folderId, riderId } = req.query;
+
+      if (!folderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'חסר מזהה תיקייה'
+        });
+      }
+
+      const files = await googleDriveService.listFiles(folderId);
+
+      return res.json({
+        success: true,
+        files
+      });
+    }
+
+    // POST /api/riders/upload-file
+    if (url.endsWith('/upload-file') && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      return new Promise(async (resolve, reject) => {
+        try {
+          console.log('Upload rider file request received');
+
+          const rawBody = await getRawBody(req, {
+            length: req.headers['content-length'],
+            limit: '50mb'
+          });
+
+          const bufferStream = Readable.from(rawBody);
+          const busboy = Busboy({ headers: req.headers });
+
+          let fileBuffer = null;
+          let fileName = '';
+          let mimeType = '';
+          let folderId = '';
+          let fileReceived = false;
+
+          busboy.on('file', (fieldname, file, info) => {
+            try {
+              fileName = Buffer.from(info.filename, 'latin1').toString('utf8');
+            } catch (e) {
+              fileName = info.filename;
+            }
+            mimeType = info.mimeType;
+            fileReceived = true;
+
+            const chunks = [];
+            file.on('data', (data) => chunks.push(data));
+            file.on('end', () => {
+              fileBuffer = Buffer.concat(chunks);
+              console.log('Rider file received, size:', fileBuffer.length);
+            });
+          });
+
+          busboy.on('field', (fieldname, value) => {
+            if (fieldname === 'folderId') {
+              folderId = value;
+            }
+          });
+
+          busboy.on('finish', async () => {
+            try {
+              if (!fileReceived || !fileBuffer) {
+                res.status(400).json({ success: false, message: 'לא הועלה קובץ' });
+                return reject(new Error('No file uploaded'));
+              }
+
+              if (!folderId) {
+                res.status(400).json({ success: false, message: 'חסר מזהה תיקייה' });
+                return reject(new Error('No folderId provided'));
+              }
+
+              const fileData = await googleDriveService.uploadFile(
+                fileName,
+                fileBuffer,
+                folderId,
+                mimeType
+              );
+
+              res.json({
+                success: true,
+                message: 'הקובץ הועלה בהצלחה',
+                file: fileData
+              });
+              resolve();
+            } catch (error) {
+              console.error('Error in rider upload finish handler:', error);
+              res.status(500).json({ success: false, message: error.message });
+              reject(error);
+            }
+          });
+
+          busboy.on('error', (error) => {
+            console.error('Busboy error:', error);
+            res.status(500).json({ success: false, message: 'שגיאה בעיבוד הקובץ: ' + error.message });
+            reject(error);
+          });
+
+          bufferStream.pipe(busboy);
+        } catch (error) {
+          console.error('Error setting up rider upload:', error);
+          res.status(500).json({ success: false, message: 'שגיאה באתחול העלאת הקובץ: ' + error.message });
+          reject(error);
+        }
+      });
+    }
+
+    // DELETE /api/riders/delete-file
+    if (url.endsWith('/delete-file') && req.method === 'DELETE') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const { fileId } = req.query;
+
+      if (!fileId) {
+        return res.status(400).json({
+          success: false,
+          message: 'חסר מזהה קובץ'
+        });
+      }
+
+      await googleDriveService.deleteFile(fileId);
+
+      return res.json({
+        success: true,
+        message: 'הקובץ נמחק בהצלחה'
+      });
+    }
+
+    // POST /api/riders/:id/create-folder - יצירת מבנה תיקיות לרוכב
+    if (url.match(/\/[\w-]+\/create-folder$/) && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+
+      const match = url.match(/\/riders\/([^/]+)\/create-folder$/) || url.match(/\/([^/]+)\/create-folder$/);
+      const riderIdFromUrl = match ? match[1] : null;
+
+      if (!riderIdFromUrl) {
+        return res.status(400).json({
+          success: false,
+          message: 'חסר מזהה רוכב'
+        });
+      }
+
+      const riderDoc = await db.collection('riders').doc(riderIdFromUrl).get();
+      if (!riderDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'רוכב לא נמצא'
+        });
+      }
+
+      const rider = riderDoc.data();
+      const riderName = `${rider.firstName} ${rider.lastName}`.trim();
+      if (!riderName) {
+        return res.status(400).json({
+          success: false,
+          message: 'שם הרוכב חסר'
+        });
+      }
+
+      const folderData = await googleDriveService.createRiderFolderStructure(riderName);
+
+      // שמירת נתוני התיקיות ברוכב
+      await db.collection('riders').doc(riderIdFromUrl).update({
+        driveFolderData: folderData,
+        updatedBy: user.id,
+        updatedAt: new Date()
+      });
+
+      return res.json({
+        success: true,
+        message: 'מבנה תיקיות רוכב נוצר בהצלחה',
+        data: folderData
+      });
+    }
+
+    // ==================== End Google Drive File Operations ====================
+
+    // Extract ID from URL for regular rider operations
     const riderId = extractIdFromUrl(req.url, 'riders');
     console.log('📍 Rider ID extracted:', riderId);
 
@@ -354,8 +549,7 @@ module.exports = async (req, res) => {
 
     console.error('❌ Riders: Method not allowed:', {
       method: req.method,
-      url: req.url,
-      riderId
+      url: req.url
     });
 
     return res.status(405).json({
@@ -363,7 +557,7 @@ module.exports = async (req, res) => {
       message: 'Method not allowed',
       details: {
         method: req.method,
-        allowedMethods: riderId ? ['GET', 'PUT', 'DELETE'] : ['GET', 'POST']
+        allowedMethods: ['GET', 'POST', 'PUT', 'DELETE']
       }
     });
 

@@ -738,6 +738,61 @@ module.exports = async (req, res) => {
       });
     }
 
+    // POST /api/vehicles/refresh-drive-folders - ריענון וסידור מבנה התיקיות בדרייב
+    if (url.endsWith('/refresh-drive-folders') && req.method === 'POST') {
+      checkAuthorization(user, ['super_admin', 'manager']);
+
+      // קבלת כל הכלים והרוכבים מהמערכת
+      const vehiclesSnapshot = await db.collection('vehicles').get();
+      const vehicles = vehiclesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      const ridersSnapshot = await db.collection('riders').get();
+      const riders = ridersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      console.log(`Refreshing Drive folders for ${vehicles.length} vehicles and ${riders.length} riders`);
+
+      const results = await googleDriveService.refreshDriveFolders(vehicles, riders);
+
+      // עדכון נתוני התיקיות בכלים שנוצרו להם תיקיות חדשות
+      for (const vehicle of vehicles) {
+        if (vehicle.internalNumber && !vehicle.driveFolderData?.mainFolderId) {
+          try {
+            const folderData = await googleDriveService.createVehicleFolderStructure(vehicle.internalNumber);
+            await db.collection('vehicles').doc(vehicle.id).update({
+              driveFolderData: folderData,
+              updatedBy: user.id,
+              updatedAt: new Date()
+            });
+          } catch (err) {
+            console.error(`Error updating vehicle ${vehicle.id} folder data:`, err);
+          }
+        }
+      }
+
+      // עדכון נתוני התיקיות ברוכבים שנוצרו להם תיקיות חדשות
+      for (const rider of riders) {
+        const riderName = `${rider.firstName} ${rider.lastName}`.trim();
+        if (riderName && !rider.driveFolderData?.mainFolderId) {
+          try {
+            const folderData = await googleDriveService.createRiderFolderStructure(riderName);
+            await db.collection('riders').doc(rider.id).update({
+              driveFolderData: folderData,
+              updatedBy: user.id,
+              updatedAt: new Date()
+            });
+          } catch (err) {
+            console.error(`Error updating rider ${rider.id} folder data:`, err);
+          }
+        }
+      }
+
+      return res.json({
+        success: true,
+        message: 'ריענון תיקיות הדרייב הושלם בהצלחה',
+        data: results
+      });
+    }
+
     // DELETE /api/vehicles/delete-file
     if (url.endsWith('/delete-file') && req.method === 'DELETE') {
       checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
