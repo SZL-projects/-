@@ -17,6 +17,7 @@ import {
   Refresh,
   Link as LinkIcon,
   Settings as SettingsIcon,
+  FolderSync,
 } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -24,6 +25,7 @@ const Settings = () => {
   const [driveStatus, setDriveStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [authorizing, setAuthorizing] = useState(false);
+  const [refreshingFolders, setRefreshingFolders] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -101,6 +103,40 @@ const Settings = () => {
       console.error('Revoke error:', err);
       setError(err.response?.data?.message || 'שגיאה בניתוק Google Drive');
       setLoading(false);
+    }
+  };
+
+  const handleRefreshFolders = async () => {
+    if (!window.confirm('האם לרענן את מבנה התיקיות בדרייב? פעולה זו תיצור תיקיות חסרות ותסדר את המבנה.')) {
+      return;
+    }
+
+    setRefreshingFolders(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await api.post('/vehicles/refresh-drive-folders');
+      const { data } = response.data;
+
+      let message = 'ריענון התיקיות הושלם בהצלחה!';
+      if (data) {
+        const details = [];
+        if (data.vehiclesCreated > 0) details.push(`נוצרו ${data.vehiclesCreated} תיקיות כלים`);
+        if (data.ridersCreated > 0) details.push(`נוצרו ${data.ridersCreated} תיקיות רוכבים`);
+        if (data.vehiclesMoved > 0) details.push(`הועברו ${data.vehiclesMoved} תיקיות כלים`);
+        if (data.ridersMoved > 0) details.push(`הועברו ${data.ridersMoved} תיקיות רוכבים`);
+        if (details.length > 0) {
+          message += ' ' + details.join(', ');
+        }
+      }
+
+      setSuccess(message);
+    } catch (err) {
+      console.error('Refresh folders error:', err);
+      setError(err.response?.data?.message || 'שגיאה בריענון תיקיות הדרייב');
+    } finally {
+      setRefreshingFolders(false);
     }
   };
 
@@ -286,6 +322,26 @@ const Settings = () => {
                       רענן סטטוס
                     </Button>
                     <Button
+                      variant="contained"
+                      startIcon={refreshingFolders ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : <FolderSync />}
+                      onClick={handleRefreshFolders}
+                      disabled={refreshingFolders}
+                      sx={{
+                        borderRadius: '10px',
+                        px: 3,
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                        },
+                        '&:disabled': { background: '#e2e8f0', color: '#94a3b8' },
+                      }}
+                    >
+                      {refreshingFolders ? 'מרענן תיקיות...' : 'רענן תיקיות דרייב'}
+                    </Button>
+                    <Button
                       variant="outlined"
                       onClick={handleRevoke}
                       sx={{
@@ -323,13 +379,16 @@ const Settings = () => {
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
               <Typography variant="body2" sx={{ color: '#64748b' }}>
-                • Google Drive - העלאת קבצים ומסמכים לכל כלי
+                • Google Drive - העלאת קבצים ומסמכים לכלים ורוכבים
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#64748b' }}>
+                • מבנה תיקיות: תיקיית "כלים" (לפי מספר פנימי) ותיקיית "רוכבים" (לפי שם)
               </Typography>
               <Typography variant="body2" sx={{ color: '#64748b' }}>
                 • Gmail - שליחת מיילים אוטומטיים לרוכבים והתראות
               </Typography>
               <Typography variant="body2" sx={{ color: '#64748b' }}>
-                • החיבור מאובטח ונשמר בצורה מוצפנת
+                • לחצן "רענן תיקיות דרייב" - יוצר תיקיות חסרות ומסדר את המבנה
               </Typography>
             </Box>
           </Box>

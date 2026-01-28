@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const RiderModel = require('../models/firestore/RiderModel');
+const googleDriveService = require('../services/googleDriveService');
 const { protect, authorize } = require('../middleware/auth-firebase');
 
 // כל הנתיבים מוגנים - דורשים אימות
@@ -145,6 +146,52 @@ router.delete('/:id', authorize('super_admin'), async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message
+    });
+  }
+});
+
+// ==================== Google Drive Endpoints ====================
+
+// @route   POST /api/riders/:id/create-folder
+// @desc    יצירת מבנה תיקיות בדרייב לרוכב
+// @access  Private (מנהלים בלבד)
+router.post('/:id/create-folder', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+  try {
+    const riderId = req.params.id;
+
+    // קבלת נתוני הרוכב
+    const rider = await RiderModel.findById(riderId);
+    if (!rider) {
+      return res.status(404).json({
+        success: false,
+        message: 'רוכב לא נמצא'
+      });
+    }
+
+    const riderName = `${rider.firstName} ${rider.lastName}`.trim();
+    if (!riderName) {
+      return res.status(400).json({
+        success: false,
+        message: 'שם הרוכב חסר'
+      });
+    }
+
+    // יצירת מבנה התיקיות
+    const folderData = await googleDriveService.createRiderFolderStructure(riderName);
+
+    // שמירת נתוני התיקיות ברוכב
+    await RiderModel.update(riderId, { driveFolderData: folderData }, req.user.id);
+
+    res.json({
+      success: true,
+      message: 'מבנה תיקיות רוכב נוצר בהצלחה',
+      data: folderData
+    });
+  } catch (error) {
+    console.error('Error creating rider folder structure:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה ביצירת מבנה תיקיות רוכב'
     });
   }
 });

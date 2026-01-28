@@ -37,6 +37,8 @@ class RiderModel {
         userId: riderData.userId || null,
         personalEquipment: riderData.personalEquipment || [],
         notes: riderData.notes || '',
+        // נתוני תיקיות דרייב
+        driveFolderData: riderData.driveFolderData || null,
         createdAt: new Date(),
         createdBy: createdByUserId,
         updatedAt: new Date(),

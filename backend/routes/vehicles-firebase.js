@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const VehicleModel = require('../models/firestore/VehicleModel');
+const RiderModel = require('../models/firestore/RiderModel');
 const googleDriveService = require('../services/googleDriveService');
 const { protect, authorize } = require('../middleware/auth-firebase');
 
@@ -341,6 +342,113 @@ router.delete('/delete-file', authorize('super_admin', 'manager', 'secretary'), 
     res.status(500).json({
       success: false,
       message: error.message || 'שגיאה במחיקת קובץ'
+    });
+  }
+});
+
+// @route   POST /api/vehicles/create-rider-folder-structure
+// @desc    יצירת מבנה תיקיות עצמאי לרוכב (תחת תיקיית "רוכבים")
+// @access  Private (מנהלים בלבד)
+router.post('/create-rider-folder-structure', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+  try {
+    const { riderName, riderId } = req.body;
+
+    if (!riderName) {
+      return res.status(400).json({
+        success: false,
+        message: 'שם רוכב הוא שדה חובה'
+      });
+    }
+
+    const folderData = await googleDriveService.createRiderFolderStructure(riderName);
+
+    // שמירת נתוני התיקיות ברוכב אם סופק riderId
+    if (riderId) {
+      await RiderModel.update(riderId, { driveFolderData: folderData }, req.user.id);
+    }
+
+    res.json({
+      success: true,
+      message: 'מבנה תיקיות רוכב נוצר בהצלחה',
+      data: folderData
+    });
+  } catch (error) {
+    console.error('Error creating rider folder structure:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה ביצירת מבנה תיקיות רוכב'
+    });
+  }
+});
+
+// @route   POST /api/vehicles/refresh-drive-folders
+// @desc    ריענון וסידור מבנה התיקיות בדרייב
+// @access  Private (מנהל-על בלבד)
+router.post('/refresh-drive-folders', authorize('super_admin', 'manager'), async (req, res) => {
+  try {
+    // קבלת כל הכלים והרוכבים מהמערכת
+    const vehicles = await VehicleModel.getAll({}, 1000);
+    const riders = await RiderModel.getAll({}, 1000);
+
+    console.log(`Refreshing Drive folders for ${vehicles.length} vehicles and ${riders.length} riders`);
+
+    const results = await googleDriveService.refreshDriveFolders(vehicles, riders);
+
+    // עדכון נתוני התיקיות בכלים שנוצרו להם תיקיות חדשות
+    for (const vehicle of vehicles) {
+      if (vehicle.internalNumber && !vehicle.driveFolderData?.mainFolderId) {
+        try {
+          const folderData = await googleDriveService.createVehicleFolderStructure(vehicle.internalNumber);
+          await VehicleModel.update(vehicle.id, { driveFolderData: folderData }, req.user.id);
+        } catch (err) {
+          console.error(`Error updating vehicle ${vehicle.id} folder data:`, err);
+        }
+      }
+    }
+
+    // עדכון נתוני התיקיות ברוכבים שנוצרו להם תיקיות חדשות
+    for (const rider of riders) {
+      const riderName = `${rider.firstName} ${rider.lastName}`.trim();
+      if (riderName && !rider.driveFolderData?.mainFolderId) {
+        try {
+          const folderData = await googleDriveService.createRiderFolderStructure(riderName);
+          await RiderModel.update(rider.id, { driveFolderData: folderData }, req.user.id);
+        } catch (err) {
+          console.error(`Error updating rider ${rider.id} folder data:`, err);
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'ריענון תיקיות הדרייב הושלם בהצלחה',
+      data: results
+    });
+  } catch (error) {
+    console.error('Error refreshing Drive folders:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה בריענון תיקיות הדרייב'
+    });
+  }
+});
+
+// @route   GET /api/vehicles/drive-structure
+// @desc    קבלת מבנה התיקיות הנוכחי בדרייב
+// @access  Private (מנהלים בלבד)
+router.get('/drive-structure', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+  try {
+    const structure = await googleDriveService.getDriveFolderStructure();
+
+    res.json({
+      success: true,
+      data: structure
+    });
+  } catch (error) {
+    console.error('Error getting Drive structure:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה בקבלת מבנה הדרייב'
     });
   }
 });
