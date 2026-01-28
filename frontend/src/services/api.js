@@ -125,6 +125,26 @@ export const ridersAPI = {
     invalidateCache('/riders');
     return api.delete(`/riders/${id}`);
   },
+  // Google Drive file operations for riders
+  createFolder: (riderId) => api.post(`/riders/${riderId}/create-folder`),
+  uploadFile: (formData, folderId) => {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    return axios.post(`${API_URL}/riders/upload-file`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  },
+  listFiles: (folderId, riderId = null) => {
+    let params = `folderId=${folderId}`;
+    if (riderId) params += `&riderId=${riderId}`;
+    return cachedGet(`/riders/list-files?${params}`);
+  },
+  deleteFile: (fileId) => {
+    invalidateCache('/riders');
+    return api.delete(`/riders/delete-file?fileId=${fileId}`);
+  },
 };
 
 // Vehicles API - עם cache לשיפור ביצועים

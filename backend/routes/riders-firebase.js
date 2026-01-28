@@ -1,11 +1,124 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const RiderModel = require('../models/firestore/RiderModel');
 const googleDriveService = require('../services/googleDriveService');
 const { protect, authorize } = require('../middleware/auth-firebase');
 
+// הגדרת multer לקבלת קבצים
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
+});
+
 // כל הנתיבים מוגנים - דורשים אימות
 router.use(protect);
+
+// ==================== Google Drive File Operations ====================
+// חשוב: נתיבים סטטיים חייבים לבוא לפני נתיבים דינמיים (:id)
+
+// @route   GET /api/riders/list-files
+// @desc    קבלת רשימת קבצים מתיקיית רוכב
+// @access  Private
+router.get('/list-files', async (req, res) => {
+  try {
+    const { folderId, riderId } = req.query;
+
+    if (!folderId) {
+      return res.status(400).json({
+        success: false,
+        message: 'חסר מזהה תיקייה'
+      });
+    }
+
+    const files = await googleDriveService.listFiles(folderId);
+
+    res.json({
+      success: true,
+      files
+    });
+  } catch (error) {
+    console.error('Error listing rider files:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה בקבלת רשימת הקבצים'
+    });
+  }
+});
+
+// @route   POST /api/riders/upload-file
+// @desc    העלאת קובץ לתיקיית רוכב
+// @access  Private (מנהלים בלבד)
+router.post('/upload-file', authorize('super_admin', 'manager', 'secretary'), upload.single('file'), async (req, res) => {
+  try {
+    const { folderId } = req.body;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        message: 'לא נבחר קובץ להעלאה'
+      });
+    }
+
+    if (!folderId) {
+      return res.status(400).json({
+        success: false,
+        message: 'חסר מזהה תיקייה'
+      });
+    }
+
+    const uploadedFile = await googleDriveService.uploadFile(
+      file.buffer,
+      file.originalname,
+      file.mimetype,
+      folderId
+    );
+
+    res.json({
+      success: true,
+      message: 'הקובץ הועלה בהצלחה',
+      file: uploadedFile
+    });
+  } catch (error) {
+    console.error('Error uploading rider file:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה בהעלאת הקובץ'
+    });
+  }
+});
+
+// @route   DELETE /api/riders/delete-file
+// @desc    מחיקת קובץ מתיקיית רוכב
+// @access  Private (מנהלים בלבד)
+router.delete('/delete-file', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+  try {
+    const { fileId } = req.query;
+
+    if (!fileId) {
+      return res.status(400).json({
+        success: false,
+        message: 'חסר מזהה קובץ'
+      });
+    }
+
+    await googleDriveService.deleteFile(fileId);
+
+    res.json({
+      success: true,
+      message: 'הקובץ נמחק בהצלחה'
+    });
+  } catch (error) {
+    console.error('Error deleting rider file:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה במחיקת הקובץ'
+    });
+  }
+});
+
+// ==================== End Google Drive File Operations ====================
 
 // @route   GET /api/riders
 // @desc    קבלת רשימת רוכבים

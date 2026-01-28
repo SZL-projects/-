@@ -37,6 +37,7 @@ import {
 } from '@mui/icons-material';
 import { ridersAPI, authAPI, vehiclesAPI } from '../services/api';
 import RiderDialog from '../components/RiderDialog';
+import RiderFiles from '../components/RiderFiles';
 
 export default function RiderDetail() {
   const { id } = useParams();
@@ -576,6 +577,16 @@ export default function RiderDetail() {
               </Grid>
             </CardContent>
           </Card>
+        </Grid>
+
+        {/* קבצים ומסמכים */}
+        <Grid item xs={12}>
+          <RiderFiles
+            riderName={`${rider.firstName} ${rider.lastName}`}
+            riderFolderData={rider.driveFolderData}
+            riderId={id}
+            onFolderCreated={loadRider}
+          />
         </Grid>
       </Grid>
 
