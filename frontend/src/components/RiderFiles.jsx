@@ -49,7 +49,7 @@ const defaultCategories = [
   { id: 'licenses', label: 'רישיונות', folderKey: 'licensesFolderId', isFixed: true },
 ];
 
-export default function RiderFiles({ riderName, riderFolderData, riderId, onFolderCreated, onFolderDeleted }) {
+export default function RiderFiles({ riderName, riderFolderData, riderId, onFolderCreated, onFolderDeleted, viewAsRider = false }) {
   const [currentTab, setCurrentTab] = useState(0);
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -100,7 +100,7 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
 
     setLoading(true);
     try {
-      const response = await ridersAPI.listFiles(folderId, riderId);
+      const response = await ridersAPI.listFiles(folderId, riderId, viewAsRider);
       setFiles(response.data.files || []);
     } catch (error) {
       console.error('Error loading files:', error);
@@ -453,86 +453,88 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
           ))}
         </Tabs>
 
-        <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Input
-            type="file"
-            onChange={handleFileUpload}
-            style={{ display: 'none' }}
-            id="rider-file-upload"
-          />
-          <label htmlFor="rider-file-upload">
+        {!viewAsRider && (
+          <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Input
+              type="file"
+              onChange={handleFileUpload}
+              style={{ display: 'none' }}
+              id="rider-file-upload"
+            />
+            <label htmlFor="rider-file-upload">
+              <Button
+                variant="contained"
+                component="span"
+                startIcon={uploading ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : <CloudUpload />}
+                disabled={uploading || !getCurrentFolderId()}
+                sx={{
+                  borderRadius: '12px',
+                  px: 3,
+                  py: 1,
+                  fontWeight: 600,
+                  background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                  },
+                  '&:disabled': {
+                    background: '#e2e8f0',
+                    boxShadow: 'none',
+                  },
+                }}
+              >
+                {uploading ? 'מעלה...' : 'העלה קובץ'}
+              </Button>
+            </label>
+
+            {/* כפתור הוספת תיקייה מותאמת */}
             <Button
-              variant="contained"
-              component="span"
-              startIcon={uploading ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : <CloudUpload />}
-              disabled={uploading || !getCurrentFolderId()}
+              variant="outlined"
+              size="small"
+              startIcon={<Add />}
+              onClick={() => setAddFolderDialogOpen(true)}
               sx={{
                 borderRadius: '12px',
-                px: 3,
-                py: 1,
                 fontWeight: 600,
-                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                borderColor: '#6366f1',
+                color: '#6366f1',
                 '&:hover': {
-                  background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-                },
-                '&:disabled': {
-                  background: '#e2e8f0',
-                  boxShadow: 'none',
+                  borderColor: '#4f46e5',
+                  bgcolor: 'rgba(99, 102, 241, 0.04)',
                 },
               }}
             >
-              {uploading ? 'מעלה...' : 'העלה קובץ'}
+              תיקייה חדשה
             </Button>
-          </label>
 
-          {/* כפתור הוספת תיקייה מותאמת */}
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<Add />}
-            onClick={() => setAddFolderDialogOpen(true)}
-            sx={{
-              borderRadius: '12px',
-              fontWeight: 600,
-              borderColor: '#6366f1',
-              color: '#6366f1',
-              '&:hover': {
-                borderColor: '#4f46e5',
-                bgcolor: 'rgba(99, 102, 241, 0.04)',
-              },
-            }}
-          >
-            תיקייה חדשה
-          </Button>
-
-          {/* כפתורי עריכת תיקייה - רק לתיקיות לא קבועות */}
-          {isFolderEditable() && (
-            <>
-              <Button
-                variant="outlined"
-                color="primary"
-                size="small"
-                startIcon={<Edit />}
-                onClick={handleOpenRenameDialog}
-                sx={{ borderRadius: '12px', fontWeight: 600 }}
-              >
-                שנה שם
-              </Button>
-              <Button
-                variant="outlined"
-                color="error"
-                size="small"
-                startIcon={deletingFolder ? <CircularProgress size={16} /> : <DeleteForever />}
-                onClick={handleDeleteFolder}
-                disabled={deletingFolder}
-                sx={{ borderRadius: '12px', fontWeight: 600 }}
-              >
-                {deletingFolder ? 'מוחק...' : 'מחק תיקייה'}
-              </Button>
-            </>
-          )}
-        </Box>
+            {/* כפתורי עריכת תיקייה - רק לתיקיות לא קבועות */}
+            {isFolderEditable() && (
+              <>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="small"
+                  startIcon={<Edit />}
+                  onClick={handleOpenRenameDialog}
+                  sx={{ borderRadius: '12px', fontWeight: 600 }}
+                >
+                  שנה שם
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  size="small"
+                  startIcon={deletingFolder ? <CircularProgress size={16} /> : <DeleteForever />}
+                  onClick={handleDeleteFolder}
+                  disabled={deletingFolder}
+                  sx={{ borderRadius: '12px', fontWeight: 600 }}
+                >
+                  {deletingFolder ? 'מוחק...' : 'מחק תיקייה'}
+                </Button>
+              </>
+            )}
+          </Box>
+        )}
 
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
@@ -559,10 +561,10 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
                   borderRadius: '12px',
                   mb: 1,
                   pl: 2,
-                  pr: '180px',
+                  pr: viewAsRider ? '60px' : '180px',
                   py: 1,
                   '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.04)' },
-                  bgcolor: file.visibleToRider === false ? 'rgba(255, 152, 0, 0.08)' : 'inherit',
+                  bgcolor: !viewAsRider && file.visibleToRider === false ? 'rgba(255, 152, 0, 0.08)' : 'inherit',
                 }}
                 secondaryAction={
                   <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
@@ -580,38 +582,42 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
                       </IconButton>
                     </Tooltip>
 
-                    {/* כפתור נראות לרוכב */}
-                    <Tooltip title={file.visibleToRider ? 'הסתר מהרוכב' : 'הצג לרוכב'}>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleToggleVisibility(file.id, file.visibleToRider)}
-                        color={file.visibleToRider ? 'success' : 'warning'}
-                      >
-                        {file.visibleToRider ? <Visibility fontSize="small" /> : <VisibilityOff fontSize="small" />}
-                      </IconButton>
-                    </Tooltip>
+                    {!viewAsRider && (
+                      <>
+                        {/* כפתור נראות לרוכב */}
+                        <Tooltip title={file.visibleToRider ? 'הסתר מהרוכב' : 'הצג לרוכב'}>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleToggleVisibility(file.id, file.visibleToRider)}
+                            color={file.visibleToRider ? 'success' : 'warning'}
+                          >
+                            {file.visibleToRider ? <Visibility fontSize="small" /> : <VisibilityOff fontSize="small" />}
+                          </IconButton>
+                        </Tooltip>
 
-                    {/* כפתור העברה לתיקייה אחרת */}
-                    <Tooltip title="העבר לתיקייה אחרת">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => handleOpenMoveMenu(e, file.id)}
-                        sx={{ color: '#6366f1' }}
-                      >
-                        <DriveFileMove fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                        {/* כפתור העברה לתיקייה אחרת */}
+                        <Tooltip title="העבר לתיקייה אחרת">
+                          <IconButton
+                            size="small"
+                            onClick={(e) => handleOpenMoveMenu(e, file.id)}
+                            sx={{ color: '#6366f1' }}
+                          >
+                            <DriveFileMove fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
 
-                    {/* כפתור מחיקה */}
-                    <Tooltip title="מחק קובץ">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDeleteFile(file.id)}
-                        sx={{ color: '#dc2626' }}
-                      >
-                        <Delete fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                        {/* כפתור מחיקה */}
+                        <Tooltip title="מחק קובץ">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteFile(file.id)}
+                            sx={{ color: '#dc2626' }}
+                          >
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </>
+                    )}
                   </Box>
                 }
               >
@@ -627,7 +633,7 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
                   secondary={
                     <Typography variant="body2" sx={{ color: '#94a3b8' }}>
                       {formatFileSize(file.size)} • {new Date(file.createdTime).toLocaleDateString('he-IL')}
-                      {file.visibleToRider === false ? ' • מוסתר מרוכב' : ''}
+                      {!viewAsRider && file.visibleToRider === false ? ' • מוסתר מרוכב' : ''}
                     </Typography>
                   }
                 />

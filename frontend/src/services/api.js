@@ -136,9 +136,10 @@ export const ridersAPI = {
       },
     });
   },
-  listFiles: (folderId, riderId = null) => {
+  listFiles: (folderId, riderId = null, viewAsRider = false) => {
     let params = `folderId=${folderId}`;
     if (riderId) params += `&riderId=${riderId}`;
+    if (viewAsRider) params += `&viewAsRider=true`;
     return cachedGet(`/riders/list-files?${params}`);
   },
   deleteFile: (fileId, recursive = false) => {

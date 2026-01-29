@@ -38,6 +38,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { ridersAPI, vehiclesAPI, monthlyChecksAPI } from '../services/api';
+import RiderFiles from '../components/RiderFiles';
 
 export default function MyProfile() {
   const navigate = useNavigate();
@@ -808,6 +809,18 @@ export default function MyProfile() {
           </Card>
         </Grid>
       </Grid>
+
+      {/* הקבצים שלי */}
+      {rider?.driveFolderData?.mainFolderId && (
+        <Box sx={{ mt: 3 }}>
+          <RiderFiles
+            riderName={`${rider.firstName} ${rider.lastName}`}
+            riderFolderData={rider.driveFolderData}
+            riderId={rider.id}
+            viewAsRider={true}
+          />
+        </Box>
+      )}
 
       {/* Edit Profile Dialog */}
       <Dialog
