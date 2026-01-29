@@ -91,6 +91,7 @@ export default function Dashboard() {
     criticalFaults: 0,
     ridersWithoutMonthlyCheck: 0,
     expiringInsurance: 0,
+    expiringLicense: 0,
   });
   const [loading, setLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState([]);
@@ -119,14 +120,15 @@ export default function Dashboard() {
 
       // אופטימיזציה: חישובים בלולאה אחת במקום filter מרובים
       const now = new Date();
-      const oneMonthFromNow = new Date();
-      oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
+      const fourteenDaysFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+      const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
       // חישוב כל הסטטיסטיקות במעבר אחד
       let activeRiders = 0;
       let activeVehicles = 0;
       let vehiclesWaitingForRider = 0;
       let expiringInsurance = 0;
+      let expiringLicense = 0;
       let pendingTasks = 0;
       let openFaults = 0;
       const criticalFaults = [];
@@ -161,13 +163,24 @@ export default function Dashboard() {
           vehicleStatusCounts.other++;
         }
 
-        // בדיקת ביטוח - בודק בתוך אובייקט insurance
-        const insuranceExpiry = v.insurance?.mandatory?.expiryDate ||
-                               v.insurance?.comprehensive?.expiryDate ||
-                               v.insuranceExpiry;
-        if (insuranceExpiry) {
-          const expiryDate = insuranceExpiry.toDate ? insuranceExpiry.toDate() : new Date(insuranceExpiry);
-          if (expiryDate >= now && expiryDate <= oneMonthFromNow) expiringInsurance++;
+        // בדיקת ביטוח - 14 יום
+        const mandatoryExpiry = v.insurance?.mandatory?.expiryDate;
+        const comprehensiveExpiry = v.insurance?.comprehensive?.expiryDate;
+
+        if (mandatoryExpiry) {
+          const expiryDate = mandatoryExpiry.toDate ? mandatoryExpiry.toDate() : new Date(mandatoryExpiry);
+          if (expiryDate >= now && expiryDate <= fourteenDaysFromNow) expiringInsurance++;
+        }
+        if (comprehensiveExpiry) {
+          const expiryDate = comprehensiveExpiry.toDate ? comprehensiveExpiry.toDate() : new Date(comprehensiveExpiry);
+          if (expiryDate >= now && expiryDate <= fourteenDaysFromNow) expiringInsurance++;
+        }
+
+        // בדיקת רשיון רכב - 30 יום
+        const licenseExpiry = v.vehicleLicense?.expiryDate;
+        if (licenseExpiry) {
+          const expiryDate = licenseExpiry.toDate ? licenseExpiry.toDate() : new Date(licenseExpiry);
+          if (expiryDate >= now && expiryDate <= thirtyDaysFromNow) expiringLicense++;
         }
       });
 
@@ -196,6 +209,7 @@ export default function Dashboard() {
         criticalFaults: criticalFaults.length,
         ridersWithoutMonthlyCheck: 0, // TODO: יצטרך חישוב מול API בקרה חודשית
         expiringInsurance,
+        expiringLicense,
       });
 
       setCriticalFaultsList(criticalFaults.slice(0, 5));
@@ -333,7 +347,14 @@ export default function Dashboard() {
       if (expiringInsurance > 0) {
         newAlerts.push({
           severity: 'warning',
-          message: `📋 ${expiringInsurance} כלים עם ביטוח שפוקע בחודש הקרוב`,
+          message: `📋 ${expiringInsurance} ביטוחים שפוקעים ב-14 הימים הקרובים`,
+          action: 'vehicles'
+        });
+      }
+      if (expiringLicense > 0) {
+        newAlerts.push({
+          severity: 'warning',
+          message: `🚗 ${expiringLicense} רשיונות רכב שפוקעים ב-30 הימים הקרובים`,
           action: 'vehicles'
         });
       }
@@ -566,10 +587,21 @@ export default function Dashboard() {
         {stats.expiringInsurance > 0 && (
           <Grid item xs={6} sm={6} md={4} lg={3}>
             <StatCard
-              title="ביטוחים שפוקעים"
+              title="ביטוחים שפוקעים (14 יום)"
               value={stats.expiringInsurance}
               icon={EventAvailable}
               color="#ec4899"
+            />
+          </Grid>
+        )}
+
+        {stats.expiringLicense > 0 && (
+          <Grid item xs={6} sm={6} md={4} lg={3}>
+            <StatCard
+              title="רשיונות רכב שפוקעים (30 יום)"
+              value={stats.expiringLicense}
+              icon={EventAvailable}
+              color="#f97316"
             />
           </Grid>
         )}

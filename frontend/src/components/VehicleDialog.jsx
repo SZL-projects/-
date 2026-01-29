@@ -17,6 +17,7 @@ import {
   AppBar,
   Toolbar,
   Typography,
+  Divider,
 } from '@mui/material';
 import { Close } from '@mui/icons-material';
 
@@ -47,13 +48,39 @@ export default function VehicleDialog({ open, onClose, onSave, vehicle }) {
     year: new Date().getFullYear(),
     currentKilometers: 0,
     status: 'active',
+    insurance: {
+      mandatory: { expiryDate: '' },
+      comprehensive: { expiryDate: '' },
+    },
+    vehicleLicense: { expiryDate: '' },
   });
 
   const [errors, setErrors] = useState({});
 
+  // Helper to format date for input
+  const formatDateForInput = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '';
+    return d.toISOString().split('T')[0];
+  };
+
   useEffect(() => {
     if (vehicle) {
-      setFormData(vehicle);
+      setFormData({
+        ...vehicle,
+        insurance: {
+          mandatory: {
+            expiryDate: formatDateForInput(vehicle.insurance?.mandatory?.expiryDate)
+          },
+          comprehensive: {
+            expiryDate: formatDateForInput(vehicle.insurance?.comprehensive?.expiryDate)
+          },
+        },
+        vehicleLicense: {
+          expiryDate: formatDateForInput(vehicle.vehicleLicense?.expiryDate)
+        },
+      });
     } else {
       setFormData({
         licensePlate: '',
@@ -64,6 +91,11 @@ export default function VehicleDialog({ open, onClose, onSave, vehicle }) {
         year: new Date().getFullYear(),
         currentKilometers: 0,
         status: 'active',
+        insurance: {
+          mandatory: { expiryDate: '' },
+          comprehensive: { expiryDate: '' },
+        },
+        vehicleLicense: { expiryDate: '' },
       });
     }
     setErrors({});
@@ -74,6 +106,30 @@ export default function VehicleDialog({ open, onClose, onSave, vehicle }) {
     if (errors[field]) {
       setErrors({ ...errors, [field]: '' });
     }
+  };
+
+  // Handle nested fields for insurance and vehicle license
+  const handleNestedChange = (parent, child, subField) => (event) => {
+    setFormData({
+      ...formData,
+      [parent]: {
+        ...formData[parent],
+        [child]: {
+          ...formData[parent]?.[child],
+          [subField]: event.target.value,
+        },
+      },
+    });
+  };
+
+  const handleVehicleLicenseChange = (field) => (event) => {
+    setFormData({
+      ...formData,
+      vehicleLicense: {
+        ...formData.vehicleLicense,
+        [field]: event.target.value,
+      },
+    });
   };
 
   const validate = () => {
@@ -225,6 +281,43 @@ export default function VehicleDialog({ open, onClose, onSave, vehicle }) {
               type="number"
               value={formData.currentKilometers}
               onChange={handleChange('currentKilometers')}
+            />
+          </Grid>
+
+          {/* תאריכי תוקף */}
+          <Grid item xs={12}>
+            <Typography variant="subtitle2" sx={{ color: '#64748b', mt: 2, mb: 1 }}>
+              תאריכי תוקף
+            </Typography>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="תוקף ביטוח חובה"
+              type="date"
+              value={formData.insurance?.mandatory?.expiryDate || ''}
+              onChange={handleNestedChange('insurance', 'mandatory', 'expiryDate')}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="תוקף ביטוח מקיף"
+              type="date"
+              value={formData.insurance?.comprehensive?.expiryDate || ''}
+              onChange={handleNestedChange('insurance', 'comprehensive', 'expiryDate')}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="תוקף רשיון רכב"
+              type="date"
+              value={formData.vehicleLicense?.expiryDate || ''}
+              onChange={handleVehicleLicenseChange('expiryDate')}
+              InputLabelProps={{ shrink: true }}
             />
           </Grid>
         </Grid>

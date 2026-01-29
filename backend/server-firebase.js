@@ -24,10 +24,12 @@ const app = express();
 if (process.env.NODE_ENV !== 'production') {
   const monthlyCheckScheduler = require('./schedulers/monthlyCheckScheduler');
   const dailyReminderScheduler = require('./schedulers/dailyReminderScheduler');
+  const expiryReminderScheduler = require('./schedulers/expiryReminderScheduler');
 
   // הפעלת הטיימרים
   monthlyCheckScheduler.start();
   dailyReminderScheduler.start();
+  expiryReminderScheduler.start();
 }
 
 // Middleware בסיסי
@@ -75,6 +77,22 @@ if (process.env.NODE_ENV !== 'production') {
       res.json({
         success: true,
         message: 'תזכורות יומיות נשלחו בהצלחה'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+
+  app.post('/api/admin/trigger-expiry-reminders', async (req, res) => {
+    try {
+      const expiryReminderScheduler = require('./schedulers/expiryReminderScheduler');
+      await expiryReminderScheduler.runNow();
+      res.json({
+        success: true,
+        message: 'התראות תוקף ביטוח ורשיון נשלחו בהצלחה'
       });
     } catch (error) {
       res.status(500).json({

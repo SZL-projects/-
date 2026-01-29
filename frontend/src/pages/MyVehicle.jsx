@@ -415,11 +415,19 @@ export default function MyVehicle() {
                     </Box>
                   </Box>
                 </Grid>
-                <Grid item xs={12}>
-                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>תוקף ביטוח</Typography>
+                <Grid item xs={6}>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>תוקף ביטוח חובה</Typography>
                   <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
-                    {vehicle.insuranceExpiry
-                      ? new Date(vehicle.insuranceExpiry).toLocaleDateString('he-IL')
+                    {vehicle.insurance?.mandatory?.expiryDate
+                      ? new Date(vehicle.insurance.mandatory.expiryDate).toLocaleDateString('he-IL')
+                      : 'לא הוזן'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>תוקף רשיון רכב</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                    {vehicle.vehicleLicense?.expiryDate
+                      ? new Date(vehicle.vehicleLicense.expiryDate).toLocaleDateString('he-IL')
                       : 'לא הוזן'}
                   </Typography>
                 </Grid>
