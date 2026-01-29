@@ -67,35 +67,31 @@ module.exports = async (req, res) => {
         ['super_admin', 'manager', 'secretary'].includes(role)
       );
 
-      // אם viewAsRider=true - רוכב רואה רק קבצים גלויים
-      if (viewAsRider === 'true') {
-        const filesWithMetadata = files.map(file => ({
-          ...file,
-          visibleToRider: true
-        }));
-        return res.json({
-          success: true,
-          files: filesWithMetadata
-        });
-      }
-
-      // מצב מנהל - טוען מטא-דאטה מ-Firestore לניהול נראות
-      let filesWithMetadata = [];
+      // טעינת הגדרות נראות מ-Firestore
+      let fileSettings = {};
       if (riderId) {
         const riderRef = db.collection('riders').doc(riderId);
         const riderDoc = await riderRef.get();
         const riderData = riderDoc.exists ? riderDoc.data() : {};
-        const fileSettings = riderData.fileSettings || {};
+        fileSettings = riderData.fileSettings || {};
+      }
 
-        filesWithMetadata = files.map(file => {
-          const hasExplicitSetting = fileSettings[file.id] !== undefined;
-          const visibleToRider = hasExplicitSetting
-            ? fileSettings[file.id].visibleToRider
-            : true;
-          return { ...file, visibleToRider };
+      // מיפוי קבצים עם מידע נראות
+      const filesWithMetadata = files.map(file => {
+        const hasExplicitSetting = fileSettings[file.id] !== undefined;
+        const visibleToRider = hasExplicitSetting
+          ? fileSettings[file.id].visibleToRider
+          : true; // ברירת מחדל - גלוי
+        return { ...file, visibleToRider };
+      });
+
+      // אם viewAsRider=true - רוכב רואה רק קבצים גלויים (מסונן)
+      if (viewAsRider === 'true') {
+        const visibleFiles = filesWithMetadata.filter(f => f.visibleToRider !== false);
+        return res.json({
+          success: true,
+          files: visibleFiles
         });
-      } else {
-        filesWithMetadata = files.map(file => ({ ...file, visibleToRider: true }));
       }
 
       // מנהלים רואים הכל, רוכבים רק גלויים

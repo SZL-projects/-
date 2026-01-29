@@ -560,46 +560,33 @@ module.exports = async (req, res) => {
 
       console.log('👤 User check:', { userRoles, isAdminOrManager, viewAsRider });
 
-      // אם viewAsRider=true - רוכב רואה הכל בתיקייה הנוכחית (ביטוחים נוכחיים)
-      // קבצים בארכיון (ביטוחים ישנים) לא נטענים כלל מהקומפוננט MyVehicle
-      if (viewAsRider === 'true') {
-        console.log('🔵 Rider view mode - showing ALL files from current folder');
-        const filesWithMetadata = files.map(file => ({
-          ...file,
-          visibleToRider: true // כל הקבצים בתיקייה הנוכחית גלויים לרוכבים
-        }));
-
-        console.log('✅ Returning', filesWithMetadata.length, 'files for rider');
-        return res.json({
-          success: true,
-          files: filesWithMetadata
-        });
-      }
-
-      // מצב מנהל - טוען מטא-דאטה מ-Firestore לניהול נראות
-      let filesWithMetadata = [];
+      // טעינת הגדרות נראות מ-Firestore
+      let fileSettings = {};
       if (vehicleId) {
         const vehicleRef = db.collection('vehicles').doc(vehicleId);
         const vehicleDoc = await vehicleRef.get();
         const vehicleData = vehicleDoc.exists ? vehicleDoc.data() : {};
-        const fileSettings = vehicleData.fileSettings || {};
+        fileSettings = vehicleData.fileSettings || {};
+      }
 
-        // הוספת מטא-דאטה לכל קובץ
-        filesWithMetadata = files.map(file => {
-          // אם יש הגדרה מפורשת לקובץ - השתמש בה, אחרת ברירת מחדל היא גלוי
-          const hasExplicitSetting = fileSettings[file.id] !== undefined;
-          const visibleToRider = hasExplicitSetting
-            ? fileSettings[file.id].visibleToRider
-            : true; // ברירת מחדל: גלוי
+      // מיפוי קבצים עם מידע נראות
+      const filesWithMetadata = files.map(file => {
+        const hasExplicitSetting = fileSettings[file.id] !== undefined;
+        const visibleToRider = hasExplicitSetting
+          ? fileSettings[file.id].visibleToRider
+          : true; // ברירת מחדל: גלוי
+        return { ...file, visibleToRider };
+      });
 
-          return {
-            ...file,
-            visibleToRider
-          };
+      // אם viewAsRider=true - רוכב רואה רק קבצים גלויים (מסונן)
+      if (viewAsRider === 'true') {
+        console.log('🔵 Rider view mode - filtering hidden files');
+        const visibleFiles = filesWithMetadata.filter(f => f.visibleToRider !== false);
+        console.log('✅ Returning', visibleFiles.length, 'visible files for rider (filtered from', files.length, ')');
+        return res.json({
+          success: true,
+          files: visibleFiles
         });
-      } else {
-        // אם אין vehicleId - כל הקבצים גלויים (למנהלים)
-        filesWithMetadata = files.map(file => ({ ...file, visibleToRider: true }));
       }
 
       // מנהלים רואים הכל, רוכבים רק גלויים
