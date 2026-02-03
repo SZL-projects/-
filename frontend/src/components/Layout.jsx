@@ -65,6 +65,7 @@ const managementMenuItems = [
   { text: 'משימות', icon: <Assignment />, path: '/tasks' },
   { text: 'בקרה חודשית', icon: <Build />, path: '/monthly-checks' },
   { text: 'תקלות', icon: <Warning />, path: '/faults' },
+  { text: 'טיפולים', icon: <Build />, path: '/maintenance' },
   { text: 'דוחות', icon: <Assessment />, path: '/reports' },
   { text: 'יוצר טפסים', icon: <Description />, path: '/form-builder' },
   { text: 'משתמשים', icon: <People />, path: '/users' },

@@ -311,4 +311,50 @@ export const faultsAPI = {
   },
 };
 
+// Maintenance API - טיפולים
+export const maintenanceAPI = {
+  // קבלת כל הטיפולים
+  getAll: (params) => cachedGet('/maintenance', { params }),
+
+  // קבלת טיפול לפי ID
+  getById: (id) => cachedGet(`/maintenance/${id}`),
+
+  // קבלת טיפולים לפי כלי
+  getByVehicle: (vehicleId, limit = 50) => cachedGet(`/maintenance/vehicle/${vehicleId}`, { params: { limit } }),
+
+  // קבלת טיפולים לפי רוכב
+  getByRider: (riderId, limit = 50) => cachedGet(`/maintenance/rider/${riderId}`, { params: { limit } }),
+
+  // קבלת טיפולים לפי תקלה
+  getByFault: (faultId) => cachedGet(`/maintenance/fault/${faultId}`),
+
+  // סטטיסטיקות
+  getStatistics: (vehicleId = null) => cachedGet('/maintenance/statistics', { params: { vehicleId } }),
+
+  // יצירת טיפול חדש
+  create: (data) => {
+    invalidateCache('/maintenance');
+    invalidateCache('/vehicles'); // כי עלול להשפיע על נתוני הכלי
+    return api.post('/maintenance', data);
+  },
+
+  // עדכון טיפול
+  update: (id, data) => {
+    invalidateCache('/maintenance');
+    return api.put(`/maintenance/${id}`, data);
+  },
+
+  // סגירת טיפול (סימון כהושלם)
+  complete: (id, data) => {
+    invalidateCache('/maintenance');
+    return api.put(`/maintenance/${id}/complete`, data);
+  },
+
+  // מחיקת טיפול
+  delete: (id) => {
+    invalidateCache('/maintenance');
+    return api.delete(`/maintenance/${id}`);
+  },
+};
+
 export default api;

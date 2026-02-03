@@ -21,6 +21,7 @@ const Tasks = lazy(() => import('./pages/Tasks'));
 const MonthlyChecks = lazy(() => import('./pages/MonthlyChecks'));
 const Users = lazy(() => import('./pages/Users'));
 const Faults = lazy(() => import('./pages/Faults'));
+const Maintenance = lazy(() => import('./pages/Maintenance'));
 const FormBuilder = lazy(() => import('./pages/FormBuilder'));
 const Reports = lazy(() => import('./pages/Reports'));
 const FaultReport = lazy(() => import('./pages/FaultReport'));
@@ -397,6 +398,7 @@ function AppRoutes() {
           <Route path="monthly-checks" element={<MonthlyChecks />} />
           <Route path="monthly-check/:id" element={<MonthlyCheckForm />} />
           <Route path="faults" element={<Faults />} />
+          <Route path="maintenance" element={<Maintenance />} />
           <Route path="fault-report" element={<FaultReport />} />
           <Route path="monthly-check-form" element={<MonthlyCheckForm />} />
           <Route path="reports" element={<Reports />} />
