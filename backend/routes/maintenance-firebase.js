@@ -1,7 +1,18 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const MaintenanceModel = require('../models/firestore/MaintenanceModel');
+const VehicleModel = require('../models/firestore/VehicleModel');
+const googleDriveService = require('../services/googleDriveService');
 const { protect, authorize } = require('../middleware/auth-firebase');
+
+// הגדרת multer לטיפול בקבצים
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB
+  }
+});
 
 // כל הנתיבים מוגנים - דורשים אימות
 router.use(protect);
@@ -288,6 +299,85 @@ router.delete('/:id', authorize('super_admin', 'manager'), async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message
+    });
+  }
+});
+
+// @route   POST /api/maintenance/upload-file
+// @desc    העלאת קובץ (קבלה/הצעת מחיר) לטיפול
+// @access  Private
+router.post('/upload-file', upload.single('file'), async (req, res) => {
+  try {
+    const { vehicleId, maintenanceId } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'לא הועלה קובץ'
+      });
+    }
+
+    if (!vehicleId) {
+      return res.status(400).json({
+        success: false,
+        message: 'מזהה רכב הוא שדה חובה'
+      });
+    }
+
+    // מצא את הרכב כדי לקבל את תיקיית הקבצים שלו
+    const vehicle = await VehicleModel.findById(vehicleId);
+    if (!vehicle) {
+      return res.status(404).json({
+        success: false,
+        message: 'רכב לא נמצא'
+      });
+    }
+
+    // בדיקה אם יש תיקיית טיפולים לרכב, אם לא - יצירה
+    let maintenanceFolderId = vehicle.folders?.maintenance;
+
+    if (!maintenanceFolderId && vehicle.driveFolderId) {
+      // יצירת תיקיית טיפולים בתוך תיקיית הרכב
+      const maintenanceFolder = await googleDriveService.createFolder('טיפולים', vehicle.driveFolderId);
+      maintenanceFolderId = maintenanceFolder.id;
+
+      // עדכון הרכב עם התיקייה החדשה
+      await VehicleModel.update(vehicleId, {
+        folders: {
+          ...vehicle.folders,
+          maintenance: maintenanceFolderId
+        }
+      }, req.user.id);
+    }
+
+    // אם עדיין אין תיקייה - העלה לתיקייה הראשית של הרכב
+    const targetFolderId = maintenanceFolderId || vehicle.driveFolderId;
+
+    if (!targetFolderId) {
+      return res.status(400).json({
+        success: false,
+        message: 'לא נמצאה תיקיית Google Drive עבור הרכב'
+      });
+    }
+
+    // העלאת הקובץ
+    const fileData = await googleDriveService.uploadFile(
+      req.file.originalname,
+      req.file.buffer,
+      targetFolderId,
+      req.file.mimetype
+    );
+
+    res.json({
+      success: true,
+      message: 'קובץ הועלה בהצלחה',
+      file: fileData
+    });
+  } catch (error) {
+    console.error('Error uploading maintenance file:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה בהעלאת קובץ'
     });
   }
 });

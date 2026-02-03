@@ -52,6 +52,7 @@ app.use('/api/tasks', require('./routes/tasks-firebase'));
 app.use('/api/faults', require('./routes/faults-firebase'));
 app.use('/api/monthly-checks', require('./routes/monthly-checks-firebase'));
 app.use('/api/maintenance', require('./routes/maintenance-firebase'));
+app.use('/api/garages', require('./routes/garages-firebase'));
 
 // נתיבים להרצה ידנית של משימות (למנהלי על בלבד)
 if (process.env.NODE_ENV !== 'production') {

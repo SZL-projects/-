@@ -44,25 +44,33 @@ import {
   Add,
   AttachMoney,
   DirectionsCar,
+  CompareArrows,
+  Store,
 } from '@mui/icons-material';
-import { maintenanceAPI, vehiclesAPI, ridersAPI } from '../services/api';
+import { maintenanceAPI, vehiclesAPI, ridersAPI, garagesAPI } from '../services/api';
 import MaintenanceDialog from '../components/MaintenanceDialog';
 
 export default function Maintenance() {
   const [maintenances, setMaintenances] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [riders, setRiders] = useState([]);
+  const [garages, setGarages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [filterPaidBy, setFilterPaidBy] = useState('all');
+  const [filterGarage, setFilterGarage] = useState('all');
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState(0); // 0: הכל, 1: בהמתנה, 2: הושלמו
   const [selectedMaintenance, setSelectedMaintenance] = useState(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingMaintenance, setEditingMaintenance] = useState(null);
+  const [compareDialogOpen, setCompareDialogOpen] = useState(false);
+  const [compareData, setCompareData] = useState([]);
+  const [compareType, setCompareType] = useState('all');
+  const [loadingCompare, setLoadingCompare] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -71,15 +79,17 @@ export default function Maintenance() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [maintenanceRes, vehiclesRes, ridersRes] = await Promise.all([
+      const [maintenanceRes, vehiclesRes, ridersRes, garagesRes] = await Promise.all([
         maintenanceAPI.getAll().catch(() => ({ data: { maintenances: [] } })),
         vehiclesAPI.getAll().catch(() => ({ data: { vehicles: [] } })),
         ridersAPI.getAll().catch(() => ({ data: { riders: [] } })),
+        garagesAPI.getAll().catch(() => ({ data: { garages: [] } })),
       ]);
 
       setMaintenances(maintenanceRes.data.maintenances || []);
       setVehicles(vehiclesRes.data.vehicles || []);
       setRiders(ridersRes.data.riders || []);
+      setGarages(garagesRes.data.garages || []);
       setError('');
     } catch (err) {
       setError('שגיאה בטעינת הנתונים');
@@ -147,6 +157,28 @@ export default function Maintenance() {
       setError('שגיאה בסגירת הטיפול');
     }
   }, []);
+
+  const loadCompareData = useCallback(async (maintenanceType = null) => {
+    try {
+      setLoadingCompare(true);
+      const response = await garagesAPI.comparePrices(maintenanceType === 'all' ? null : maintenanceType);
+      setCompareData(response.data.comparison || []);
+    } catch (err) {
+      console.error('Error loading comparison data:', err);
+    } finally {
+      setLoadingCompare(false);
+    }
+  }, []);
+
+  const handleOpenCompare = useCallback(() => {
+    setCompareDialogOpen(true);
+    loadCompareData(compareType);
+  }, [compareType, loadCompareData]);
+
+  const handleCompareTypeChange = useCallback((newType) => {
+    setCompareType(newType);
+    loadCompareData(newType);
+  }, [loadCompareData]);
 
   // פורמט תאריך
   const dateFormatter = useMemo(() => new Intl.DateTimeFormat('he-IL', {
@@ -249,6 +281,7 @@ export default function Maintenance() {
       const matchesStatus = filterStatus === 'all' || m.status === filterStatus;
       const matchesType = filterType === 'all' || m.maintenanceType === filterType;
       const matchesPaidBy = filterPaidBy === 'all' || m.paidBy === filterPaidBy;
+      const matchesGarage = filterGarage === 'all' || m.garage?.id === filterGarage || m.garage?.name === filterGarage;
 
       // סינון לפי טאב
       let matchesTab = true;
@@ -258,9 +291,9 @@ export default function Maintenance() {
         matchesTab = m.status === 'completed';
       }
 
-      return matchesSearch && matchesStatus && matchesType && matchesPaidBy && matchesTab;
+      return matchesSearch && matchesStatus && matchesType && matchesPaidBy && matchesGarage && matchesTab;
     });
-  }, [maintenances, searchTerm, filterStatus, filterType, filterPaidBy, viewMode]);
+  }, [maintenances, searchTerm, filterStatus, filterType, filterPaidBy, filterGarage, viewMode]);
 
   return (
     <Box sx={{ animation: 'fadeIn 0.3s ease-out' }}>
@@ -314,6 +347,24 @@ export default function Maintenance() {
             }}
           >
             רענן
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<CompareArrows />}
+            onClick={handleOpenCompare}
+            sx={{
+              borderRadius: '12px',
+              borderColor: '#e2e8f0',
+              color: '#64748b',
+              fontWeight: 600,
+              '&:hover': {
+                borderColor: '#10b981',
+                color: '#10b981',
+                bgcolor: 'rgba(16, 185, 129, 0.04)',
+              },
+            }}
+          >
+            השוואת מחירים
           </Button>
           <Button
             variant="contained"
@@ -614,6 +665,29 @@ export default function Maintenance() {
                 <MenuItem value="warranty">אחריות</MenuItem>
                 <MenuItem value="shared">משותף</MenuItem>
                 <MenuItem value="other">אחר</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth>
+              <InputLabel>מוסך</InputLabel>
+              <Select
+                value={filterGarage}
+                onChange={(e) => setFilterGarage(e.target.value)}
+                label="מוסך"
+                sx={{
+                  borderRadius: '12px',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e2e8f0',
+                  },
+                }}
+              >
+                <MenuItem value="all">כל המוסכים</MenuItem>
+                {garages.map(garage => (
+                  <MenuItem key={garage.id} value={garage.id}>
+                    {garage.name}{garage.city ? ` - ${garage.city}` : ''}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Grid>
@@ -1002,6 +1076,166 @@ export default function Maintenance() {
           setEditingMaintenance(null);
         }}
       />
+
+      {/* Compare Prices Dialog */}
+      <Dialog
+        open={compareDialogOpen}
+        onClose={() => setCompareDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+        dir="rtl"
+        PaperProps={{
+          sx: {
+            borderRadius: '20px',
+            p: 1,
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{
+              width: 40,
+              height: 40,
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <CompareArrows sx={{ color: '#fff', fontSize: 22 }} />
+            </Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+              השוואת מחירים בין מוסכים
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mb: 3, mt: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel>סוג טיפול</InputLabel>
+              <Select
+                value={compareType}
+                onChange={(e) => handleCompareTypeChange(e.target.value)}
+                label="סוג טיפול"
+                sx={{ borderRadius: '12px' }}
+              >
+                <MenuItem value="all">כל הסוגים</MenuItem>
+                <MenuItem value="routine">טיפול תקופתי</MenuItem>
+                <MenuItem value="repair">תיקון</MenuItem>
+                <MenuItem value="emergency">חירום</MenuItem>
+                <MenuItem value="recall">ריקול</MenuItem>
+                <MenuItem value="accident_repair">תיקון תאונה</MenuItem>
+                <MenuItem value="other">אחר</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+
+          {loadingCompare ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+              <CircularProgress sx={{ color: '#10b981' }} />
+            </Box>
+          ) : compareData.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 6 }}>
+              <Store sx={{ fontSize: 60, color: '#94a3b8', mb: 2 }} />
+              <Typography sx={{ color: '#64748b' }}>
+                אין נתונים להשוואה עבור סוג הטיפול שנבחר
+              </Typography>
+            </Box>
+          ) : (
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: '#f8fafc' }}>
+                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>#</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>מוסך</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>מספר טיפולים</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>מחיר ממוצע</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>מחיר מינימום</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>מחיר מקסימום</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#475569' }}>סה"כ הוצאות</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {compareData.map((garage, index) => (
+                    <TableRow
+                      key={garage.garageId}
+                      sx={{
+                        bgcolor: index === 0 ? 'rgba(16, 185, 129, 0.05)' : 'transparent',
+                        '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.04)' },
+                      }}
+                    >
+                      <TableCell>
+                        {index === 0 ? (
+                          <Chip
+                            label="1"
+                            size="small"
+                            sx={{
+                              bgcolor: '#10b981',
+                              color: '#fff',
+                              fontWeight: 700,
+                              minWidth: 28,
+                            }}
+                          />
+                        ) : (
+                          <Typography sx={{ fontWeight: 600, color: '#64748b', textAlign: 'center' }}>
+                            {index + 1}
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Typography sx={{ fontWeight: 600, color: index === 0 ? '#10b981' : '#1e293b' }}>
+                          {garage.garageName}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography sx={{ color: '#64748b' }}>{garage.count}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography sx={{ fontWeight: 600, color: index === 0 ? '#10b981' : '#1e293b' }}>
+                          {formatCurrency(garage.averageCost)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography sx={{ color: '#64748b' }}>{formatCurrency(garage.minCost)}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography sx={{ color: '#64748b' }}>{formatCurrency(garage.maxCost)}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography sx={{ fontWeight: 600, color: '#6366f1' }}>
+                          {formatCurrency(garage.totalCost)}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+
+          {compareData.length > 0 && (
+            <Box sx={{ mt: 3, p: 2, bgcolor: '#f0fdf4', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+              <Typography variant="body2" sx={{ color: '#166534', fontWeight: 600 }}>
+                💡 המוסך הזול ביותר: {compareData[0]?.garageName} - מחיר ממוצע {formatCurrency(compareData[0]?.averageCost)}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setCompareDialogOpen(false)}
+            sx={{
+              color: '#64748b',
+              fontWeight: 600,
+              borderRadius: '10px',
+              px: 3,
+              '&:hover': { bgcolor: '#f1f5f9' },
+            }}
+          >
+            סגור
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

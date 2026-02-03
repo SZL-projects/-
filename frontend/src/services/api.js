@@ -355,6 +355,54 @@ export const maintenanceAPI = {
     invalidateCache('/maintenance');
     return api.delete(`/maintenance/${id}`);
   },
+
+  // העלאת קובץ לטיפול (קבלה/הצעת מחיר)
+  uploadFile: (formData) => {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    return axios.post(`${API_URL}/maintenance/upload-file`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  },
+};
+
+// Garages API - מוסכים
+export const garagesAPI = {
+  // קבלת כל המוסכים
+  getAll: (params) => cachedGet('/garages', { params }),
+
+  // קבלת מוסך לפי ID
+  getById: (id) => cachedGet(`/garages/${id}`),
+
+  // חיפוש מוסכים
+  search: (searchTerm) => cachedGet('/garages', { params: { search: searchTerm } }),
+
+  // השוואת מחירים בין מוסכים
+  comparePrices: (maintenanceType = null) =>
+    cachedGet('/garages/compare-prices', { params: { maintenanceType } }),
+
+  // סטטיסטיקות מוסך
+  getStatistics: (garageId) => cachedGet(`/garages/${garageId}/statistics`),
+
+  // יצירת מוסך חדש
+  create: (data) => {
+    invalidateCache('/garages');
+    return api.post('/garages', data);
+  },
+
+  // עדכון מוסך
+  update: (id, data) => {
+    invalidateCache('/garages');
+    return api.put(`/garages/${id}`, data);
+  },
+
+  // מחיקת מוסך
+  delete: (id) => {
+    invalidateCache('/garages');
+    return api.delete(`/garages/${id}`);
+  },
 };
 
 export default api;

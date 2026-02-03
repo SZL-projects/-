@@ -8,6 +8,7 @@ const COLLECTIONS = {
   MONTHLY_CHECKS: 'monthly_checks',
   FAULTS: 'faults',
   MAINTENANCE: 'maintenance',
+  GARAGES: 'garages',
   INSURANCE_CLAIMS: 'insurance_claims',
   AUDIT_LOGS: 'audit_logs'
 };

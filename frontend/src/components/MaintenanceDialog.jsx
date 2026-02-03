@@ -17,16 +17,32 @@ import {
   IconButton,
   InputAdornment,
   Alert,
+  Autocomplete,
+  Chip,
+  CircularProgress,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  ListItemSecondaryAction,
+  Collapse,
 } from '@mui/material';
 import {
   Build,
   Close,
   Add,
   Delete,
+  CloudUpload,
+  InsertDriveFile,
+  Receipt,
+  Description,
+  ExpandMore,
+  ExpandLess,
+  Store,
 } from '@mui/icons-material';
-import { maintenanceAPI } from '../services/api';
+import { maintenanceAPI, garagesAPI } from '../services/api';
 
-export default function MaintenanceDialog({ open, onClose, maintenance, vehicles, riders, onSave }) {
+export default function MaintenanceDialog({ open, onClose, maintenance, vehicles, riders, onSave, isRiderView = false }) {
   const [formData, setFormData] = useState({
     vehicleId: '',
     vehiclePlate: '',
@@ -37,6 +53,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
     maintenanceType: 'routine',
     description: '',
     garage: {
+      id: '',
       name: '',
       phone: '',
       address: '',
@@ -51,10 +68,38 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
     replacedParts: [],
     status: 'scheduled',
     notes: '',
+    documents: [],
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [garages, setGarages] = useState([]);
+  const [loadingGarages, setLoadingGarages] = useState(false);
+  const [showNewGarageForm, setShowNewGarageForm] = useState(false);
+  const [newGarage, setNewGarage] = useState({ name: '', phone: '', address: '', city: '' });
+  const [selectedGarage, setSelectedGarage] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [showFilesSection, setShowFilesSection] = useState(true);
+
+  // טעינת רשימת מוסכים
+  useEffect(() => {
+    const fetchGarages = async () => {
+      try {
+        setLoadingGarages(true);
+        const response = await garagesAPI.getAll();
+        setGarages(response.data.garages || []);
+      } catch (err) {
+        console.error('Error fetching garages:', err);
+      } finally {
+        setLoadingGarages(false);
+      }
+    };
+
+    if (open) {
+      fetchGarages();
+    }
+  }, [open]);
 
   useEffect(() => {
     if (maintenance) {
@@ -71,6 +116,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
         maintenanceType: maintenance.maintenanceType || 'routine',
         description: maintenance.description || '',
         garage: {
+          id: maintenance.garage?.id || '',
           name: maintenance.garage?.name || '',
           phone: maintenance.garage?.phone || '',
           address: maintenance.garage?.address || '',
@@ -85,7 +131,14 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
         replacedParts: maintenance.replacedParts || [],
         status: maintenance.status || 'scheduled',
         notes: maintenance.notes || '',
+        documents: maintenance.documents || [],
       });
+
+      // אם יש מוסך קיים
+      if (maintenance.garage?.id) {
+        const existingGarage = garages.find(g => g.id === maintenance.garage.id);
+        setSelectedGarage(existingGarage || { id: maintenance.garage.id, name: maintenance.garage.name });
+      }
     } else {
       // חדש - איפוס
       setFormData({
@@ -98,6 +151,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
         maintenanceType: 'routine',
         description: '',
         garage: {
+          id: '',
           name: '',
           phone: '',
           address: '',
@@ -112,22 +166,81 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
         replacedParts: [],
         status: 'scheduled',
         notes: '',
+        documents: [],
       });
+      setSelectedGarage(null);
     }
     setError('');
-  }, [maintenance, open]);
+    setSelectedFiles([]);
+    setShowNewGarageForm(false);
+    setNewGarage({ name: '', phone: '', address: '', city: '' });
+  }, [maintenance, open, garages]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleGarageChange = (e) => {
+  const handleGarageSelect = (event, value) => {
+    setSelectedGarage(value);
+    if (value) {
+      setFormData(prev => ({
+        ...prev,
+        garage: {
+          id: value.id,
+          name: value.name,
+          phone: value.phone || '',
+          address: value.address || '',
+        }
+      }));
+      setShowNewGarageForm(false);
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        garage: { id: '', name: '', phone: '', address: '' }
+      }));
+    }
+  };
+
+  const handleNewGarageChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      garage: { ...prev.garage, [name]: value }
-    }));
+    setNewGarage(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddNewGarage = async () => {
+    if (!newGarage.name) {
+      setError('שם המוסך הוא שדה חובה');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await garagesAPI.create(newGarage);
+      const createdGarage = response.data.garage;
+
+      // הוסף לרשימה
+      setGarages(prev => [...prev, createdGarage]);
+
+      // בחר את המוסך החדש
+      setSelectedGarage(createdGarage);
+      setFormData(prev => ({
+        ...prev,
+        garage: {
+          id: createdGarage.id,
+          name: createdGarage.name,
+          phone: createdGarage.phone || '',
+          address: createdGarage.address || '',
+        }
+      }));
+
+      setShowNewGarageForm(false);
+      setNewGarage({ name: '', phone: '', address: '', city: '' });
+    } catch (err) {
+      console.error('Error creating garage:', err);
+      setError(err.response?.data?.message || 'שגיאה ביצירת מוסך');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCostChange = (e) => {
@@ -184,6 +297,30 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
     }));
   };
 
+  // טיפול בקבצים
+  const handleFileSelect = (event) => {
+    const files = Array.from(event.target.files);
+    setSelectedFiles(prev => [...prev, ...files]);
+  };
+
+  const handleRemoveFile = (index) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveExistingDocument = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      documents: prev.documents.filter((_, i) => i !== index)
+    }));
+  };
+
+  const getFileIcon = (fileName) => {
+    const ext = fileName.split('.').pop().toLowerCase();
+    if (['pdf'].includes(ext)) return <Description sx={{ color: '#ef4444' }} />;
+    if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) return <InsertDriveFile sx={{ color: '#3b82f6' }} />;
+    return <Receipt sx={{ color: '#10b981' }} />;
+  };
+
   const totalCost = (formData.costs.laborCost || 0) + (formData.costs.partsCost || 0) + (formData.costs.otherCosts || 0);
 
   const handleSubmit = async () => {
@@ -201,12 +338,40 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
       setLoading(true);
       setError('');
 
+      // העלאת קבצים אם יש
+      let uploadedDocs = [...formData.documents];
+      if (selectedFiles.length > 0) {
+        setUploadingFiles(true);
+        for (const file of selectedFiles) {
+          const formDataFile = new FormData();
+          formDataFile.append('file', file);
+          formDataFile.append('maintenanceId', maintenance?.id || 'new');
+          formDataFile.append('vehicleId', formData.vehicleId);
+
+          try {
+            const uploadResponse = await maintenanceAPI.uploadFile(formDataFile);
+            if (uploadResponse.data.file) {
+              uploadedDocs.push({
+                name: file.name,
+                url: uploadResponse.data.file.webViewLink || uploadResponse.data.file.url,
+                fileId: uploadResponse.data.file.id,
+                uploadedAt: new Date().toISOString(),
+              });
+            }
+          } catch (uploadErr) {
+            console.error('Error uploading file:', uploadErr);
+          }
+        }
+        setUploadingFiles(false);
+      }
+
       const dataToSave = {
         ...formData,
         costs: {
           ...formData.costs,
           totalCost,
         },
+        documents: uploadedDocs,
       };
 
       if (maintenance) {
@@ -284,6 +449,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
                 onChange={handleVehicleChange}
                 label="כלי *"
                 sx={{ borderRadius: '12px' }}
+                disabled={isRiderView}
               >
                 {vehicles.map(vehicle => (
                   <MenuItem key={vehicle.id} value={vehicle.id}>
@@ -355,43 +521,135 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
           {/* מוסך */}
           <Grid item xs={12}>
             <Divider sx={{ my: 1 }} />
-            <Typography variant="subtitle2" sx={{ color: '#6366f1', fontWeight: 600, mb: 1.5, mt: 2 }}>
-              פרטי מוסך
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, mt: 2 }}>
+              <Typography variant="subtitle2" sx={{ color: '#6366f1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Store fontSize="small" />
+                בחירת מוסך
+              </Typography>
+              <Button
+                size="small"
+                startIcon={<Add />}
+                onClick={() => setShowNewGarageForm(!showNewGarageForm)}
+                sx={{ borderRadius: '8px' }}
+              >
+                {showNewGarageForm ? 'בטל' : 'מוסך חדש'}
+              </Button>
+            </Box>
           </Grid>
 
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="שם מוסך"
-              name="name"
-              value={formData.garage.name}
-              onChange={handleGarageChange}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
-            />
-          </Grid>
+          {!showNewGarageForm ? (
+            <Grid item xs={12}>
+              <Autocomplete
+                options={garages}
+                getOptionLabel={(option) => option.name || ''}
+                value={selectedGarage}
+                onChange={handleGarageSelect}
+                loading={loadingGarages}
+                isOptionEqualToValue={(option, value) => option.id === value?.id}
+                renderOption={(props, option) => (
+                  <Box component="li" {...props}>
+                    <Box>
+                      <Typography sx={{ fontWeight: 600 }}>{option.name}</Typography>
+                      {option.city && (
+                        <Typography variant="caption" color="text.secondary">
+                          {option.city} {option.phone && `• ${option.phone}`}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                )}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="בחר מוסך"
+                    placeholder="הקלד לחיפוש..."
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {loadingGarages ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+              />
+            </Grid>
+          ) : (
+            <>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="שם המוסך *"
+                  name="name"
+                  value={newGarage.name}
+                  onChange={handleNewGarageChange}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="טלפון"
+                  name="phone"
+                  value={newGarage.phone}
+                  onChange={handleNewGarageChange}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="עיר"
+                  name="city"
+                  value={newGarage.city}
+                  onChange={handleNewGarageChange}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="כתובת"
+                  name="address"
+                  value={newGarage.address}
+                  onChange={handleNewGarageChange}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <Button
+                  variant="contained"
+                  onClick={handleAddNewGarage}
+                  disabled={loading || !newGarage.name}
+                  sx={{
+                    bgcolor: '#10b981',
+                    borderRadius: '10px',
+                    '&:hover': { bgcolor: '#059669' },
+                  }}
+                >
+                  {loading ? 'שומר...' : 'שמור מוסך חדש'}
+                </Button>
+              </Grid>
+            </>
+          )}
 
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="טלפון מוסך"
-              name="phone"
-              value={formData.garage.phone}
-              onChange={handleGarageChange}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="כתובת מוסך"
-              name="address"
-              value={formData.garage.address}
-              onChange={handleGarageChange}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
-            />
-          </Grid>
+          {selectedGarage && (
+            <Grid item xs={12}>
+              <Chip
+                label={`${selectedGarage.name}${selectedGarage.city ? ` - ${selectedGarage.city}` : ''}`}
+                onDelete={() => handleGarageSelect(null, null)}
+                sx={{
+                  bgcolor: 'rgba(99, 102, 241, 0.1)',
+                  color: '#6366f1',
+                  fontWeight: 600,
+                  '& .MuiChip-deleteIcon': { color: '#6366f1' },
+                }}
+              />
+            </Grid>
+          )}
 
           {/* עלויות */}
           <Grid item xs={12}>
@@ -521,20 +779,20 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
 
           {formData.replacedParts.map((part, index) => (
             <Grid item xs={12} key={index}>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                 <TextField
                   size="small"
                   label="שם חלק"
                   value={part.partName}
                   onChange={(e) => handlePartChange(index, 'partName', e.target.value)}
-                  sx={{ flex: 2, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                  sx={{ flex: 2, minWidth: 120, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
                 />
                 <TextField
                   size="small"
                   label="מק״ט"
                   value={part.partNumber}
                   onChange={(e) => handlePartChange(index, 'partNumber', e.target.value)}
-                  sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                  sx={{ flex: 1, minWidth: 80, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
                 />
                 <TextField
                   size="small"
@@ -565,6 +823,120 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
               </Box>
             </Grid>
           ))}
+
+          {/* קבצים - קבלות והצעות מחיר */}
+          <Grid item xs={12}>
+            <Divider sx={{ my: 1 }} />
+            <Box
+              sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, mt: 2, cursor: 'pointer' }}
+              onClick={() => setShowFilesSection(!showFilesSection)}
+            >
+              <Typography variant="subtitle2" sx={{ color: '#6366f1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Receipt fontSize="small" />
+                קבלות והצעות מחיר
+              </Typography>
+              <IconButton size="small">
+                {showFilesSection ? <ExpandLess /> : <ExpandMore />}
+              </IconButton>
+            </Box>
+          </Grid>
+
+          <Collapse in={showFilesSection} sx={{ width: '100%' }}>
+            <Grid container spacing={2} sx={{ px: 2 }}>
+              <Grid item xs={12}>
+                <Box
+                  sx={{
+                    border: '2px dashed #e2e8f0',
+                    borderRadius: '12px',
+                    p: 3,
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      borderColor: '#6366f1',
+                      bgcolor: 'rgba(99, 102, 241, 0.02)',
+                    },
+                  }}
+                  component="label"
+                >
+                  <input
+                    type="file"
+                    multiple
+                    hidden
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                    onChange={handleFileSelect}
+                  />
+                  <CloudUpload sx={{ fontSize: 40, color: '#94a3b8', mb: 1 }} />
+                  <Typography variant="body2" color="text.secondary">
+                    לחץ להעלאת קבצים או גרור לכאן
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    PDF, תמונות, מסמכי Word
+                  </Typography>
+                </Box>
+              </Grid>
+
+              {/* קבצים חדשים שנבחרו */}
+              {selectedFiles.length > 0 && (
+                <Grid item xs={12}>
+                  <Typography variant="caption" sx={{ color: '#64748b', mb: 1, display: 'block' }}>
+                    קבצים להעלאה ({selectedFiles.length})
+                  </Typography>
+                  <List dense sx={{ bgcolor: '#f8fafc', borderRadius: '12px' }}>
+                    {selectedFiles.map((file, index) => (
+                      <ListItem key={index}>
+                        <ListItemIcon sx={{ minWidth: 36 }}>
+                          {getFileIcon(file.name)}
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={file.name}
+                          secondary={`${(file.size / 1024).toFixed(1)} KB`}
+                        />
+                        <ListItemSecondaryAction>
+                          <IconButton edge="end" size="small" onClick={() => handleRemoveFile(index)}>
+                            <Delete fontSize="small" sx={{ color: '#ef4444' }} />
+                          </IconButton>
+                        </ListItemSecondaryAction>
+                      </ListItem>
+                    ))}
+                  </List>
+                </Grid>
+              )}
+
+              {/* קבצים קיימים */}
+              {formData.documents.length > 0 && (
+                <Grid item xs={12}>
+                  <Typography variant="caption" sx={{ color: '#64748b', mb: 1, display: 'block' }}>
+                    קבצים קיימים ({formData.documents.length})
+                  </Typography>
+                  <List dense sx={{ bgcolor: '#f0fdf4', borderRadius: '12px' }}>
+                    {formData.documents.map((doc, index) => (
+                      <ListItem
+                        key={index}
+                        component="a"
+                        href={doc.url}
+                        target="_blank"
+                        sx={{ textDecoration: 'none', color: 'inherit' }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 36 }}>
+                          {getFileIcon(doc.name)}
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={doc.name}
+                          secondary={doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString('he-IL') : ''}
+                        />
+                        <ListItemSecondaryAction>
+                          <IconButton edge="end" size="small" onClick={(e) => { e.preventDefault(); handleRemoveExistingDocument(index); }}>
+                            <Delete fontSize="small" sx={{ color: '#ef4444' }} />
+                          </IconButton>
+                        </ListItemSecondaryAction>
+                      </ListItem>
+                    ))}
+                  </List>
+                </Grid>
+              )}
+            </Grid>
+          </Collapse>
 
           {/* הערות */}
           <Grid item xs={12}>
@@ -598,7 +970,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
         <Button
           variant="contained"
           onClick={handleSubmit}
-          disabled={loading}
+          disabled={loading || uploadingFiles}
           sx={{
             bgcolor: '#6366f1',
             borderRadius: '10px',
@@ -610,7 +982,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
             },
           }}
         >
-          {loading ? 'שומר...' : maintenance ? 'עדכן' : 'צור טיפול'}
+          {uploadingFiles ? 'מעלה קבצים...' : loading ? 'שומר...' : maintenance ? 'עדכן' : 'צור טיפול'}
         </Button>
       </DialogActions>
     </Dialog>
