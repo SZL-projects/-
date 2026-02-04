@@ -106,6 +106,25 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
     }
   }, [open]);
 
+  // פונקציה לפרסור תאריך מפורמטים שונים
+  const parseDate = (timestamp) => {
+    if (!timestamp) return new Date().toISOString().split('T')[0];
+    try {
+      let date;
+      if (timestamp.toDate) {
+        date = timestamp.toDate();
+      } else if (timestamp._seconds) {
+        date = new Date(timestamp._seconds * 1000);
+      } else {
+        date = new Date(timestamp);
+      }
+      if (isNaN(date.getTime())) return new Date().toISOString().split('T')[0];
+      return date.toISOString().split('T')[0];
+    } catch (e) {
+      return new Date().toISOString().split('T')[0];
+    }
+  };
+
   // אתחול נתוני הטופס כשפותחים את הדיאלוג או משנים את הטיפול
   useEffect(() => {
     if (!open) return;
@@ -121,9 +140,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
         vehiclePlate: maintenance.vehiclePlate || '',
         riderId: maintenance.riderId || '',
         riderName: maintenance.riderName || '',
-        maintenanceDate: maintenance.maintenanceDate
-          ? new Date(maintenance.maintenanceDate.toDate ? maintenance.maintenanceDate.toDate() : maintenance.maintenanceDate).toISOString().split('T')[0]
-          : new Date().toISOString().split('T')[0],
+        maintenanceDate: parseDate(maintenance.maintenanceDate),
         kilometersAtMaintenance: maintenance.kilometersAtMaintenance || '',
         maintenanceType: maintenance.maintenanceType || 'routine',
         description: maintenance.description || '',
