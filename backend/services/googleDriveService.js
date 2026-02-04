@@ -218,6 +218,10 @@ class GoogleDriveService {
       const insuranceFolder = await this.findOrCreateFolder('ביטוחים', mainFolder.id);
       console.log(`Created/Found insurance folder: ${insuranceFolder.name} (${insuranceFolder.id})`);
 
+      // תיקיית טיפולים
+      const maintenanceFolder = await this.findOrCreateFolder('טיפולים', mainFolder.id);
+      console.log(`Created/Found maintenance folder: ${maintenanceFolder.name} (${maintenanceFolder.id})`);
+
       // תיקיית תמונות
       const photosFolder = await this.findOrCreateFolder('תמונות כלי', mainFolder.id);
       console.log(`Created/Found photos folder: ${photosFolder.name} (${photosFolder.id})`);
@@ -227,6 +231,8 @@ class GoogleDriveService {
         mainFolderLink: mainFolder.webViewLink,
         insuranceFolderId: insuranceFolder.id,
         insuranceFolderLink: insuranceFolder.webViewLink,
+        maintenanceFolderId: maintenanceFolder.id,
+        maintenanceFolderLink: maintenanceFolder.webViewLink,
         photosFolderId: photosFolder.id,
         photosFolderLink: photosFolder.webViewLink
       };

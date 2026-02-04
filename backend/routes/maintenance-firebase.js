@@ -334,24 +334,27 @@ router.post('/upload-file', upload.single('file'), async (req, res) => {
     }
 
     // בדיקה אם יש תיקיית טיפולים לרכב, אם לא - יצירה
-    let maintenanceFolderId = vehicle.folders?.maintenance;
+    // בדיקה בשני מיקומים אפשריים לתיקיית הטיפולים
+    let maintenanceFolderId = vehicle.driveFolderData?.maintenanceFolderId || vehicle.folders?.maintenance;
 
-    if (!maintenanceFolderId && vehicle.driveFolderId) {
+    if (!maintenanceFolderId && (vehicle.driveFolderData?.mainFolderId || vehicle.driveFolderId)) {
       // יצירת תיקיית טיפולים בתוך תיקיית הרכב
-      const maintenanceFolder = await googleDriveService.createFolder('טיפולים', vehicle.driveFolderId);
+      const parentFolderId = vehicle.driveFolderData?.mainFolderId || vehicle.driveFolderId;
+      const maintenanceFolder = await googleDriveService.createFolder('טיפולים', parentFolderId);
       maintenanceFolderId = maintenanceFolder.id;
 
       // עדכון הרכב עם התיקייה החדשה
       await VehicleModel.update(vehicleId, {
-        folders: {
-          ...vehicle.folders,
-          maintenance: maintenanceFolderId
+        driveFolderData: {
+          ...vehicle.driveFolderData,
+          maintenanceFolderId: maintenanceFolderId,
+          maintenanceFolderLink: maintenanceFolder.webViewLink
         }
       }, req.user.id);
     }
 
     // אם עדיין אין תיקייה - העלה לתיקייה הראשית של הרכב
-    const targetFolderId = maintenanceFolderId || vehicle.driveFolderId;
+    const targetFolderId = maintenanceFolderId || vehicle.driveFolderData?.mainFolderId || vehicle.driveFolderId;
 
     if (!targetFolderId) {
       return res.status(400).json({

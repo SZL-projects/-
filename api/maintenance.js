@@ -253,7 +253,8 @@ module.exports = async (req, res) => {
               }
 
               const vehicleData = vehicleDoc.data();
-              let maintenanceFolderId = vehicleData.folders?.maintenance;
+              // בדיקה בשני מיקומים אפשריים לתיקיית הטיפולים
+              let maintenanceFolderId = vehicleData.driveFolderData?.maintenanceFolderId || vehicleData.folders?.maintenance;
 
               // יצירת תיקיית טיפולים אם לא קיימת
               if (!maintenanceFolderId && vehicleData.driveFolderData?.mainFolderId) {
@@ -265,7 +266,8 @@ module.exports = async (req, res) => {
 
                 // עדכון הכלי עם התיקייה החדשה
                 await db.collection('vehicles').doc(vehicleId).update({
-                  'folders.maintenance': maintenanceFolderId,
+                  'driveFolderData.maintenanceFolderId': maintenanceFolderId,
+                  'driveFolderData.maintenanceFolderLink': maintenanceFolder.webViewLink,
                   updatedAt: new Date()
                 });
               }

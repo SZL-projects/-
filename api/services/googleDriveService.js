@@ -346,6 +346,10 @@ class GoogleDriveService {
       const archiveFolder = await this.createFolder('ביטוחים ישנים', mainFolder.id);
       console.log(`Created archive folder: ${archiveFolder.name} (${archiveFolder.id})`);
 
+      // תיקיית טיפולים
+      const maintenanceFolder = await this.createFolder('טיפולים', mainFolder.id);
+      console.log(`Created maintenance folder: ${maintenanceFolder.name} (${maintenanceFolder.id})`);
+
       // תיקיית "נוספים" - מכילה את כל התיקיות הלא-קבועות
       const extrasFolder = await this.createFolder('נוספים', mainFolder.id);
       console.log(`Created extras folder: ${extrasFolder.name} (${extrasFolder.id})`);
@@ -365,6 +369,8 @@ class GoogleDriveService {
         insuranceFolderLink: insuranceFolder.webViewLink,
         archiveFolderId: archiveFolder.id,
         archiveFolderLink: archiveFolder.webViewLink,
+        maintenanceFolderId: maintenanceFolder.id,
+        maintenanceFolderLink: maintenanceFolder.webViewLink,
         extrasFolderId: extrasFolder.id,
         extrasFolderLink: extrasFolder.webViewLink,
         photosFolderId: photosFolder.id,
