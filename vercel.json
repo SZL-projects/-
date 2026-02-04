@@ -8,6 +8,8 @@
     { "source": "/api/tasks/:path*", "destination": "/api/tasks" },
     { "source": "/api/monthly-checks/:path*", "destination": "/api/monthly-checks" },
     { "source": "/api/faults/:path*", "destination": "/api/faults" },
-    { "source": "/api/drive/:path*", "destination": "/api/drive" }
+    { "source": "/api/drive/:path*", "destination": "/api/drive" },
+    { "source": "/api/maintenance/:path*", "destination": "/api/maintenance" },
+    { "source": "/api/garages/:path*", "destination": "/api/garages" }
   ]
 }
