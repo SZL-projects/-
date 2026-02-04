@@ -60,13 +60,16 @@ import {
   ExpandLess,
   FilterList,
 } from '@mui/icons-material';
-import { maintenanceAPI, vehiclesAPI, ridersAPI, garagesAPI } from '../services/api';
+import { maintenanceAPI, vehiclesAPI, ridersAPI, garagesAPI, maintenanceTypesAPI } from '../services/api';
 import MaintenanceDialog from '../components/MaintenanceDialog';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Maintenance() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  const { user: currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.roles?.includes('super_admin');
 
   const [maintenances, setMaintenances] = useState([]);
   const [vehicles, setVehicles] = useState([]);
@@ -98,8 +101,12 @@ export default function Maintenance() {
   const [editingGarage, setEditingGarage] = useState(null);
   const [garageFormData, setGarageFormData] = useState({ name: '', phone: '', address: '', city: '' });
   const [maintenanceTypesOpen, setMaintenanceTypesOpen] = useState(false);
-  const [customMaintenanceTypes, setCustomMaintenanceTypes] = useState([]);
-  const [newTypeName, setNewTypeName] = useState('');
+  const [maintenanceTypesFromDB, setMaintenanceTypesFromDB] = useState([]);
+  const [newTypeKey, setNewTypeKey] = useState('');
+  const [newTypeLabel, setNewTypeLabel] = useState('');
+  const [newTypeColor, setNewTypeColor] = useState('#64748b');
+  const [editingType, setEditingType] = useState(null);
+  const [typeSaving, setTypeSaving] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -108,17 +115,19 @@ export default function Maintenance() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [maintenanceRes, vehiclesRes, ridersRes, garagesRes] = await Promise.all([
+      const [maintenanceRes, vehiclesRes, ridersRes, garagesRes, typesRes] = await Promise.all([
         maintenanceAPI.getAll().catch(() => ({ data: { maintenances: [] } })),
         vehiclesAPI.getAll().catch(() => ({ data: { vehicles: [] } })),
         ridersAPI.getAll().catch(() => ({ data: { riders: [] } })),
         garagesAPI.getAll().catch(() => ({ data: { garages: [] } })),
+        maintenanceTypesAPI.getAll().catch(() => ({ data: { types: [] } })),
       ]);
 
       setMaintenances(maintenanceRes.data.maintenances || []);
       setVehicles(vehiclesRes.data.vehicles || []);
       setRiders(ridersRes.data.riders || []);
       setGarages(garagesRes.data.garages || []);
+      setMaintenanceTypesFromDB(typesRes.data.types || []);
       setError('');
     } catch (err) {
       setError('שגיאה בטעינת הנתונים');
@@ -262,6 +271,74 @@ export default function Maintenance() {
     }
   }, []);
 
+  // Maintenance Types management
+  const handleSaveType = useCallback(async () => {
+    if (!isSuperAdmin) return;
+
+    try {
+      setTypeSaving(true);
+      if (editingType) {
+        await maintenanceTypesAPI.update(editingType.id, {
+          label: newTypeLabel,
+          color: newTypeColor
+        });
+      } else {
+        await maintenanceTypesAPI.create({
+          key: newTypeKey,
+          label: newTypeLabel,
+          color: newTypeColor
+        });
+      }
+      const response = await maintenanceTypesAPI.getAll();
+      setMaintenanceTypesFromDB(response.data.types || []);
+      setNewTypeKey('');
+      setNewTypeLabel('');
+      setNewTypeColor('#64748b');
+      setEditingType(null);
+    } catch (err) {
+      console.error('Error saving maintenance type:', err);
+      setError(err.response?.data?.message || 'שגיאה בשמירת סוג הטיפול');
+    } finally {
+      setTypeSaving(false);
+    }
+  }, [isSuperAdmin, editingType, newTypeKey, newTypeLabel, newTypeColor]);
+
+  const handleEditType = useCallback((type) => {
+    setEditingType(type);
+    setNewTypeKey(type.key);
+    setNewTypeLabel(type.label);
+    setNewTypeColor(type.color || '#64748b');
+  }, []);
+
+  const handleDeleteType = useCallback(async (typeId) => {
+    if (!isSuperAdmin) return;
+
+    try {
+      await maintenanceTypesAPI.delete(typeId);
+      const response = await maintenanceTypesAPI.getAll();
+      setMaintenanceTypesFromDB(response.data.types || []);
+    } catch (err) {
+      console.error('Error deleting maintenance type:', err);
+      setError(err.response?.data?.message || 'שגיאה במחיקת סוג הטיפול');
+    }
+  }, [isSuperAdmin]);
+
+  const handleInitializeTypes = useCallback(async () => {
+    if (!isSuperAdmin) return;
+
+    try {
+      setTypeSaving(true);
+      await maintenanceTypesAPI.initialize();
+      const response = await maintenanceTypesAPI.getAll();
+      setMaintenanceTypesFromDB(response.data.types || []);
+    } catch (err) {
+      console.error('Error initializing maintenance types:', err);
+      setError(err.response?.data?.message || 'שגיאה באתחול סוגי הטיפולים');
+    } finally {
+      setTypeSaving(false);
+    }
+  }, [isSuperAdmin]);
+
   const loadCompareData = useCallback(async (maintenanceType = null) => {
     try {
       setLoadingCompare(true);
@@ -315,14 +392,25 @@ export default function Maintenance() {
     cancelled: { label: 'בוטל', bgcolor: 'rgba(100, 116, 139, 0.1)', color: '#64748b', icon: <Cancel sx={{ fontSize: 16 }} /> },
   }), []);
 
-  const typeMap = useMemo(() => ({
-    routine: { label: 'טיפול תקופתי', color: '#2563eb' },
-    repair: { label: 'תיקון', color: '#d97706' },
-    emergency: { label: 'חירום', color: '#dc2626' },
-    recall: { label: 'ריקול', color: '#7c3aed' },
-    accident_repair: { label: 'תיקון תאונה', color: '#dc2626' },
-    other: { label: 'אחר', color: '#64748b' },
-  }), []);
+  const typeMap = useMemo(() => {
+    // אם יש סוגי טיפולים מהמסד נתונים, השתמש בהם
+    if (maintenanceTypesFromDB.length > 0) {
+      const map = {};
+      maintenanceTypesFromDB.forEach(type => {
+        map[type.key] = { label: type.label, color: type.color };
+      });
+      return map;
+    }
+    // ברירת מחדל
+    return {
+      routine: { label: 'טיפול תקופתי', color: '#2563eb' },
+      repair: { label: 'תיקון', color: '#d97706' },
+      emergency: { label: 'חירום', color: '#dc2626' },
+      recall: { label: 'ריקול', color: '#7c3aed' },
+      accident_repair: { label: 'תיקון תאונה', color: '#dc2626' },
+      other: { label: 'אחר', color: '#64748b' },
+    };
+  }, [maintenanceTypesFromDB]);
 
   const paidByMap = useMemo(() => ({
     unit: 'היחידה',
@@ -832,12 +920,9 @@ export default function Maintenance() {
                   sx={{ borderRadius: '12px' }}
                 >
                   <MenuItem value="all">הכל</MenuItem>
-                  <MenuItem value="routine">טיפול תקופתי</MenuItem>
-                  <MenuItem value="repair">תיקון</MenuItem>
-                  <MenuItem value="emergency">חירום</MenuItem>
-                  <MenuItem value="recall">ריקול</MenuItem>
-                  <MenuItem value="accident_repair">תיקון תאונה</MenuItem>
-                  <MenuItem value="other">אחר</MenuItem>
+                  {Object.entries(typeMap).map(([key, { label }]) => (
+                    <MenuItem key={key} value={key}>{label}</MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Grid>
@@ -1400,12 +1485,9 @@ export default function Maintenance() {
                 sx={{ borderRadius: '12px' }}
               >
                 <MenuItem value="all">כל הסוגים</MenuItem>
-                <MenuItem value="routine">טיפול תקופתי</MenuItem>
-                <MenuItem value="repair">תיקון</MenuItem>
-                <MenuItem value="emergency">חירום</MenuItem>
-                <MenuItem value="recall">ריקול</MenuItem>
-                <MenuItem value="accident_repair">תיקון תאונה</MenuItem>
-                <MenuItem value="other">אחר</MenuItem>
+                {Object.entries(typeMap).map(([key, { label }]) => (
+                  <MenuItem key={key} value={key}>{label}</MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Box>
@@ -1846,11 +1928,18 @@ export default function Maintenance() {
       {/* Maintenance Types Dialog */}
       <Dialog
         open={maintenanceTypesOpen}
-        onClose={() => setMaintenanceTypesOpen(false)}
-        maxWidth="xs"
+        onClose={() => {
+          setMaintenanceTypesOpen(false);
+          setEditingType(null);
+          setNewTypeKey('');
+          setNewTypeLabel('');
+          setNewTypeColor('#64748b');
+        }}
+        maxWidth="sm"
         fullWidth
         dir="rtl"
-        PaperProps={{ sx: { borderRadius: '20px' } }}
+        fullScreen={isMobile}
+        PaperProps={{ sx: { borderRadius: isMobile ? 0 : '20px' } }}
       >
         <DialogTitle sx={{ pb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -1871,30 +1960,157 @@ export default function Maintenance() {
           </Box>
         </DialogTitle>
         <DialogContent>
-          <Typography variant="body2" sx={{ color: '#64748b', mb: 2 }}>
-            סוגי הטיפולים המוגדרים במערכת:
+          {isSuperAdmin && (
+            <Box sx={{ mb: 3, p: 2, bgcolor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <Typography variant="subtitle2" sx={{ color: '#8b5cf6', fontWeight: 600, mb: 2 }}>
+                {editingType ? 'עריכת סוג טיפול' : 'הוספת סוג טיפול חדש'}
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="מפתח (באנגלית) *"
+                    value={newTypeKey}
+                    onChange={(e) => setNewTypeKey(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
+                    disabled={!!editingType}
+                    placeholder="לדוגמה: oil_change"
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="שם (בעברית) *"
+                    value={newTypeLabel}
+                    onChange={(e) => setNewTypeLabel(e.target.value)}
+                    placeholder="לדוגמה: החלפת שמן"
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="צבע"
+                    type="color"
+                    value={newTypeColor}
+                    onChange={(e) => setNewTypeColor(e.target.value)}
+                    sx={{
+                      '& .MuiOutlinedInput-root': { borderRadius: '10px' },
+                      '& input[type="color"]': { height: 32, cursor: 'pointer' }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      variant="contained"
+                      onClick={handleSaveType}
+                      disabled={!newTypeKey || !newTypeLabel || typeSaving}
+                      sx={{
+                        bgcolor: '#8b5cf6',
+                        borderRadius: '10px',
+                        fontWeight: 600,
+                        '&:hover': { bgcolor: '#7c3aed' },
+                      }}
+                    >
+                      {typeSaving ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : (editingType ? 'עדכן' : 'הוסף')}
+                    </Button>
+                    {editingType && (
+                      <Button
+                        onClick={() => {
+                          setEditingType(null);
+                          setNewTypeKey('');
+                          setNewTypeLabel('');
+                          setNewTypeColor('#64748b');
+                        }}
+                        sx={{ color: '#64748b', borderRadius: '10px' }}
+                      >
+                        ביטול
+                      </Button>
+                    )}
+                  </Box>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+
+          <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 600, mb: 1 }}>
+            סוגי הטיפולים המוגדרים ({Object.keys(typeMap).length})
           </Typography>
 
-          <List sx={{ bgcolor: '#f8fafc', borderRadius: '12px', mb: 2 }}>
-            {Object.entries(typeMap).map(([key, { label, color }]) => (
-              <ListItem key={key} sx={{ borderBottom: '1px solid #e2e8f0', '&:last-child': { borderBottom: 'none' } }}>
-                <Chip
-                  label={label}
-                  size="small"
-                  sx={{ bgcolor: `${color}15`, color, fontWeight: 600, mr: 1 }}
-                />
-                <ListItemText secondary={key} />
-              </ListItem>
-            ))}
+          <List sx={{ bgcolor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', mb: 2 }}>
+            {Object.entries(typeMap).map(([key, { label, color }]) => {
+              const dbType = maintenanceTypesFromDB.find(t => t.key === key);
+              return (
+                <ListItem
+                  key={key}
+                  sx={{
+                    borderBottom: '1px solid #f1f5f9',
+                    '&:last-child': { borderBottom: 'none' },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                    <Chip
+                      label={label}
+                      size="small"
+                      sx={{ bgcolor: `${color}15`, color, fontWeight: 600 }}
+                    />
+                    <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                      ({key})
+                    </Typography>
+                  </Box>
+                  {isSuperAdmin && dbType && (
+                    <ListItemSecondaryAction>
+                      <IconButton size="small" onClick={() => handleEditType(dbType)} sx={{ color: '#8b5cf6' }}>
+                        <Edit fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => handleDeleteType(dbType.id)} sx={{ color: '#ef4444' }}>
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </ListItemSecondaryAction>
+                  )}
+                </ListItem>
+              );
+            })}
           </List>
 
-          <Alert severity="info" sx={{ borderRadius: '12px' }}>
-            כדי להוסיף או לשנות סוגי טיפולים, יש לפנות למנהל המערכת.
-          </Alert>
+          {!isSuperAdmin && (
+            <Alert severity="info" sx={{ borderRadius: '12px' }}>
+              רק מנהל על יכול להוסיף או לערוך סוגי טיפולים.
+            </Alert>
+          )}
+
+          {isSuperAdmin && maintenanceTypesFromDB.length === 0 && (
+            <Alert
+              severity="warning"
+              sx={{ borderRadius: '12px' }}
+              action={
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={handleInitializeTypes}
+                  disabled={typeSaving}
+                >
+                  {typeSaving ? <CircularProgress size={16} /> : 'אתחל'}
+                </Button>
+              }
+            >
+              סוגי הטיפולים עדיין לא נשמרו במסד הנתונים. לחץ על "אתחל" כדי לשמור את ברירות המחדל.
+            </Alert>
+          )}
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
           <Button
-            onClick={() => setMaintenanceTypesOpen(false)}
+            onClick={() => {
+              setMaintenanceTypesOpen(false);
+              setEditingType(null);
+              setNewTypeKey('');
+              setNewTypeLabel('');
+              setNewTypeColor('#64748b');
+            }}
             sx={{ color: '#64748b', fontWeight: 600, borderRadius: '10px' }}
           >
             סגור

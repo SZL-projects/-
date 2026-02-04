@@ -10,6 +10,7 @@
     { "source": "/api/faults/:path*", "destination": "/api/faults" },
     { "source": "/api/drive/:path*", "destination": "/api/drive" },
     { "source": "/api/maintenance/:path*", "destination": "/api/maintenance" },
-    { "source": "/api/garages/:path*", "destination": "/api/maintenance" }
+    { "source": "/api/garages/:path*", "destination": "/api/maintenance" },
+    { "source": "/api/maintenance-types/:path*", "destination": "/api/maintenance" }
   ]
 }

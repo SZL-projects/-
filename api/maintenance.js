@@ -40,6 +40,12 @@ module.exports = async (req, res) => {
 
     const url = req.url.split('?')[0];
 
+    // ==================== MAINTENANCE TYPES ROUTES ====================
+    // Check if this is a maintenance-types request
+    if (url.includes('/maintenance-types')) {
+      return handleMaintenanceTypesRequest(req, res, db, user, url);
+    }
+
     // ==================== GARAGES ROUTES ====================
     // Check if this is a garages request (routed here via vercel.json rewrite)
     if (url.includes('/garages')) {
@@ -283,6 +289,205 @@ async function handleGaragesRequest(req, res, db, user, url) {
       success: true,
       message: 'מוסך נוצר בהצלחה',
       garage: { id: garageRef.id, ...garageDoc.data() }
+    });
+  }
+
+  return res.status(405).json({
+    success: false,
+    message: 'Method not allowed'
+  });
+}
+
+// ==================== MAINTENANCE TYPES HANDLER ====================
+async function handleMaintenanceTypesRequest(req, res, db, user, url) {
+  const typeId = extractIdFromUrl(req.url, 'maintenance-types');
+
+  // GET /api/maintenance-types - קבלת כל סוגי הטיפולים
+  if (req.method === 'GET' && !typeId) {
+    const snapshot = await db.collection('maintenanceTypes').orderBy('order', 'asc').get();
+    const types = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // אם אין סוגים מוגדרים, החזר את ברירת המחדל
+    if (types.length === 0) {
+      const defaultTypes = [
+        { key: 'routine', label: 'טיפול תקופתי', color: '#2563eb', order: 1 },
+        { key: 'repair', label: 'תיקון', color: '#d97706', order: 2 },
+        { key: 'emergency', label: 'חירום', color: '#dc2626', order: 3 },
+        { key: 'recall', label: 'ריקול', color: '#7c3aed', order: 4 },
+        { key: 'accident_repair', label: 'תיקון תאונה', color: '#dc2626', order: 5 },
+        { key: 'other', label: 'אחר', color: '#64748b', order: 6 },
+      ];
+      return res.json({
+        success: true,
+        types: defaultTypes,
+        isDefault: true
+      });
+    }
+
+    return res.json({
+      success: true,
+      types,
+      isDefault: false
+    });
+  }
+
+  // POST /api/maintenance-types - הוספת סוג טיפול חדש (super_admin בלבד)
+  if (req.method === 'POST') {
+    checkAuthorization(user, ['super_admin']);
+
+    if (!req.body.key || !req.body.label) {
+      return res.status(400).json({
+        success: false,
+        message: 'מפתח ושם הסוג הם שדות חובה'
+      });
+    }
+
+    // בדיקה שהמפתח לא קיים כבר
+    const existingSnapshot = await db.collection('maintenanceTypes')
+      .where('key', '==', req.body.key)
+      .get();
+
+    if (!existingSnapshot.empty) {
+      return res.status(400).json({
+        success: false,
+        message: 'סוג טיפול עם מפתח זה כבר קיים'
+      });
+    }
+
+    // קבלת הסדר הבא
+    const countSnapshot = await db.collection('maintenanceTypes').get();
+    const nextOrder = countSnapshot.size + 1;
+
+    const typeData = {
+      key: req.body.key,
+      label: req.body.label,
+      color: req.body.color || '#64748b',
+      order: req.body.order || nextOrder,
+      createdBy: user.id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const typeRef = await db.collection('maintenanceTypes').add(typeData);
+    const typeDoc = await typeRef.get();
+
+    return res.status(201).json({
+      success: true,
+      message: 'סוג טיפול נוצר בהצלחה',
+      type: { id: typeRef.id, ...typeDoc.data() }
+    });
+  }
+
+  // PUT /api/maintenance-types/:id - עדכון סוג טיפול (super_admin בלבד)
+  if (req.method === 'PUT' && typeId) {
+    checkAuthorization(user, ['super_admin']);
+
+    const typeRef = db.collection('maintenanceTypes').doc(typeId);
+    const doc = await typeRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({
+        success: false,
+        message: 'סוג טיפול לא נמצא'
+      });
+    }
+
+    const updateData = {
+      ...req.body,
+      updatedBy: user.id,
+      updatedAt: new Date()
+    };
+
+    // מנע שינוי מפתח
+    delete updateData.key;
+
+    await typeRef.update(updateData);
+    const updatedDoc = await typeRef.get();
+
+    return res.json({
+      success: true,
+      message: 'סוג טיפול עודכן בהצלחה',
+      type: { id: updatedDoc.id, ...updatedDoc.data() }
+    });
+  }
+
+  // DELETE /api/maintenance-types/:id - מחיקת סוג טיפול (super_admin בלבד)
+  if (req.method === 'DELETE' && typeId) {
+    checkAuthorization(user, ['super_admin']);
+
+    const typeRef = db.collection('maintenanceTypes').doc(typeId);
+    const doc = await typeRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({
+        success: false,
+        message: 'סוג טיפול לא נמצא'
+      });
+    }
+
+    // בדיקה שאין טיפולים משתמשים בסוג זה
+    const typeData = doc.data();
+    const maintenanceSnapshot = await db.collection('maintenance')
+      .where('maintenanceType', '==', typeData.key)
+      .limit(1)
+      .get();
+
+    if (!maintenanceSnapshot.empty) {
+      return res.status(400).json({
+        success: false,
+        message: 'לא ניתן למחוק סוג טיפול שקיימים טיפולים המשתמשים בו'
+      });
+    }
+
+    await typeRef.delete();
+
+    return res.json({
+      success: true,
+      message: 'סוג טיפול נמחק בהצלחה'
+    });
+  }
+
+  // POST /api/maintenance-types/init - אתחול סוגי טיפול ברירת מחדל (super_admin בלבד)
+  if (url.includes('/init') && req.method === 'POST') {
+    checkAuthorization(user, ['super_admin']);
+
+    const existingSnapshot = await db.collection('maintenanceTypes').get();
+    if (!existingSnapshot.empty) {
+      return res.status(400).json({
+        success: false,
+        message: 'סוגי טיפול כבר קיימים במערכת'
+      });
+    }
+
+    const defaultTypes = [
+      { key: 'routine', label: 'טיפול תקופתי', color: '#2563eb', order: 1 },
+      { key: 'repair', label: 'תיקון', color: '#d97706', order: 2 },
+      { key: 'emergency', label: 'חירום', color: '#dc2626', order: 3 },
+      { key: 'recall', label: 'ריקול', color: '#7c3aed', order: 4 },
+      { key: 'accident_repair', label: 'תיקון תאונה', color: '#dc2626', order: 5 },
+      { key: 'other', label: 'אחר', color: '#64748b', order: 6 },
+    ];
+
+    const batch = db.batch();
+    const types = [];
+
+    for (const type of defaultTypes) {
+      const ref = db.collection('maintenanceTypes').doc();
+      batch.set(ref, {
+        ...type,
+        createdBy: user.id,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      types.push({ id: ref.id, ...type });
+    }
+
+    await batch.commit();
+
+    return res.status(201).json({
+      success: true,
+      message: 'סוגי טיפול ברירת מחדל נוצרו בהצלחה',
+      types
     });
   }
 

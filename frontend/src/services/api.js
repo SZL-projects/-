@@ -368,6 +368,36 @@ export const maintenanceAPI = {
   },
 };
 
+// Maintenance Types API - סוגי טיפולים
+export const maintenanceTypesAPI = {
+  // קבלת כל סוגי הטיפולים
+  getAll: () => cachedGet('/maintenance-types'),
+
+  // יצירת סוג טיפול חדש (super_admin בלבד)
+  create: (data) => {
+    invalidateCache('/maintenance-types');
+    return api.post('/maintenance-types', data);
+  },
+
+  // עדכון סוג טיפול (super_admin בלבד)
+  update: (id, data) => {
+    invalidateCache('/maintenance-types');
+    return api.put(`/maintenance-types/${id}`, data);
+  },
+
+  // מחיקת סוג טיפול (super_admin בלבד)
+  delete: (id) => {
+    invalidateCache('/maintenance-types');
+    return api.delete(`/maintenance-types/${id}`);
+  },
+
+  // אתחול סוגי טיפול ברירת מחדל (super_admin בלבד)
+  initialize: () => {
+    invalidateCache('/maintenance-types');
+    return api.post('/maintenance-types/init');
+  },
+};
+
 // Garages API - מוסכים
 export const garagesAPI = {
   // קבלת כל המוסכים
