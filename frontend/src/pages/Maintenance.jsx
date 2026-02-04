@@ -59,6 +59,8 @@ import {
   ExpandMore,
   ExpandLess,
   FilterList,
+  HourglassEmpty,
+  CheckCircleOutline,
 } from '@mui/icons-material';
 import { maintenanceAPI, vehiclesAPI, ridersAPI, garagesAPI, maintenanceTypesAPI } from '../services/api';
 import MaintenanceDialog from '../components/MaintenanceDialog';
@@ -182,6 +184,20 @@ export default function Maintenance() {
     } catch (err) {
       console.error('Error updating maintenance status:', err);
       setError('שגיאה בעדכון הסטטוס');
+    }
+  }, []);
+
+  // אישור טיפול שהוגש על ידי רוכב
+  const handleApproveMaintenance = useCallback(async (maintenanceId) => {
+    try {
+      await maintenanceAPI.update(maintenanceId, {
+        status: 'scheduled',
+        approvedAt: new Date().toISOString(),
+      });
+      await loadData();
+    } catch (err) {
+      console.error('Error approving maintenance:', err);
+      setError('שגיאה באישור הטיפול');
     }
   }, []);
 
@@ -386,6 +402,7 @@ export default function Maintenance() {
 
   // מיפויים
   const statusMap = useMemo(() => ({
+    pending_approval: { label: 'ממתין לאישור', bgcolor: 'rgba(249, 115, 22, 0.1)', color: '#ea580c', icon: <HourglassEmpty sx={{ fontSize: 16 }} /> },
     scheduled: { label: 'מתוכנן', bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', icon: <Schedule sx={{ fontSize: 16 }} /> },
     in_progress: { label: 'בביצוע', bgcolor: 'rgba(245, 158, 11, 0.1)', color: '#d97706', icon: <Build sx={{ fontSize: 16 }} /> },
     completed: { label: 'הושלם', bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#059669', icon: <CheckCircle sx={{ fontSize: 16 }} /> },
@@ -903,6 +920,7 @@ export default function Maintenance() {
                   sx={{ borderRadius: '12px' }}
                 >
                   <MenuItem value="all">הכל</MenuItem>
+                  <MenuItem value="pending_approval">ממתין לאישור</MenuItem>
                   <MenuItem value="scheduled">מתוכנן</MenuItem>
                   <MenuItem value="in_progress">בביצוע</MenuItem>
                   <MenuItem value="completed">הושלם</MenuItem>
@@ -1034,6 +1052,13 @@ export default function Maintenance() {
                       <IconButton size="small" onClick={() => handleEdit(maintenance)} sx={{ color: '#64748b' }}>
                         <Edit fontSize="small" />
                       </IconButton>
+                      {maintenance.status === 'pending_approval' && (
+                        <Tooltip title="אשר טיפול">
+                          <IconButton size="small" onClick={() => handleApproveMaintenance(maintenance.id)} sx={{ color: '#10b981' }}>
+                            <CheckCircleOutline fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                       {maintenance.status === 'scheduled' && (
                         <IconButton size="small" onClick={() => handleUpdateStatus(maintenance.id, 'in_progress')} sx={{ color: '#f59e0b' }}>
                           <Build fontSize="small" />
@@ -1173,6 +1198,17 @@ export default function Maintenance() {
                           <Edit />
                         </IconButton>
                       </Tooltip>
+                      {maintenance.status === 'pending_approval' && (
+                        <Tooltip title="אשר טיפול">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleApproveMaintenance(maintenance.id)}
+                            sx={{ color: '#10b981', '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.08)' } }}
+                          >
+                            <CheckCircleOutline />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                       {maintenance.status === 'scheduled' && (
                         <Tooltip title="התחל טיפול">
                           <IconButton

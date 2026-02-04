@@ -173,7 +173,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
         },
         paidBy: isRiderView ? 'rider' : 'unit',
         replacedParts: [],
-        status: 'scheduled',
+        status: isRiderView ? 'pending_approval' : 'scheduled',
         notes: '',
         documents: [],
       });
@@ -217,6 +217,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
   };
 
   const handleAddNewGarage = async () => {
+    if (isRiderView) return; // רוכב לא יכול להוסיף מוסך
     if (!newGarage.name) {
       setError('שם המוסך הוא שדה חובה');
       return;
@@ -538,14 +539,16 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
                 <Store fontSize="small" />
                 בחירת מוסך
               </Typography>
-              <Button
-                size="small"
-                startIcon={<Add />}
-                onClick={() => setShowNewGarageForm(!showNewGarageForm)}
-                sx={{ borderRadius: '8px' }}
-              >
-                {showNewGarageForm ? 'בטל' : 'מוסך חדש'}
-              </Button>
+              {!isRiderView && (
+                <Button
+                  size="small"
+                  startIcon={<Add />}
+                  onClick={() => setShowNewGarageForm(!showNewGarageForm)}
+                  sx={{ borderRadius: '8px' }}
+                >
+                  {showNewGarageForm ? 'בטל' : 'מוסך חדש'}
+                </Button>
+              )}
             </Box>
           </Grid>
 
@@ -765,7 +768,9 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
                 onChange={handleChange}
                 label="סטטוס"
                 sx={{ borderRadius: '12px' }}
+                disabled={isRiderView}
               >
+                {isRiderView && <MenuItem value="pending_approval">ממתין לאישור</MenuItem>}
                 <MenuItem value="scheduled">מתוכנן</MenuItem>
                 <MenuItem value="in_progress">בביצוע</MenuItem>
                 <MenuItem value="completed">הושלם</MenuItem>
@@ -773,6 +778,14 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
               </Select>
             </FormControl>
           </Grid>
+
+          {isRiderView && !maintenance && (
+            <Grid item xs={12}>
+              <Alert severity="info" sx={{ borderRadius: '12px' }}>
+                הטיפול יישלח לאישור המנהל לפני שיופיע במערכת
+              </Alert>
+            </Grid>
+          )}
 
           {/* חלקים שהוחלפו */}
           <Grid item xs={12}>

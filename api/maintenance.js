@@ -519,6 +519,8 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
     const totalCount = maintenances.length;
     const completedCount = maintenances.filter(m => m.status === 'completed').length;
     const pendingCount = maintenances.filter(m => m.status === 'pending').length;
+    const pendingApprovalCount = maintenances.filter(m => m.status === 'pending_approval').length;
+    const scheduledCount = maintenances.filter(m => m.status === 'scheduled').length;
     const inProgressCount = maintenances.filter(m => m.status === 'in_progress').length;
 
     const completedMaintenances = maintenances.filter(m => m.status === 'completed' && m.costs?.totalCost);
@@ -545,6 +547,8 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
         totalCount,
         completedCount,
         pendingCount,
+        pendingApprovalCount,
+        scheduledCount,
         inProgressCount,
         totalCost,
         averageCost,
@@ -860,6 +864,23 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
     if (req.method === 'DELETE') {
       checkAuthorization(user, ['super_admin', 'manager']);
 
+      // מחיקת קבצים מ-Google Drive לפני מחיקת הטיפול
+      const maintenanceData = doc.data();
+      if (maintenanceData.documents && maintenanceData.documents.length > 0) {
+        console.log(`Deleting ${maintenanceData.documents.length} files from Drive for maintenance ${maintenanceId}`);
+        for (const document of maintenanceData.documents) {
+          if (document.fileId) {
+            try {
+              await googleDriveService.deleteFile(document.fileId);
+              console.log(`Deleted file ${document.fileId} from Drive`);
+            } catch (deleteErr) {
+              console.error(`Error deleting file ${document.fileId} from Drive:`, deleteErr.message);
+              // ממשיכים למחוק את שאר הקבצים גם אם אחד נכשל
+            }
+          }
+        }
+      }
+
       await maintenanceRef.delete();
 
       return res.json({
@@ -928,6 +949,9 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
       });
     }
 
+    // בדיקה האם הרוכב מדווח על הטיפול
+    const isRiderSubmission = user.role === 'rider' || (user.roles && user.roles.includes('rider'));
+
     const maintenanceData = {
       vehicleId: req.body.vehicleId,
       riderId: req.body.riderId || null,
@@ -941,7 +965,9 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
       costs: req.body.costs || {},
       paidBy: req.body.paidBy || null,
       files: req.body.files || [],
-      status: req.body.status || 'pending',
+      // אם רוכב מדווח - סטטוס ממתין לאישור
+      status: isRiderSubmission ? 'pending_approval' : (req.body.status || 'scheduled'),
+      submittedByRider: isRiderSubmission,
       reportedBy: user.id,
       createdBy: user.id,
       createdAt: new Date(),
