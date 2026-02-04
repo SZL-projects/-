@@ -106,9 +106,16 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
     }
   }, [open]);
 
+  // אתחול נתוני הטופס כשפותחים את הדיאלוג או משנים את הטיפול
   useEffect(() => {
+    if (!open) return;
+
     if (maintenance) {
-      // עריכה
+      // עריכה - תמיכה גם בפורמט ישן (garageId/garageName) וגם חדש (garage object)
+      const garageObj = maintenance.garage || {};
+      const garageId = garageObj.id || maintenance.garageId || '';
+      const garageName = garageObj.name || maintenance.garageName || '';
+
       setFormData({
         vehicleId: maintenance.vehicleId || '',
         vehiclePlate: maintenance.vehiclePlate || '',
@@ -121,16 +128,16 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
         maintenanceType: maintenance.maintenanceType || 'routine',
         description: maintenance.description || '',
         garage: {
-          id: maintenance.garage?.id || '',
-          name: maintenance.garage?.name || '',
-          phone: maintenance.garage?.phone || '',
-          address: maintenance.garage?.address || '',
+          id: garageId,
+          name: garageName,
+          phone: garageObj.phone || '',
+          address: garageObj.address || '',
         },
         relatedFaultId: maintenance.relatedFaultId || '',
         costs: {
           laborCost: maintenance.costs?.laborCost || 0,
           partsCost: maintenance.costs?.partsCost || 0,
-          otherCosts: maintenance.costs?.otherCosts || 0,
+          otherCosts: maintenance.costs?.otherCost || 0,
         },
         paidBy: maintenance.paidBy || 'unit',
         replacedParts: maintenance.replacedParts || [],
@@ -139,10 +146,11 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
         documents: maintenance.documents || [],
       });
 
-      // אם יש מוסך קיים
-      if (maintenance.garage?.id) {
-        const existingGarage = garages.find(g => g.id === maintenance.garage.id);
-        setSelectedGarage(existingGarage || { id: maintenance.garage.id, name: maintenance.garage.name });
+      // הגדרת המוסך הנבחר
+      if (garageId) {
+        setSelectedGarage({ id: garageId, name: garageName, phone: garageObj.phone || '', address: garageObj.address || '' });
+      } else {
+        setSelectedGarage(null);
       }
     } else {
       // חדש - איפוס
@@ -183,7 +191,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
     setSelectedFiles([]);
     setShowNewGarageForm(false);
     setNewGarage({ name: '', phone: '', address: '', city: '' });
-  }, [maintenance, open, garages, vehicles, riders, isRiderView]);
+  }, [maintenance, open, vehicles, riders, isRiderView]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -556,13 +564,13 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
             <Grid item xs={12}>
               <Autocomplete
                 options={garages}
-                getOptionLabel={(option) => option.name || ''}
+                getOptionLabel={(option) => option?.name || ''}
                 value={selectedGarage}
                 onChange={handleGarageSelect}
                 loading={loadingGarages}
-                isOptionEqualToValue={(option, value) => option.id === value?.id}
+                isOptionEqualToValue={(option, value) => option?.id === value?.id}
                 renderOption={(props, option) => (
-                  <Box component="li" {...props}>
+                  <Box component="li" {...props} key={option.id}>
                     <Box>
                       <Typography sx={{ fontWeight: 600 }}>{option.name}</Typography>
                       {option.city && (

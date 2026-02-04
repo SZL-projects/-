@@ -845,11 +845,28 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
     if (req.method === 'PUT') {
       checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
 
+      // תמיכה גם בפורמט garage object וגם garageId/garageName
+      const garageData = req.body.garage || {};
+
       const updateData = {
         ...req.body,
+        // וידוא שהמוסך נשמר בפורמט הנכון
+        garage: {
+          id: garageData.id || req.body.garageId || null,
+          name: garageData.name || req.body.garageName || '',
+          phone: garageData.phone || '',
+          address: garageData.address || '',
+        },
+        garageId: garageData.id || req.body.garageId || null,
+        garageName: garageData.name || req.body.garageName || '',
+        // וידוא תאריך בפורמט נכון
+        maintenanceDate: req.body.maintenanceDate ? new Date(req.body.maintenanceDate) : undefined,
         updatedBy: user.id,
         updatedAt: new Date()
       };
+
+      // הסרת שדות undefined
+      Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
 
       await maintenanceRef.update(updateData);
       const updatedDoc = await maintenanceRef.get();
@@ -952,18 +969,35 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
     // בדיקה האם הרוכב מדווח על הטיפול
     const isRiderSubmission = user.role === 'rider' || (user.roles && user.roles.includes('rider'));
 
+    // תמיכה גם בפורמט garage object וגם garageId/garageName
+    const garageData = req.body.garage || {};
+
     const maintenanceData = {
       vehicleId: req.body.vehicleId,
+      vehiclePlate: req.body.vehiclePlate || '',
       riderId: req.body.riderId || null,
+      riderName: req.body.riderName || '',
       description: req.body.description,
       maintenanceType: req.body.maintenanceType || 'other',
-      garageId: req.body.garageId || null,
-      garageName: req.body.garageName || '',
+      maintenanceDate: req.body.maintenanceDate ? new Date(req.body.maintenanceDate) : new Date(),
+      kilometersAtMaintenance: req.body.kilometersAtMaintenance || null,
+      // שמירת מוסך כאובייקט מלא
+      garage: {
+        id: garageData.id || req.body.garageId || null,
+        name: garageData.name || req.body.garageName || '',
+        phone: garageData.phone || '',
+        address: garageData.address || '',
+      },
+      garageId: garageData.id || req.body.garageId || null,
+      garageName: garageData.name || req.body.garageName || '',
       scheduledDate: req.body.scheduledDate ? new Date(req.body.scheduledDate) : null,
       faultId: req.body.faultId || null,
+      relatedFaultId: req.body.relatedFaultId || null,
       notes: req.body.notes || '',
       costs: req.body.costs || {},
       paidBy: req.body.paidBy || null,
+      replacedParts: req.body.replacedParts || [],
+      documents: req.body.documents || [],
       files: req.body.files || [],
       // אם רוכב מדווח - סטטוס ממתין לאישור
       status: isRiderSubmission ? 'pending_approval' : (req.body.status || 'scheduled'),
