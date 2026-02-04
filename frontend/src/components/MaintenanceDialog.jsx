@@ -146,13 +146,17 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
       }
     } else {
       // חדש - איפוס
+      // אם יש רק כלי אחד (למשל בתצוגת רוכב), הגדר אותו אוטומטית
+      const prefilledVehicle = vehicles.length === 1 ? vehicles[0] : null;
+      const prefilledRider = riders.length === 1 ? riders[0] : null;
+
       setFormData({
-        vehicleId: '',
-        vehiclePlate: '',
-        riderId: '',
-        riderName: '',
+        vehicleId: prefilledVehicle?.id || '',
+        vehiclePlate: prefilledVehicle?.licensePlate || '',
+        riderId: prefilledRider?.id || '',
+        riderName: prefilledRider ? `${prefilledRider.firstName} ${prefilledRider.lastName}` : '',
         maintenanceDate: new Date().toISOString().split('T')[0],
-        kilometersAtMaintenance: '',
+        kilometersAtMaintenance: prefilledVehicle?.currentKilometers || '',
         maintenanceType: 'routine',
         description: '',
         garage: {
@@ -167,7 +171,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
           partsCost: 0,
           otherCosts: 0,
         },
-        paidBy: 'unit',
+        paidBy: isRiderView ? 'rider' : 'unit',
         replacedParts: [],
         status: 'scheduled',
         notes: '',
@@ -179,7 +183,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
     setSelectedFiles([]);
     setShowNewGarageForm(false);
     setNewGarage({ name: '', phone: '', address: '', city: '' });
-  }, [maintenance, open, garages]);
+  }, [maintenance, open, garages, vehicles, riders, isRiderView]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

@@ -38,7 +38,8 @@ import {
   Factory,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { vehiclesAPI, ridersAPI, faultsAPI, monthlyChecksAPI } from '../services/api';
+import { vehiclesAPI, ridersAPI, faultsAPI, monthlyChecksAPI, maintenanceAPI } from '../services/api';
+import MaintenanceDialog from '../components/MaintenanceDialog';
 
 export default function MyVehicle() {
   const navigate = useNavigate();
@@ -46,11 +47,13 @@ export default function MyVehicle() {
   const [vehicle, setVehicle] = useState(null);
   const [rider, setRider] = useState(null);
   const [recentFaults, setRecentFaults] = useState([]);
+  const [recentMaintenances, setRecentMaintenances] = useState([]);
   const [monthlyChecks, setMonthlyChecks] = useState([]);
   const [insuranceFiles, setInsuranceFiles] = useState([]);
   const [filesLoading, setFilesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [maintenanceDialogOpen, setMaintenanceDialogOpen] = useState(false);
 
   // מפת סטטוסים מודרנית
   const statusMap = useMemo(() => ({
@@ -151,6 +154,14 @@ export default function MyVehicle() {
         setRecentFaults(vehicleFaults);
       } catch (err) {
         console.error('Error loading faults:', err);
+      }
+
+      // טעינת טיפולים אחרונים
+      try {
+        const maintenanceResponse = await maintenanceAPI.getByVehicle(vehicleId, 5);
+        setRecentMaintenances(maintenanceResponse.data.maintenances || []);
+      } catch (err) {
+        console.error('Error loading maintenances:', err);
       }
 
       try {
@@ -671,6 +682,119 @@ export default function MyVehicle() {
           </Card>
         </Grid>
 
+        {/* טיפולים אחרונים */}
+        <Grid item xs={12}>
+          <Card sx={{
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: '10px',
+                    bgcolor: 'rgba(99, 102, 241, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <Build sx={{ color: '#6366f1', fontSize: 20 }} />
+                  </Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                    טיפולים
+                  </Typography>
+                </Box>
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<Build />}
+                  onClick={() => setMaintenanceDialogOpen(true)}
+                  sx={{
+                    borderRadius: '10px',
+                    fontWeight: 600,
+                    bgcolor: '#6366f1',
+                    '&:hover': {
+                      bgcolor: '#4f46e5',
+                    },
+                  }}
+                >
+                  דווח על טיפול
+                </Button>
+              </Box>
+              <Divider sx={{ mb: 3, borderColor: '#e2e8f0' }} />
+
+              {recentMaintenances.length === 0 ? (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Build sx={{ fontSize: 64, color: '#94a3b8', mb: 2 }} />
+                  <Typography sx={{ color: '#64748b' }}>
+                    אין טיפולים רשומים
+                  </Typography>
+                </Box>
+              ) : (
+                <List sx={{ p: 0 }}>
+                  {recentMaintenances.map((maintenance, index) => (
+                    <ListItem
+                      key={maintenance.id || index}
+                      sx={{
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        mb: 1.5,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { borderColor: '#cbd5e1', bgcolor: '#f8fafc' },
+                      }}
+                    >
+                      <ListItemIcon>
+                        <Box sx={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: '10px',
+                          bgcolor: maintenance.status === 'completed' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                          <Build sx={{ color: maintenance.status === 'completed' ? '#10b981' : '#6366f1', fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                              {maintenance.description || 'ללא תיאור'}
+                            </Typography>
+                            <Chip
+                              label={maintenance.status === 'completed' ? 'הושלם' : maintenance.status === 'in_progress' ? 'בטיפול' : 'מתוכנן'}
+                              size="small"
+                              sx={{
+                                bgcolor: maintenance.status === 'completed' ? 'rgba(16, 185, 129, 0.1)' : maintenance.status === 'in_progress' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                color: maintenance.status === 'completed' ? '#10b981' : maintenance.status === 'in_progress' ? '#f59e0b' : '#3b82f6',
+                                fontWeight: 600,
+                                fontSize: '0.75rem',
+                              }}
+                            />
+                          </Box>
+                        }
+                        secondary={
+                          <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5 }}>
+                            {maintenance.maintenanceDate
+                              ? new Date(maintenance.maintenanceDate?.seconds ? maintenance.maintenanceDate.seconds * 1000 : maintenance.maintenanceDate).toLocaleDateString('he-IL')
+                              : new Date(maintenance.createdAt?.seconds ? maintenance.createdAt.seconds * 1000 : maintenance.createdAt).toLocaleDateString('he-IL')}
+                            {maintenance.garageName && ` • ${maintenance.garageName}`}
+                            {maintenance.costs?.totalCost > 0 && ` • ₪${maintenance.costs.totalCost.toLocaleString()}`}
+                          </Typography>
+                        }
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
         {/* קבצי ביטוח */}
         <Grid item xs={12} md={6}>
           <Card sx={{
@@ -825,6 +949,28 @@ export default function MyVehicle() {
           </Grid>
         )}
       </Grid>
+
+      {/* Maintenance Dialog */}
+      <MaintenanceDialog
+        open={maintenanceDialogOpen}
+        onClose={() => setMaintenanceDialogOpen(false)}
+        maintenance={null}
+        vehicles={vehicle ? [vehicle] : []}
+        riders={rider ? [rider] : []}
+        onSave={async () => {
+          setMaintenanceDialogOpen(false);
+          // טען מחדש את הטיפולים
+          if (vehicle?.id) {
+            try {
+              const maintenanceResponse = await maintenanceAPI.getByVehicle(vehicle.id, 5);
+              setRecentMaintenances(maintenanceResponse.data.maintenances || []);
+            } catch (err) {
+              console.error('Error reloading maintenances:', err);
+            }
+          }
+        }}
+        isRiderView={true}
+      />
     </Box>
   );
 }

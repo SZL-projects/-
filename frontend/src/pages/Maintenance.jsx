@@ -1965,75 +1965,62 @@ export default function Maintenance() {
               <Typography variant="subtitle2" sx={{ color: '#8b5cf6', fontWeight: 600, mb: 2 }}>
                 {editingType ? 'עריכת סוג טיפול' : 'הוספת סוג טיפול חדש'}
               </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="מפתח (באנגלית) *"
-                    value={newTypeKey}
-                    onChange={(e) => setNewTypeKey(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
-                    disabled={!!editingType}
-                    placeholder="לדוגמה: oil_change"
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="שם (בעברית) *"
-                    value={newTypeLabel}
-                    onChange={(e) => setNewTypeLabel(e.target.value)}
-                    placeholder="לדוגמה: החלפת שמן"
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="צבע"
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                <TextField
+                  size="small"
+                  label="שם סוג הטיפול *"
+                  value={newTypeLabel}
+                  onChange={(e) => {
+                    setNewTypeLabel(e.target.value);
+                    // יצירה אוטומטית של מפתח מהשם (רק אם לא בעריכה)
+                    if (!editingType) {
+                      const autoKey = e.target.value
+                        .trim()
+                        .replace(/\s+/g, '_')
+                        .replace(/[^\u0590-\u05FFa-zA-Z0-9_]/g, '')
+                        .toLowerCase() || `type_${Date.now()}`;
+                      setNewTypeKey(autoKey);
+                    }
+                  }}
+                  placeholder="לדוגמה: החלפת שמן"
+                  sx={{ flex: 1, minWidth: 180, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="caption" sx={{ color: '#64748b' }}>צבע:</Typography>
+                  <input
                     type="color"
                     value={newTypeColor}
                     onChange={(e) => setNewTypeColor(e.target.value)}
-                    sx={{
-                      '& .MuiOutlinedInput-root': { borderRadius: '10px' },
-                      '& input[type="color"]': { height: 32, cursor: 'pointer' }
-                    }}
+                    style={{ width: 40, height: 32, border: 'none', borderRadius: 8, cursor: 'pointer' }}
                   />
-                </Grid>
-                <Grid item xs={12}>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                      variant="contained"
-                      onClick={handleSaveType}
-                      disabled={!newTypeKey || !newTypeLabel || typeSaving}
-                      sx={{
-                        bgcolor: '#8b5cf6',
-                        borderRadius: '10px',
-                        fontWeight: 600,
-                        '&:hover': { bgcolor: '#7c3aed' },
-                      }}
-                    >
-                      {typeSaving ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : (editingType ? 'עדכן' : 'הוסף')}
-                    </Button>
-                    {editingType && (
-                      <Button
-                        onClick={() => {
-                          setEditingType(null);
-                          setNewTypeKey('');
-                          setNewTypeLabel('');
-                          setNewTypeColor('#64748b');
-                        }}
-                        sx={{ color: '#64748b', borderRadius: '10px' }}
-                      >
-                        ביטול
-                      </Button>
-                    )}
-                  </Box>
-                </Grid>
-              </Grid>
+                </Box>
+                <Button
+                  variant="contained"
+                  onClick={handleSaveType}
+                  disabled={!newTypeLabel || typeSaving}
+                  sx={{
+                    bgcolor: '#8b5cf6',
+                    borderRadius: '10px',
+                    fontWeight: 600,
+                    '&:hover': { bgcolor: '#7c3aed' },
+                  }}
+                >
+                  {typeSaving ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : (editingType ? 'עדכן' : 'הוסף')}
+                </Button>
+                {editingType && (
+                  <Button
+                    onClick={() => {
+                      setEditingType(null);
+                      setNewTypeKey('');
+                      setNewTypeLabel('');
+                      setNewTypeColor('#64748b');
+                    }}
+                    sx={{ color: '#64748b', borderRadius: '10px' }}
+                  >
+                    ביטול
+                  </Button>
+                )}
+              </Box>
             </Box>
           )}
 
@@ -2050,27 +2037,32 @@ export default function Maintenance() {
                   sx={{
                     borderBottom: '1px solid #f1f5f9',
                     '&:last-child': { borderBottom: 'none' },
+                    py: 1.5,
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
-                    <Chip
-                      label={label}
-                      size="small"
-                      sx={{ bgcolor: `${color}15`, color, fontWeight: 600 }}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
+                    <Box
+                      sx={{
+                        width: 16,
+                        height: 16,
+                        borderRadius: '4px',
+                        bgcolor: color,
+                        flexShrink: 0,
+                      }}
                     />
-                    <Typography variant="caption" sx={{ color: '#94a3b8' }}>
-                      ({key})
+                    <Typography sx={{ fontWeight: 600, color: '#1e293b' }}>
+                      {label}
                     </Typography>
                   </Box>
                   {isSuperAdmin && dbType && (
-                    <ListItemSecondaryAction>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
                       <IconButton size="small" onClick={() => handleEditType(dbType)} sx={{ color: '#8b5cf6' }}>
                         <Edit fontSize="small" />
                       </IconButton>
                       <IconButton size="small" onClick={() => handleDeleteType(dbType.id)} sx={{ color: '#ef4444' }}>
                         <Delete fontSize="small" />
                       </IconButton>
-                    </ListItemSecondaryAction>
+                    </Box>
                   )}
                 </ListItem>
               );
