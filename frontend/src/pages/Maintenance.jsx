@@ -386,8 +386,20 @@ export default function Maintenance() {
 
   const formatDate = useCallback((timestamp) => {
     if (!timestamp) return '-';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return dateFormatter.format(date);
+    try {
+      let date;
+      if (timestamp.toDate) {
+        date = timestamp.toDate();
+      } else if (timestamp._seconds) {
+        date = new Date(timestamp._seconds * 1000);
+      } else {
+        date = new Date(timestamp);
+      }
+      if (isNaN(date.getTime())) return '-';
+      return dateFormatter.format(date);
+    } catch (e) {
+      return '-';
+    }
   }, [dateFormatter]);
 
   // פורמט מחיר
