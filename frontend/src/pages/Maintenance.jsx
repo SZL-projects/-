@@ -31,6 +31,14 @@ import {
   Tab,
   Badge,
   Divider,
+  useMediaQuery,
+  useTheme,
+  Collapse,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  Tooltip,
 } from '@mui/material';
 import {
   Search,
@@ -46,11 +54,20 @@ import {
   DirectionsCar,
   CompareArrows,
   Store,
+  Delete,
+  Settings,
+  ExpandMore,
+  ExpandLess,
+  FilterList,
 } from '@mui/icons-material';
 import { maintenanceAPI, vehiclesAPI, ridersAPI, garagesAPI } from '../services/api';
 import MaintenanceDialog from '../components/MaintenanceDialog';
 
 export default function Maintenance() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+
   const [maintenances, setMaintenances] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [riders, setRiders] = useState([]);
@@ -71,6 +88,18 @@ export default function Maintenance() {
   const [compareData, setCompareData] = useState([]);
   const [compareType, setCompareType] = useState('all');
   const [loadingCompare, setLoadingCompare] = useState(false);
+  const [showFilters, setShowFilters] = useState(!isMobile);
+  const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
+  const [completingMaintenance, setCompletingMaintenance] = useState(null);
+  const [completeCosts, setCompleteCosts] = useState({ laborCost: 0, partsCost: 0, otherCosts: 0 });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingMaintenance, setDeletingMaintenance] = useState(null);
+  const [garageManageOpen, setGarageManageOpen] = useState(false);
+  const [editingGarage, setEditingGarage] = useState(null);
+  const [garageFormData, setGarageFormData] = useState({ name: '', phone: '', address: '', city: '' });
+  const [maintenanceTypesOpen, setMaintenanceTypesOpen] = useState(false);
+  const [customMaintenanceTypes, setCustomMaintenanceTypes] = useState([]);
+  const [newTypeName, setNewTypeName] = useState('');
 
   useEffect(() => {
     loadData();
@@ -152,9 +181,84 @@ export default function Maintenance() {
       await maintenanceAPI.complete(maintenanceId, { costs });
       await loadData();
       setDetailsDialogOpen(false);
+      setCompleteDialogOpen(false);
+      setCompletingMaintenance(null);
     } catch (err) {
       console.error('Error completing maintenance:', err);
       setError('שגיאה בסגירת הטיפול');
+    }
+  }, []);
+
+  const handleOpenComplete = useCallback((maintenance) => {
+    setCompletingMaintenance(maintenance);
+    setCompleteCosts({
+      laborCost: maintenance.costs?.laborCost || 0,
+      partsCost: maintenance.costs?.partsCost || 0,
+      otherCosts: maintenance.costs?.otherCosts || 0,
+    });
+    setCompleteDialogOpen(true);
+  }, []);
+
+  const handleSubmitComplete = useCallback(async () => {
+    if (!completingMaintenance) return;
+    const totalCost = (completeCosts.laborCost || 0) + (completeCosts.partsCost || 0) + (completeCosts.otherCosts || 0);
+    await handleComplete(completingMaintenance.id, { ...completeCosts, totalCost });
+  }, [completingMaintenance, completeCosts, handleComplete]);
+
+  const handleDelete = useCallback(async () => {
+    if (!deletingMaintenance) return;
+    try {
+      await maintenanceAPI.delete(deletingMaintenance.id);
+      await loadData();
+      setDeleteDialogOpen(false);
+      setDeletingMaintenance(null);
+    } catch (err) {
+      console.error('Error deleting maintenance:', err);
+      setError('שגיאה במחיקת הטיפול');
+    }
+  }, [deletingMaintenance]);
+
+  const handleOpenDelete = useCallback((maintenance) => {
+    setDeletingMaintenance(maintenance);
+    setDeleteDialogOpen(true);
+  }, []);
+
+  // Garage management
+  const handleSaveGarage = useCallback(async () => {
+    try {
+      if (editingGarage) {
+        await garagesAPI.update(editingGarage.id, garageFormData);
+      } else {
+        await garagesAPI.create(garageFormData);
+      }
+      const response = await garagesAPI.getAll();
+      setGarages(response.data.garages || []);
+      setEditingGarage(null);
+      setGarageFormData({ name: '', phone: '', address: '', city: '' });
+    } catch (err) {
+      console.error('Error saving garage:', err);
+      setError('שגיאה בשמירת המוסך');
+    }
+  }, [editingGarage, garageFormData]);
+
+  const handleEditGarage = useCallback((garage) => {
+    setEditingGarage(garage);
+    setGarageFormData({
+      name: garage.name || '',
+      phone: garage.phone || '',
+      address: garage.address || '',
+      city: garage.city || '',
+    });
+  }, []);
+
+  const handleDeleteGarage = useCallback(async (garageId) => {
+    try {
+      await garagesAPI.delete(garageId);
+      const response = await garagesAPI.getAll();
+      setGarages(response.data.garages || []);
+    } catch (err) {
+      console.error('Error deleting garage:', err);
+      setError('שגיאה במחיקת המוסך');
     }
   }, []);
 
@@ -296,25 +400,33 @@ export default function Maintenance() {
   }, [maintenances, searchTerm, filterStatus, filterType, filterPaidBy, filterGarage, viewMode]);
 
   return (
-    <Box sx={{ animation: 'fadeIn 0.3s ease-out' }}>
+    <Box sx={{ animation: 'fadeIn 0.3s ease-out', px: isMobile ? 1 : 0 }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+      <Box sx={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        justifyContent: 'space-between',
+        alignItems: isMobile ? 'stretch' : 'center',
+        mb: isMobile ? 2 : 4,
+        gap: isMobile ? 2 : 0,
+      }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Box sx={{
-            width: 56,
-            height: 56,
+            width: isMobile ? 44 : 56,
+            height: isMobile ? 44 : 56,
             borderRadius: '16px',
             background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             boxShadow: '0 8px 24px rgba(99, 102, 241, 0.3)',
+            flexShrink: 0,
           }}>
-            <Build sx={{ fontSize: 28, color: '#ffffff' }} />
+            <Build sx={{ fontSize: isMobile ? 22 : 28, color: '#ffffff' }} />
           </Box>
           <Box>
             <Typography
-              variant="h4"
+              variant={isMobile ? "h5" : "h4"}
               sx={{
                 fontWeight: 700,
                 color: '#1e293b',
@@ -323,66 +435,159 @@ export default function Maintenance() {
             >
               ניהול טיפולים
             </Typography>
-            <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5 }}>
-              מעקב אחר טיפולים ותחזוקה של הכלים
-            </Typography>
+            {!isMobile && (
+              <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5 }}>
+                מעקב אחר טיפולים ותחזוקה של הכלים
+              </Typography>
+            )}
           </Box>
         </Box>
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
-          <Button
-            variant="outlined"
-            startIcon={<Refresh />}
-            onClick={loadData}
-            disabled={loading}
-            sx={{
-              borderRadius: '12px',
-              borderColor: '#e2e8f0',
-              color: '#64748b',
-              fontWeight: 600,
-              '&:hover': {
-                borderColor: '#6366f1',
-                color: '#6366f1',
-                bgcolor: 'rgba(99, 102, 241, 0.04)',
-              },
-            }}
-          >
-            רענן
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<CompareArrows />}
-            onClick={handleOpenCompare}
-            sx={{
-              borderRadius: '12px',
-              borderColor: '#e2e8f0',
-              color: '#64748b',
-              fontWeight: 600,
-              '&:hover': {
-                borderColor: '#10b981',
-                color: '#10b981',
-                bgcolor: 'rgba(16, 185, 129, 0.04)',
-              },
-            }}
-          >
-            השוואת מחירים
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={handleAdd}
-            sx={{
-              borderRadius: '12px',
-              bgcolor: '#6366f1',
-              fontWeight: 600,
-              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
-              '&:hover': {
-                bgcolor: '#4f46e5',
-                boxShadow: '0 6px 16px rgba(99, 102, 241, 0.4)',
-              },
-            }}
-          >
-            טיפול חדש
-          </Button>
+        <Box sx={{
+          display: 'flex',
+          gap: 1,
+          flexWrap: 'wrap',
+          justifyContent: isMobile ? 'stretch' : 'flex-end',
+        }}>
+          {isMobile ? (
+            <>
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={handleAdd}
+                fullWidth
+                sx={{
+                  borderRadius: '12px',
+                  bgcolor: '#6366f1',
+                  fontWeight: 600,
+                  py: 1.2,
+                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                  '&:hover': { bgcolor: '#4f46e5' },
+                }}
+              >
+                טיפול חדש
+              </Button>
+              <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
+                <Tooltip title="רענן">
+                  <IconButton onClick={loadData} disabled={loading} sx={{ border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+                    <Refresh />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="השוואת מחירים">
+                  <IconButton onClick={handleOpenCompare} sx={{ border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+                    <CompareArrows />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="ניהול מוסכים">
+                  <IconButton onClick={() => setGarageManageOpen(true)} sx={{ border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+                    <Store />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="סוגי טיפולים">
+                  <IconButton onClick={() => setMaintenanceTypesOpen(true)} sx={{ border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+                    <Settings />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="סינון">
+                  <IconButton onClick={() => setShowFilters(!showFilters)} sx={{ border: '1px solid #e2e8f0', borderRadius: '10px', bgcolor: showFilters ? 'rgba(99, 102, 241, 0.1)' : 'transparent' }}>
+                    <FilterList />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outlined"
+                startIcon={<Refresh />}
+                onClick={loadData}
+                disabled={loading}
+                sx={{
+                  borderRadius: '12px',
+                  borderColor: '#e2e8f0',
+                  color: '#64748b',
+                  fontWeight: 600,
+                  '&:hover': {
+                    borderColor: '#6366f1',
+                    color: '#6366f1',
+                    bgcolor: 'rgba(99, 102, 241, 0.04)',
+                  },
+                }}
+              >
+                רענן
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<CompareArrows />}
+                onClick={handleOpenCompare}
+                sx={{
+                  borderRadius: '12px',
+                  borderColor: '#e2e8f0',
+                  color: '#64748b',
+                  fontWeight: 600,
+                  '&:hover': {
+                    borderColor: '#10b981',
+                    color: '#10b981',
+                    bgcolor: 'rgba(16, 185, 129, 0.04)',
+                  },
+                }}
+              >
+                השוואת מחירים
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Store />}
+                onClick={() => setGarageManageOpen(true)}
+                sx={{
+                  borderRadius: '12px',
+                  borderColor: '#e2e8f0',
+                  color: '#64748b',
+                  fontWeight: 600,
+                  '&:hover': {
+                    borderColor: '#f59e0b',
+                    color: '#f59e0b',
+                    bgcolor: 'rgba(245, 158, 11, 0.04)',
+                  },
+                }}
+              >
+                ניהול מוסכים
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Settings />}
+                onClick={() => setMaintenanceTypesOpen(true)}
+                sx={{
+                  borderRadius: '12px',
+                  borderColor: '#e2e8f0',
+                  color: '#64748b',
+                  fontWeight: 600,
+                  '&:hover': {
+                    borderColor: '#8b5cf6',
+                    color: '#8b5cf6',
+                    bgcolor: 'rgba(139, 92, 246, 0.04)',
+                  },
+                }}
+              >
+                סוגי טיפולים
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={handleAdd}
+                sx={{
+                  borderRadius: '12px',
+                  bgcolor: '#6366f1',
+                  fontWeight: 600,
+                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                  '&:hover': {
+                    bgcolor: '#4f46e5',
+                    boxShadow: '0 6px 16px rgba(99, 102, 241, 0.4)',
+                  },
+                }}
+              >
+                טיפול חדש
+              </Button>
+            </>
+          )}
         </Box>
       </Box>
 
@@ -400,20 +605,20 @@ export default function Maintenance() {
       )}
 
       {/* Stats Cards */}
-      <Grid container spacing={2} sx={{ mb: 4 }}>
+      <Grid container spacing={isMobile ? 1 : 2} sx={{ mb: isMobile ? 2 : 4 }}>
         <Grid item xs={6} sm={4} md={2}>
           <Card
             elevation={0}
             sx={{
-              borderRadius: '16px',
+              borderRadius: isMobile ? '12px' : '16px',
               border: '1px solid #e2e8f0',
               transition: 'all 0.2s ease-in-out',
-              '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' },
+              '&:hover': { transform: isMobile ? 'none' : 'translateY(-2px)', boxShadow: isMobile ? 'none' : '0 10px 25px -5px rgba(0,0,0,0.1)' },
             }}
           >
-            <CardContent sx={{ textAlign: 'center', py: 2.5 }}>
-              <Typography sx={{ color: '#64748b', fontSize: '0.875rem', mb: 1 }}>סה"כ</Typography>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: '#1e293b' }}>{stats.total}</Typography>
+            <CardContent sx={{ textAlign: 'center', py: isMobile ? 1.5 : 2.5, px: isMobile ? 1 : 2 }}>
+              <Typography sx={{ color: '#64748b', fontSize: isMobile ? '0.75rem' : '0.875rem', mb: 0.5 }}>סה"כ</Typography>
+              <Typography variant={isMobile ? "h5" : "h4"} sx={{ fontWeight: 700, color: '#1e293b' }}>{stats.total}</Typography>
             </CardContent>
           </Card>
         </Grid>
@@ -421,17 +626,17 @@ export default function Maintenance() {
           <Card
             elevation={0}
             sx={{
-              borderRadius: '16px',
+              borderRadius: isMobile ? '12px' : '16px',
               border: '1px solid #e2e8f0',
               cursor: 'pointer',
               transition: 'all 0.2s ease-in-out',
-              '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 25px -5px rgba(59,130,246,0.2)', borderColor: '#3b82f6' },
+              '&:hover': { transform: isMobile ? 'none' : 'translateY(-2px)', boxShadow: isMobile ? 'none' : '0 10px 25px -5px rgba(59,130,246,0.2)', borderColor: '#3b82f6' },
             }}
             onClick={() => setViewMode(1)}
           >
-            <CardContent sx={{ textAlign: 'center', py: 2.5 }}>
-              <Typography sx={{ color: '#64748b', fontSize: '0.875rem', mb: 1 }}>מתוכננים</Typography>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: '#3b82f6' }}>
+            <CardContent sx={{ textAlign: 'center', py: isMobile ? 1.5 : 2.5, px: isMobile ? 1 : 2 }}>
+              <Typography sx={{ color: '#64748b', fontSize: isMobile ? '0.75rem' : '0.875rem', mb: 0.5 }}>מתוכננים</Typography>
+              <Typography variant={isMobile ? "h5" : "h4"} sx={{ fontWeight: 700, color: '#3b82f6' }}>
                 {stats.scheduled}
               </Typography>
             </CardContent>
@@ -441,15 +646,15 @@ export default function Maintenance() {
           <Card
             elevation={0}
             sx={{
-              borderRadius: '16px',
+              borderRadius: isMobile ? '12px' : '16px',
               border: '1px solid #e2e8f0',
               transition: 'all 0.2s ease-in-out',
-              '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' },
+              '&:hover': { transform: isMobile ? 'none' : 'translateY(-2px)', boxShadow: isMobile ? 'none' : '0 10px 25px -5px rgba(0,0,0,0.1)' },
             }}
           >
-            <CardContent sx={{ textAlign: 'center', py: 2.5 }}>
-              <Typography sx={{ color: '#64748b', fontSize: '0.875rem', mb: 1 }}>בביצוע</Typography>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: '#f59e0b' }}>
+            <CardContent sx={{ textAlign: 'center', py: isMobile ? 1.5 : 2.5, px: isMobile ? 1 : 2 }}>
+              <Typography sx={{ color: '#64748b', fontSize: isMobile ? '0.75rem' : '0.875rem', mb: 0.5 }}>בביצוע</Typography>
+              <Typography variant={isMobile ? "h5" : "h4"} sx={{ fontWeight: 700, color: '#f59e0b' }}>
                 {stats.inProgress}
               </Typography>
             </CardContent>
@@ -459,17 +664,17 @@ export default function Maintenance() {
           <Card
             elevation={0}
             sx={{
-              borderRadius: '16px',
+              borderRadius: isMobile ? '12px' : '16px',
               border: '1px solid #e2e8f0',
               cursor: 'pointer',
               transition: 'all 0.2s ease-in-out',
-              '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 25px -5px rgba(16,185,129,0.2)', borderColor: '#10b981' },
+              '&:hover': { transform: isMobile ? 'none' : 'translateY(-2px)', boxShadow: isMobile ? 'none' : '0 10px 25px -5px rgba(16,185,129,0.2)', borderColor: '#10b981' },
             }}
             onClick={() => setViewMode(2)}
           >
-            <CardContent sx={{ textAlign: 'center', py: 2.5 }}>
-              <Typography sx={{ color: '#64748b', fontSize: '0.875rem', mb: 1 }}>הושלמו</Typography>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: '#10b981' }}>
+            <CardContent sx={{ textAlign: 'center', py: isMobile ? 1.5 : 2.5, px: isMobile ? 1 : 2 }}>
+              <Typography sx={{ color: '#64748b', fontSize: isMobile ? '0.75rem' : '0.875rem', mb: 0.5 }}>הושלמו</Typography>
+              <Typography variant={isMobile ? "h5" : "h4"} sx={{ fontWeight: 700, color: '#10b981' }}>
                 {stats.completed}
               </Typography>
             </CardContent>
@@ -479,19 +684,19 @@ export default function Maintenance() {
           <Card
             elevation={0}
             sx={{
-              borderRadius: '16px',
+              borderRadius: isMobile ? '12px' : '16px',
               border: '1px solid #e2e8f0',
               background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%)',
               transition: 'all 0.2s ease-in-out',
-              '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' },
+              '&:hover': { transform: isMobile ? 'none' : 'translateY(-2px)', boxShadow: isMobile ? 'none' : '0 10px 25px -5px rgba(0,0,0,0.1)' },
             }}
           >
-            <CardContent sx={{ textAlign: 'center', py: 2.5 }}>
-              <Typography sx={{ color: '#64748b', fontSize: '0.875rem', mb: 1 }}>
+            <CardContent sx={{ textAlign: 'center', py: isMobile ? 1.5 : 2.5, px: isMobile ? 1 : 2 }}>
+              <Typography sx={{ color: '#64748b', fontSize: isMobile ? '0.75rem' : '0.875rem', mb: 0.5 }}>
                 <AttachMoney sx={{ fontSize: 16, verticalAlign: 'middle', mr: 0.5 }} />
                 סה"כ עלויות
               </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: '#6366f1' }}>
+              <Typography variant={isMobile ? "h5" : "h4"} sx={{ fontWeight: 700, color: '#6366f1' }}>
                 {formatCurrency(stats.totalCost)}
               </Typography>
             </CardContent>
@@ -563,290 +768,365 @@ export default function Maintenance() {
         </Tabs>
       </Paper>
 
-      {/* Filters */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: 2.5,
-          mb: 3,
-          borderRadius: '16px',
-          border: '1px solid #e2e8f0',
-          background: '#ffffff',
-        }}
-      >
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} md={3}>
-            <TextField
-              fullWidth
-              placeholder="חפש לפי מספר טיפול, כלי, מוסך..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search sx={{ color: '#94a3b8' }} />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '12px',
-                  bgcolor: '#f8fafc',
-                  '&:hover': { bgcolor: '#f1f5f9' },
-                  '&.Mui-focused': { bgcolor: '#ffffff' },
-                },
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>סטטוס</InputLabel>
-              <Select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                label="סטטוס"
+      {/* Filters - collapsible on mobile */}
+      <Collapse in={showFilters || !isMobile}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: isMobile ? 1.5 : 2.5,
+            mb: isMobile ? 2 : 3,
+            borderRadius: isMobile ? '12px' : '16px',
+            border: '1px solid #e2e8f0',
+            background: '#ffffff',
+          }}
+        >
+          <Grid container spacing={isMobile ? 1.5 : 2}>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                fullWidth
+                size={isMobile ? "small" : "medium"}
+                placeholder="חפש טיפול, כלי, מוסך..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search sx={{ color: '#94a3b8', fontSize: isMobile ? 18 : 24 }} />
+                    </InputAdornment>
+                  ),
+                }}
                 sx={{
-                  borderRadius: '12px',
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#e2e8f0',
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '12px',
+                    bgcolor: '#f8fafc',
+                    '&:hover': { bgcolor: '#f1f5f9' },
+                    '&.Mui-focused': { bgcolor: '#ffffff' },
                   },
                 }}
-              >
-                <MenuItem value="all">הכל</MenuItem>
-                <MenuItem value="scheduled">מתוכנן</MenuItem>
-                <MenuItem value="in_progress">בביצוע</MenuItem>
-                <MenuItem value="completed">הושלם</MenuItem>
-                <MenuItem value="cancelled">בוטל</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>סוג טיפול</InputLabel>
-              <Select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                label="סוג טיפול"
-                sx={{
-                  borderRadius: '12px',
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#e2e8f0',
-                  },
-                }}
-              >
-                <MenuItem value="all">הכל</MenuItem>
-                <MenuItem value="routine">טיפול תקופתי</MenuItem>
-                <MenuItem value="repair">תיקון</MenuItem>
-                <MenuItem value="emergency">חירום</MenuItem>
-                <MenuItem value="recall">ריקול</MenuItem>
-                <MenuItem value="accident_repair">תיקון תאונה</MenuItem>
-                <MenuItem value="other">אחר</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>מי שילם?</InputLabel>
-              <Select
-                value={filterPaidBy}
-                onChange={(e) => setFilterPaidBy(e.target.value)}
-                label="מי שילם?"
-                sx={{
-                  borderRadius: '12px',
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#e2e8f0',
-                  },
-                }}
-              >
-                <MenuItem value="all">הכל</MenuItem>
-                <MenuItem value="unit">היחידה</MenuItem>
-                <MenuItem value="rider">הרוכב</MenuItem>
-                <MenuItem value="insurance">ביטוח</MenuItem>
-                <MenuItem value="warranty">אחריות</MenuItem>
-                <MenuItem value="shared">משותף</MenuItem>
-                <MenuItem value="other">אחר</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>מוסך</InputLabel>
-              <Select
-                value={filterGarage}
-                onChange={(e) => setFilterGarage(e.target.value)}
-                label="מוסך"
-                sx={{
-                  borderRadius: '12px',
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#e2e8f0',
-                  },
-                }}
-              >
-                <MenuItem value="all">כל המוסכים</MenuItem>
-                {garages.map(garage => (
-                  <MenuItem key={garage.id} value={garage.id}>
-                    {garage.name}{garage.city ? ` - ${garage.city}` : ''}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      {/* Table */}
-      <TableContainer
-        component={Paper}
-        elevation={0}
-        sx={{
-          borderRadius: '16px',
-          border: '1px solid #e2e8f0',
-          overflow: 'hidden',
-        }}
-      >
-        <Table>
-          <TableHead>
-            <TableRow sx={{ bgcolor: '#f8fafc' }}>
-              <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>מס' טיפול</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>כלי</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>סוג</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>תיאור</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>מוסך</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>עלות</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>סטטוס</TableCell>
-              <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>תאריך</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 600, color: '#475569', py: 2 }}>פעולות</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={9} align="center" sx={{ py: 6 }}>
-                  <CircularProgress sx={{ color: '#6366f1' }} />
-                </TableCell>
-              </TableRow>
-            ) : filteredMaintenances.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} align="center">
-                  <Box sx={{ py: 6 }}>
-                    <Box sx={{
-                      width: 80,
-                      height: 80,
-                      borderRadius: '20px',
-                      background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      margin: '0 auto',
-                      mb: 3,
-                    }}>
-                      <Build sx={{ fontSize: 40, color: '#6366f1' }} />
-                    </Box>
-                    <Typography variant="h6" sx={{ color: '#1e293b', fontWeight: 600, mb: 1 }}>
-                      לא נמצאו טיפולים
-                    </Typography>
-                    <Typography sx={{ color: '#64748b' }}>
-                      אין טיפולים התואמים לחיפוש
-                    </Typography>
-                  </Box>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredMaintenances.map((maintenance, index) => (
-                <TableRow
-                  key={maintenance.id}
-                  sx={{
-                    animation: `fadeIn 0.3s ease-out ${index * 0.03}s both`,
-                    '&:hover': {
-                      bgcolor: 'rgba(99, 102, 241, 0.04)',
-                    },
-                    transition: 'background-color 0.2s ease-in-out',
-                  }}
+              />
+            </Grid>
+            <Grid item xs={6} sm={6} md={3}>
+              <FormControl fullWidth size={isMobile ? "small" : "medium"}>
+                <InputLabel>סטטוס</InputLabel>
+                <Select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  label="סטטוס"
+                  sx={{ borderRadius: '12px' }}
                 >
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#6366f1' }}>
-                      {maintenance.maintenanceNumber || '-'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
-                      {maintenance.vehiclePlate || '-'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>{getTypeChip(maintenance.maintenanceType)}</TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ color: '#64748b', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {maintenance.description || '-'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ color: '#1e293b' }}>
-                      {maintenance.garage?.name || '-'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: maintenance.costs?.totalCost > 0 ? '#1e293b' : '#64748b' }}>
+                  <MenuItem value="all">הכל</MenuItem>
+                  <MenuItem value="scheduled">מתוכנן</MenuItem>
+                  <MenuItem value="in_progress">בביצוע</MenuItem>
+                  <MenuItem value="completed">הושלם</MenuItem>
+                  <MenuItem value="cancelled">בוטל</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={6} sm={6} md={3}>
+              <FormControl fullWidth size={isMobile ? "small" : "medium"}>
+                <InputLabel>סוג טיפול</InputLabel>
+                <Select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  label="סוג טיפול"
+                  sx={{ borderRadius: '12px' }}
+                >
+                  <MenuItem value="all">הכל</MenuItem>
+                  <MenuItem value="routine">טיפול תקופתי</MenuItem>
+                  <MenuItem value="repair">תיקון</MenuItem>
+                  <MenuItem value="emergency">חירום</MenuItem>
+                  <MenuItem value="recall">ריקול</MenuItem>
+                  <MenuItem value="accident_repair">תיקון תאונה</MenuItem>
+                  <MenuItem value="other">אחר</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={6} sm={6} md={3}>
+              <FormControl fullWidth size={isMobile ? "small" : "medium"}>
+                <InputLabel>מי שילם?</InputLabel>
+                <Select
+                  value={filterPaidBy}
+                  onChange={(e) => setFilterPaidBy(e.target.value)}
+                  label="מי שילם?"
+                  sx={{ borderRadius: '12px' }}
+                >
+                  <MenuItem value="all">הכל</MenuItem>
+                  <MenuItem value="unit">היחידה</MenuItem>
+                  <MenuItem value="rider">הרוכב</MenuItem>
+                  <MenuItem value="insurance">ביטוח</MenuItem>
+                  <MenuItem value="warranty">אחריות</MenuItem>
+                  <MenuItem value="shared">משותף</MenuItem>
+                  <MenuItem value="other">אחר</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={6} sm={6} md={3}>
+              <FormControl fullWidth size={isMobile ? "small" : "medium"}>
+                <InputLabel>מוסך</InputLabel>
+                <Select
+                  value={filterGarage}
+                  onChange={(e) => setFilterGarage(e.target.value)}
+                  label="מוסך"
+                  sx={{ borderRadius: '12px' }}
+                >
+                  <MenuItem value="all">כל המוסכים</MenuItem>
+                  {garages.map(garage => (
+                    <MenuItem key={garage.id} value={garage.id}>
+                      {garage.name}{garage.city ? ` - ${garage.city}` : ''}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </Paper>
+      </Collapse>
+
+      {/* Table / Cards - responsive */}
+      {isMobile ? (
+        // Mobile: Card view
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+              <CircularProgress sx={{ color: '#6366f1' }} />
+            </Box>
+          ) : filteredMaintenances.length === 0 ? (
+            <Paper elevation={0} sx={{ p: 4, borderRadius: '16px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+              <Build sx={{ fontSize: 48, color: '#94a3b8', mb: 2 }} />
+              <Typography variant="h6" sx={{ color: '#1e293b', fontWeight: 600, mb: 1 }}>
+                לא נמצאו טיפולים
+              </Typography>
+              <Typography sx={{ color: '#64748b' }}>אין טיפולים התואמים לחיפוש</Typography>
+            </Paper>
+          ) : (
+            filteredMaintenances.map((maintenance) => (
+              <Card
+                key={maintenance.id}
+                elevation={0}
+                sx={{
+                  borderRadius: '12px',
+                  border: '1px solid #e2e8f0',
+                  '&:active': { bgcolor: 'rgba(99, 102, 241, 0.04)' },
+                }}
+              >
+                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                          {maintenance.vehiclePlate || '-'}
+                        </Typography>
+                        {getStatusChip(maintenance.status)}
+                      </Box>
+                      <Typography variant="caption" sx={{ color: '#6366f1', fontWeight: 600 }}>
+                        #{maintenance.maintenanceNumber || '-'}
+                      </Typography>
+                    </Box>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700, color: maintenance.costs?.totalCost > 0 ? '#6366f1' : '#94a3b8' }}>
                       {formatCurrency(maintenance.costs?.totalCost)}
                     </Typography>
-                  </TableCell>
-                  <TableCell>{getStatusChip(maintenance.status)}</TableCell>
-                  <TableCell sx={{ color: '#64748b' }}>
-                    {formatDate(maintenance.maintenanceDate)}
-                  </TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleViewDetails(maintenance)}
-                      sx={{
-                        color: '#6366f1',
-                        '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.08)' },
-                      }}
-                    >
-                      <Visibility />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleEdit(maintenance)}
-                      sx={{
-                        color: '#64748b',
-                        '&:hover': { bgcolor: 'rgba(100, 116, 139, 0.08)' },
-                      }}
-                    >
-                      <Edit />
-                    </IconButton>
-                    {maintenance.status === 'scheduled' && (
-                      <IconButton
-                        size="small"
-                        onClick={() => handleUpdateStatus(maintenance.id, 'in_progress')}
-                        title="התחל טיפול"
-                        sx={{
-                          color: '#f59e0b',
-                          '&:hover': { bgcolor: 'rgba(245, 158, 11, 0.08)' },
-                        }}
-                      >
-                        <Build />
-                      </IconButton>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
+                    {getTypeChip(maintenance.maintenanceType)}
+                    {maintenance.garage?.name && (
+                      <Chip size="small" label={maintenance.garage.name} sx={{ bgcolor: '#f1f5f9', color: '#64748b', fontWeight: 500, fontSize: '0.7rem' }} />
                     )}
-                    {maintenance.status === 'in_progress' && (
-                      <IconButton
-                        size="small"
-                        onClick={() => handleViewDetails(maintenance)}
-                        title="סגור טיפול"
-                        sx={{
-                          color: '#10b981',
-                          '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.08)' },
-                        }}
-                      >
-                        <CheckCircle />
+                  </Box>
+
+                  <Typography variant="body2" sx={{ color: '#64748b', mb: 1.5, lineHeight: 1.4 }} noWrap>
+                    {maintenance.description || '-'}
+                  </Typography>
+
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                      {formatDate(maintenance.maintenanceDate)}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <IconButton size="small" onClick={() => handleViewDetails(maintenance)} sx={{ color: '#6366f1' }}>
+                        <Visibility fontSize="small" />
                       </IconButton>
-                    )}
+                      <IconButton size="small" onClick={() => handleEdit(maintenance)} sx={{ color: '#64748b' }}>
+                        <Edit fontSize="small" />
+                      </IconButton>
+                      {maintenance.status === 'scheduled' && (
+                        <IconButton size="small" onClick={() => handleUpdateStatus(maintenance.id, 'in_progress')} sx={{ color: '#f59e0b' }}>
+                          <Build fontSize="small" />
+                        </IconButton>
+                      )}
+                      {maintenance.status === 'in_progress' && (
+                        <IconButton size="small" onClick={() => handleOpenComplete(maintenance)} sx={{ color: '#10b981' }}>
+                          <CheckCircle fontSize="small" />
+                        </IconButton>
+                      )}
+                      <IconButton size="small" onClick={() => handleOpenDelete(maintenance)} sx={{ color: '#ef4444' }}>
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </Box>
+      ) : (
+        // Desktop: Table view
+        <TableContainer
+          component={Paper}
+          elevation={0}
+          sx={{
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            overflow: 'hidden',
+          }}
+        >
+          <Table>
+            <TableHead>
+              <TableRow sx={{ bgcolor: '#f8fafc' }}>
+                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>מס' טיפול</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>כלי</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>סוג</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>תיאור</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>מוסך</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>עלות</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>סטטוס</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>תאריך</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 600, color: '#475569', py: 2 }}>פעולות</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={9} align="center" sx={{ py: 6 }}>
+                    <CircularProgress sx={{ color: '#6366f1' }} />
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              ) : filteredMaintenances.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} align="center">
+                    <Box sx={{ py: 6 }}>
+                      <Box sx={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: '20px',
+                        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto',
+                        mb: 3,
+                      }}>
+                        <Build sx={{ fontSize: 40, color: '#6366f1' }} />
+                      </Box>
+                      <Typography variant="h6" sx={{ color: '#1e293b', fontWeight: 600, mb: 1 }}>
+                        לא נמצאו טיפולים
+                      </Typography>
+                      <Typography sx={{ color: '#64748b' }}>
+                        אין טיפולים התואמים לחיפוש
+                      </Typography>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredMaintenances.map((maintenance, index) => (
+                  <TableRow
+                    key={maintenance.id}
+                    sx={{
+                      animation: `fadeIn 0.3s ease-out ${index * 0.03}s both`,
+                      '&:hover': {
+                        bgcolor: 'rgba(99, 102, 241, 0.04)',
+                      },
+                      transition: 'background-color 0.2s ease-in-out',
+                    }}
+                  >
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: '#6366f1' }}>
+                        {maintenance.maintenanceNumber || '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                        {maintenance.vehiclePlate || '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{getTypeChip(maintenance.maintenanceType)}</TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ color: '#64748b', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {maintenance.description || '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ color: '#1e293b' }}>
+                        {maintenance.garage?.name || '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: maintenance.costs?.totalCost > 0 ? '#1e293b' : '#64748b' }}>
+                        {formatCurrency(maintenance.costs?.totalCost)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{getStatusChip(maintenance.status)}</TableCell>
+                    <TableCell sx={{ color: '#64748b' }}>
+                      {formatDate(maintenance.maintenanceDate)}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Tooltip title="צפה בפרטים">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleViewDetails(maintenance)}
+                          sx={{ color: '#6366f1', '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.08)' } }}
+                        >
+                          <Visibility />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="ערוך">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEdit(maintenance)}
+                          sx={{ color: '#64748b', '&:hover': { bgcolor: 'rgba(100, 116, 139, 0.08)' } }}
+                        >
+                          <Edit />
+                        </IconButton>
+                      </Tooltip>
+                      {maintenance.status === 'scheduled' && (
+                        <Tooltip title="התחל טיפול">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleUpdateStatus(maintenance.id, 'in_progress')}
+                            sx={{ color: '#f59e0b', '&:hover': { bgcolor: 'rgba(245, 158, 11, 0.08)' } }}
+                          >
+                            <Build />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {maintenance.status === 'in_progress' && (
+                        <Tooltip title="סגור טיפול">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleOpenComplete(maintenance)}
+                            sx={{ color: '#10b981', '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.08)' } }}
+                          >
+                            <CheckCircle />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      <Tooltip title="מחק">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleOpenDelete(maintenance)}
+                          sx={{ color: '#ef4444', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' } }}
+                        >
+                          <Delete />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {!loading && filteredMaintenances.length > 0 && (
         <Box sx={{ mt: 3, textAlign: 'center' }}>
@@ -1231,6 +1511,391 @@ export default function Maintenance() {
               px: 3,
               '&:hover': { bgcolor: '#f1f5f9' },
             }}
+          >
+            סגור
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Complete Maintenance Dialog */}
+      <Dialog
+        open={completeDialogOpen}
+        onClose={() => setCompleteDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        dir="rtl"
+        fullScreen={isMobile}
+        PaperProps={{ sx: { borderRadius: isMobile ? 0 : '20px' } }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{
+              width: 40,
+              height: 40,
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <CheckCircle sx={{ color: '#fff', fontSize: 22 }} />
+            </Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+              סגירת טיפול
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {completingMaintenance && (
+            <Box sx={{ mt: 2 }}>
+              <Alert severity="info" sx={{ mb: 3, borderRadius: '12px' }}>
+                טיפול: <strong>{completingMaintenance.maintenanceNumber}</strong> | כלי: <strong>{completingMaintenance.vehiclePlate}</strong>
+              </Alert>
+
+              <Typography variant="subtitle2" sx={{ color: '#6366f1', fontWeight: 600, mb: 2 }}>
+                הזן את העלויות הסופיות:
+              </Typography>
+
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    label="עלות עבודה"
+                    type="number"
+                    value={completeCosts.laborCost}
+                    onChange={(e) => setCompleteCosts(prev => ({ ...prev, laborCost: parseFloat(e.target.value) || 0 }))}
+                    InputProps={{ startAdornment: <InputAdornment position="start">₪</InputAdornment> }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    label="עלות חלקים"
+                    type="number"
+                    value={completeCosts.partsCost}
+                    onChange={(e) => setCompleteCosts(prev => ({ ...prev, partsCost: parseFloat(e.target.value) || 0 }))}
+                    InputProps={{ startAdornment: <InputAdornment position="start">₪</InputAdornment> }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    label="עלויות אחרות"
+                    type="number"
+                    value={completeCosts.otherCosts}
+                    onChange={(e) => setCompleteCosts(prev => ({ ...prev, otherCosts: parseFloat(e.target.value) || 0 }))}
+                    InputProps={{ startAdornment: <InputAdornment position="start">₪</InputAdornment> }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                  />
+                </Grid>
+              </Grid>
+
+              <Box sx={{
+                mt: 3,
+                p: 2,
+                borderRadius: '12px',
+                bgcolor: 'rgba(16, 185, 129, 0.1)',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}>
+                <Typography sx={{ fontWeight: 600, color: '#059669' }}>סה"כ עלות:</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: '#059669' }}>
+                  ₪{((completeCosts.laborCost || 0) + (completeCosts.partsCost || 0) + (completeCosts.otherCosts || 0)).toLocaleString()}
+                </Typography>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => setCompleteDialogOpen(false)} sx={{ color: '#64748b', fontWeight: 600, borderRadius: '10px' }}>
+            ביטול
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSubmitComplete}
+            sx={{
+              bgcolor: '#10b981',
+              borderRadius: '10px',
+              fontWeight: 600,
+              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+              '&:hover': { bgcolor: '#059669' },
+            }}
+          >
+            סגור טיפול
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        dir="rtl"
+        PaperProps={{ sx: { borderRadius: '20px' } }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{
+              width: 40,
+              height: 40,
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Delete sx={{ color: '#fff', fontSize: 22 }} />
+            </Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+              מחיקת טיפול
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: '#64748b', mt: 1 }}>
+            האם אתה בטוח שברצונך למחוק את הטיפול <strong>{deletingMaintenance?.maintenanceNumber}</strong>?
+          </Typography>
+          <Alert severity="warning" sx={{ mt: 2, borderRadius: '12px' }}>
+            פעולה זו לא ניתנת לביטול
+          </Alert>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => setDeleteDialogOpen(false)} sx={{ color: '#64748b', fontWeight: 600, borderRadius: '10px' }}>
+            ביטול
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleDelete}
+            sx={{
+              bgcolor: '#ef4444',
+              borderRadius: '10px',
+              fontWeight: 600,
+              '&:hover': { bgcolor: '#dc2626' },
+            }}
+          >
+            מחק
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Garage Management Dialog */}
+      <Dialog
+        open={garageManageOpen}
+        onClose={() => {
+          setGarageManageOpen(false);
+          setEditingGarage(null);
+          setGarageFormData({ name: '', phone: '', address: '', city: '' });
+        }}
+        maxWidth="sm"
+        fullWidth
+        dir="rtl"
+        fullScreen={isMobile}
+        PaperProps={{ sx: { borderRadius: isMobile ? 0 : '20px' } }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{
+              width: 40,
+              height: 40,
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Store sx={{ color: '#fff', fontSize: 22 }} />
+            </Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+              ניהול מוסכים
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {/* Add/Edit Form */}
+          <Box sx={{ mb: 3, p: 2, bgcolor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <Typography variant="subtitle2" sx={{ color: '#6366f1', fontWeight: 600, mb: 2 }}>
+              {editingGarage ? 'עריכת מוסך' : 'הוספת מוסך חדש'}
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="שם המוסך *"
+                  value={garageFormData.name}
+                  onChange={(e) => setGarageFormData(prev => ({ ...prev, name: e.target.value }))}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="טלפון"
+                  value={garageFormData.phone}
+                  onChange={(e) => setGarageFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="עיר"
+                  value={garageFormData.city}
+                  onChange={(e) => setGarageFormData(prev => ({ ...prev, city: e.target.value }))}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="כתובת"
+                  value={garageFormData.address}
+                  onChange={(e) => setGarageFormData(prev => ({ ...prev, address: e.target.value }))}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    variant="contained"
+                    onClick={handleSaveGarage}
+                    disabled={!garageFormData.name}
+                    sx={{
+                      bgcolor: '#10b981',
+                      borderRadius: '10px',
+                      fontWeight: 600,
+                      '&:hover': { bgcolor: '#059669' },
+                    }}
+                  >
+                    {editingGarage ? 'עדכן' : 'הוסף'}
+                  </Button>
+                  {editingGarage && (
+                    <Button
+                      onClick={() => {
+                        setEditingGarage(null);
+                        setGarageFormData({ name: '', phone: '', address: '', city: '' });
+                      }}
+                      sx={{ color: '#64748b', borderRadius: '10px' }}
+                    >
+                      ביטול
+                    </Button>
+                  )}
+                </Box>
+              </Grid>
+            </Grid>
+          </Box>
+
+          {/* Garages List */}
+          <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 600, mb: 1 }}>
+            רשימת מוסכים ({garages.length})
+          </Typography>
+          <List sx={{ bgcolor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            {garages.length === 0 ? (
+              <ListItem>
+                <ListItemText primary="אין מוסכים" sx={{ textAlign: 'center', color: '#94a3b8' }} />
+              </ListItem>
+            ) : (
+              garages.map((garage) => (
+                <ListItem
+                  key={garage.id}
+                  sx={{
+                    borderBottom: '1px solid #f1f5f9',
+                    '&:last-child': { borderBottom: 'none' },
+                  }}
+                >
+                  <ListItemText
+                    primary={garage.name}
+                    secondary={`${garage.city || ''}${garage.phone ? ` • ${garage.phone}` : ''}`}
+                  />
+                  <ListItemSecondaryAction>
+                    <IconButton size="small" onClick={() => handleEditGarage(garage)} sx={{ color: '#6366f1' }}>
+                      <Edit fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => handleDeleteGarage(garage.id)} sx={{ color: '#ef4444' }}>
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  </ListItemSecondaryAction>
+                </ListItem>
+              ))
+            )}
+          </List>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button
+            onClick={() => {
+              setGarageManageOpen(false);
+              setEditingGarage(null);
+              setGarageFormData({ name: '', phone: '', address: '', city: '' });
+            }}
+            sx={{ color: '#64748b', fontWeight: 600, borderRadius: '10px' }}
+          >
+            סגור
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Maintenance Types Dialog */}
+      <Dialog
+        open={maintenanceTypesOpen}
+        onClose={() => setMaintenanceTypesOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        dir="rtl"
+        PaperProps={{ sx: { borderRadius: '20px' } }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{
+              width: 40,
+              height: 40,
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Settings sx={{ color: '#fff', fontSize: 22 }} />
+            </Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+              סוגי טיפולים
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ color: '#64748b', mb: 2 }}>
+            סוגי הטיפולים המוגדרים במערכת:
+          </Typography>
+
+          <List sx={{ bgcolor: '#f8fafc', borderRadius: '12px', mb: 2 }}>
+            {Object.entries(typeMap).map(([key, { label, color }]) => (
+              <ListItem key={key} sx={{ borderBottom: '1px solid #e2e8f0', '&:last-child': { borderBottom: 'none' } }}>
+                <Chip
+                  label={label}
+                  size="small"
+                  sx={{ bgcolor: `${color}15`, color, fontWeight: 600, mr: 1 }}
+                />
+                <ListItemText secondary={key} />
+              </ListItem>
+            ))}
+          </List>
+
+          <Alert severity="info" sx={{ borderRadius: '12px' }}>
+            כדי להוסיף או לשנות סוגי טיפולים, יש לפנות למנהל המערכת.
+          </Alert>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button
+            onClick={() => setMaintenanceTypesOpen(false)}
+            sx={{ color: '#64748b', fontWeight: 600, borderRadius: '10px' }}
           >
             סגור
           </Button>

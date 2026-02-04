@@ -26,6 +26,8 @@ import {
   ListItemText,
   ListItemSecondaryAction,
   Collapse,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Build,
@@ -43,6 +45,9 @@ import {
 import { maintenanceAPI, garagesAPI } from '../services/api';
 
 export default function MaintenanceDialog({ open, onClose, maintenance, vehicles, riders, onSave, isRiderView = false }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [formData, setFormData] = useState({
     vehicleId: '',
     vehiclePlate: '',
@@ -398,8 +403,9 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
       maxWidth="md"
       fullWidth
       dir="rtl"
+      fullScreen={isMobile}
       PaperProps={{
-        sx: { borderRadius: '20px' }
+        sx: { borderRadius: isMobile ? 0 : '20px' }
       }}
     >
       <DialogTitle sx={{ pb: 1 }}>
@@ -433,16 +439,16 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
           </Alert>
         )}
 
-        <Grid container spacing={2.5}>
+        <Grid container spacing={isMobile ? 2 : 2.5}>
           {/* פרטי כלי */}
           <Grid item xs={12}>
-            <Typography variant="subtitle2" sx={{ color: '#6366f1', fontWeight: 600, mb: 1.5 }}>
+            <Typography variant="subtitle2" sx={{ color: '#6366f1', fontWeight: 600, mb: isMobile ? 1 : 1.5 }}>
               פרטי כלי
             </Typography>
           </Grid>
 
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
+            <FormControl fullWidth size={isMobile ? "small" : "medium"}>
               <InputLabel>כלי *</InputLabel>
               <Select
                 value={formData.vehicleId}
@@ -463,6 +469,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
+              size={isMobile ? "small" : "medium"}
               label="ק״מ בטיפול"
               name="kilometersAtMaintenance"
               type="number"
@@ -472,9 +479,10 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
             />
           </Grid>
 
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={6} sm={6}>
             <TextField
               fullWidth
+              size={isMobile ? "small" : "medium"}
               label="תאריך טיפול"
               name="maintenanceDate"
               type="date"
@@ -485,8 +493,8 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
             />
           </Grid>
 
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
+          <Grid item xs={6} sm={6}>
+            <FormControl fullWidth size={isMobile ? "small" : "medium"}>
               <InputLabel>סוג טיפול</InputLabel>
               <Select
                 name="maintenanceType"
@@ -659,10 +667,11 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
             </Typography>
           </Grid>
 
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={4} sm={4}>
             <TextField
               fullWidth
-              label="עלות עבודה"
+              size={isMobile ? "small" : "medium"}
+              label="עבודה"
               name="laborCost"
               type="number"
               value={formData.costs.laborCost}
@@ -674,10 +683,11 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
             />
           </Grid>
 
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={4} sm={4}>
             <TextField
               fullWidth
-              label="עלות חלקים"
+              size={isMobile ? "small" : "medium"}
+              label="חלקים"
               name="partsCost"
               type="number"
               value={formData.costs.partsCost}
@@ -689,10 +699,11 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
             />
           </Grid>
 
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={4} sm={4}>
             <TextField
               fullWidth
-              label="עלויות אחרות"
+              size={isMobile ? "small" : "medium"}
+              label="אחר"
               name="otherCosts"
               type="number"
               value={formData.costs.otherCosts}
@@ -706,7 +717,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
 
           <Grid item xs={12}>
             <Box sx={{
-              p: 2,
+              p: isMobile ? 1.5 : 2,
               borderRadius: '12px',
               bgcolor: 'rgba(99, 102, 241, 0.05)',
               border: '1px solid rgba(99, 102, 241, 0.2)',
@@ -714,15 +725,15 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
               justifyContent: 'space-between',
               alignItems: 'center',
             }}>
-              <Typography sx={{ fontWeight: 600, color: '#6366f1' }}>סה"כ עלות:</Typography>
-              <Typography variant="h5" sx={{ fontWeight: 700, color: '#6366f1' }}>
+              <Typography sx={{ fontWeight: 600, color: '#6366f1', fontSize: isMobile ? '0.875rem' : '1rem' }}>סה"כ עלות:</Typography>
+              <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 700, color: '#6366f1' }}>
                 ₪{totalCost.toLocaleString()}
               </Typography>
             </Box>
           </Grid>
 
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
+          <Grid item xs={6} sm={6}>
+            <FormControl fullWidth size={isMobile ? "small" : "medium"}>
               <InputLabel>מי שילם?</InputLabel>
               <Select
                 name="paidBy"
@@ -741,8 +752,8 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
             </FormControl>
           </Grid>
 
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
+          <Grid item xs={6} sm={6}>
+            <FormControl fullWidth size={isMobile ? "small" : "medium"}>
               <InputLabel>סטטוס</InputLabel>
               <Select
                 name="status"
@@ -779,28 +790,39 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
 
           {formData.replacedParts.map((part, index) => (
             <Grid item xs={12} key={index}>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Box sx={{
+                display: 'flex',
+                gap: 1,
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                p: isMobile ? 1.5 : 0,
+                bgcolor: isMobile ? '#f8fafc' : 'transparent',
+                borderRadius: isMobile ? '10px' : 0,
+                border: isMobile ? '1px solid #e2e8f0' : 'none',
+              }}>
                 <TextField
                   size="small"
                   label="שם חלק"
                   value={part.partName}
                   onChange={(e) => handlePartChange(index, 'partName', e.target.value)}
-                  sx={{ flex: 2, minWidth: 120, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                  sx={{ flex: isMobile ? '1 1 100%' : 2, minWidth: isMobile ? 'unset' : 120, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
                 />
-                <TextField
-                  size="small"
-                  label="מק״ט"
-                  value={part.partNumber}
-                  onChange={(e) => handlePartChange(index, 'partNumber', e.target.value)}
-                  sx={{ flex: 1, minWidth: 80, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-                />
+                {!isMobile && (
+                  <TextField
+                    size="small"
+                    label="מק״ט"
+                    value={part.partNumber}
+                    onChange={(e) => handlePartChange(index, 'partNumber', e.target.value)}
+                    sx={{ flex: 1, minWidth: 80, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                  />
+                )}
                 <TextField
                   size="small"
                   label="כמות"
                   type="number"
                   value={part.quantity}
                   onChange={(e) => handlePartChange(index, 'quantity', e.target.value)}
-                  sx={{ width: 80, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                  sx={{ width: isMobile ? 70 : 80, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
                 />
                 <TextField
                   size="small"
@@ -811,7 +833,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
                   InputProps={{
                     startAdornment: <InputAdornment position="start">₪</InputAdornment>,
                   }}
-                  sx={{ width: 120, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                  sx={{ width: isMobile ? 100 : 120, flex: isMobile ? 1 : 'unset', '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
                 />
                 <IconButton
                   size="small"
