@@ -446,8 +446,8 @@ export const permissionsAPI = {
   // איפוס לברירת מחדל
   reset: () => api.post('/permissions/reset'),
 
-  // קבלת ההרשאות של המשתמש המחובר
-  getMy: () => cachedGet('/permissions/my'),
+  // קבלת ההרשאות של המשתמש המחובר (ללא cache - תמיד עדכני)
+  getMy: () => api.get('/permissions/my'),
 };
 
 export default api;

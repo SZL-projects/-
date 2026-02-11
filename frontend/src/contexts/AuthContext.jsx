@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
   // רענון מידע משתמש מהשרת (תפקידים עדכניים)
   const refreshUserFromServer = useCallback(async () => {
     try {
-      const response = await authAPI.me();
+      const response = await authAPI.getMe();
       const updatedUser = response.data.user;
       const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
       storage.setItem('user', JSON.stringify(updatedUser));
