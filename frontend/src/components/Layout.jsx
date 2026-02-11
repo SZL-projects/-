@@ -416,10 +416,9 @@ export default function Layout() {
                     </Typography>
                   </ListItem>
                   {managementMenuItems.map((item) => {
-                    // אם הפריט מיועד רק לאדמין, בדוק אם המשתמש הוא super_admin
-                    if (item.adminOnly && !hasRole('super_admin')) {
-                      return null;
-                    }
+                    // בדיקת הרשאות לכל פריט תפריט
+                    if (item.superAdminOnly && !hasRole('super_admin')) return null;
+                    if (item.permission && !hasPermission(item.permission, 'view')) return null;
 
                     const isSelected = location.pathname === item.path;
                     return (

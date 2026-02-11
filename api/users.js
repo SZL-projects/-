@@ -147,6 +147,13 @@ module.exports = async (req, res) => {
 
         const updateData = { ...req.body };
 
+        // סנכרון שדות role ו-roles - כשמעדכנים אחד, לעדכן גם את השני
+        if (updateData.role && !updateData.roles) {
+          updateData.roles = [updateData.role];
+        } else if (updateData.roles && Array.isArray(updateData.roles)) {
+          updateData.role = updateData.roles[0] || 'rider';
+        }
+
         // אם יש סיסמה חדשה - להצפין
         if (updateData.password) {
           const salt = await bcrypt.genSalt(10);
@@ -303,6 +310,7 @@ module.exports = async (req, res) => {
         lastName: lastName || '',
         phone: phone || null,
         role: role || 'rider',
+        roles: [role || 'rider'],
         isActive: true,
         isLocked: false,
         createdBy: user.id,

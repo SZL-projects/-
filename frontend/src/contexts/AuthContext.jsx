@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, useEffect } from 'react';
+import { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
 import { authAPI, permissionsAPI } from '../services/api';
 
 const AuthContext = createContext(null);
@@ -7,6 +7,28 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userPermissions, setUserPermissions] = useState(null);
+  const refreshTimerRef = useRef(null);
+
+  // רענון מידע משתמש מהשרת (תפקידים עדכניים)
+  const refreshUserFromServer = useCallback(async () => {
+    try {
+      const response = await authAPI.me();
+      const updatedUser = response.data.user;
+      const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
+      storage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+    } catch (error) {
+      // אם ה-token לא תקין - נתק
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+        setUser(null);
+        setUserPermissions(null);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     // בדיקה אם יש משתמש מחובר (גם ב-localStorage וגם ב-sessionStorage)
@@ -17,24 +39,10 @@ export const AuthProvider = ({ children }) => {
       try {
         const parsedUser = JSON.parse(savedUser);
         setUser(parsedUser);
-
-        // אם אין roles במשתמש השמור - רענן מהשרת
-        if (!parsedUser.roles) {
-          console.log('User missing roles field, refreshing from server...');
-          authAPI.me()
-            .then(response => {
-              const updatedUser = response.data.user;
-              const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
-              storage.setItem('user', JSON.stringify(updatedUser));
-              setUser(updatedUser);
-            })
-            .catch(error => {
-              console.error('Error refreshing user data:', error);
-            });
-        }
+        // תמיד רענן מהשרת בטעינה - כדי לקבל תפקידים עדכניים
+        refreshUserFromServer();
       } catch (error) {
         console.error('Error parsing saved user:', error);
-        // ניקוי localStorage/sessionStorage אם יש בעיה
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         sessionStorage.removeItem('token');
@@ -112,14 +120,25 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // טעינת הרשאות כאשר המשתמש מתחבר
+  // טעינת הרשאות כאשר המשתמש מתחבר + רענון כל 2 דקות
   useEffect(() => {
     if (user) {
       loadPermissions();
+      // רענון אוטומטי של הרשאות ומידע משתמש כל 2 דקות
+      refreshTimerRef.current = setInterval(() => {
+        refreshUserFromServer();
+        loadPermissions();
+      }, 2 * 60 * 1000);
     } else {
       setUserPermissions(null);
     }
-  }, [user]);
+    return () => {
+      if (refreshTimerRef.current) {
+        clearInterval(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    };
+  }, [user?.id]);
 
   const logout = () => {
     localStorage.removeItem('token');
