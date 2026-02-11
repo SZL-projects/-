@@ -1,7 +1,7 @@
 // Vercel Serverless Function - /api/riders (all rider endpoints)
 const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkAuthorization } = require('./_utils/auth');
-const googleDriveService = require('./services/googleDriveService');
+const googleDriveService = require('./_services/googleDriveService');
 const Busboy = require('busboy');
 const getRawBody = require('raw-body');
 const { Readable } = require('stream');

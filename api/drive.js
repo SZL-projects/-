@@ -2,7 +2,7 @@
 const { google } = require('googleapis');
 const { initFirebase } = require('./_utils/firebase');
 const { authenticateToken, checkAuthorization } = require('./_utils/auth');
-const googleDriveService = require('./services/googleDriveService');
+const googleDriveService = require('./_services/googleDriveService');
 
 // OAuth2 client configuration
 const getOAuth2Client = () => {

@@ -1,7 +1,7 @@
 // Vercel Serverless Function - /api/maintenance AND /api/garages (combined to save function count)
 const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkAuthorization } = require('./_utils/auth');
-const googleDriveService = require('./services/googleDriveService');
+const googleDriveService = require('./_services/googleDriveService');
 const getRawBody = require('raw-body');
 const Busboy = require('busboy');
 const { Readable } = require('stream');
