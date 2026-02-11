@@ -88,7 +88,9 @@ const DEFAULT_PERMISSIONS = {
   },
 };
 
-const LEVEL_PRIORITY = { none: 0, self: 1, view: 2, edit: 3 };
+// בבק-אנד: self=2 כדי שרוכב עם הרשאת 'self' יעבור בדיקת 'view' ויקבל גישה לנתונים שלו
+// הפונקציה מחזירה 'self' כדי שה-route handler יסנן רק את הנתונים האישיים
+const LEVEL_PRIORITY = { none: 0, self: 2, view: 2, edit: 3 };
 
 // Cache להרשאות - 5 דקות
 let permissionsCache = null;
