@@ -43,6 +43,7 @@ import {
   Lock,
   DirectionsBike,
   Settings,
+  Security,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import ChangePasswordDialog from './ChangePasswordDialog';
@@ -69,6 +70,7 @@ const managementMenuItems = [
   { text: 'דוחות', icon: <Assessment />, path: '/reports' },
   { text: 'יוצר טפסים', icon: <Description />, path: '/form-builder' },
   { text: 'משתמשים', icon: <People />, path: '/users' },
+  { text: 'הרשאות', icon: <Security />, path: '/permissions', adminOnly: true },
   { text: 'הגדרות', icon: <Settings />, path: '/settings', adminOnly: true },
 ];
 

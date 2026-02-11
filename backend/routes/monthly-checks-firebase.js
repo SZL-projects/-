@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const MonthlyCheckModel = require('../models/firestore/MonthlyCheckModel');
-const { protect, authorize } = require('../middleware/auth-firebase');
+const { protect } = require('../middleware/auth-firebase');
+const { checkPermission } = require('../middleware/checkPermission');
 const { db } = require('../config/firebase');
 const COLLECTIONS = require('../config/collections');
 const emailService = require('../services/emailService');
@@ -12,7 +13,7 @@ router.use(protect);
 // @route   GET /api/monthly-checks
 // @desc    קבלת רשימת בקרות חודשיות
 // @access  Private
-router.get('/', async (req, res) => {
+router.get('/', checkPermission('monthly_checks', 'view'), async (req, res) => {
   try {
     const { search, status, vehicleId, riderId, limit = 100 } = req.query;
 
@@ -53,7 +54,7 @@ router.get('/', async (req, res) => {
 // @route   GET /api/monthly-checks/:id
 // @desc    קבלת בקרה חודשית לפי ID
 // @access  Private
-router.get('/:id', async (req, res) => {
+router.get('/:id', checkPermission('monthly_checks', 'view'), async (req, res) => {
   try {
     const check = await MonthlyCheckModel.findById(req.params.id);
 
@@ -79,12 +80,12 @@ router.get('/:id', async (req, res) => {
 // @route   POST /api/monthly-checks
 // @desc    יצירת בקרה חודשית חדשה או בקרות מרובות
 // @access  Private (למנהלים ומעלה ליצירה מרובה)
-router.post('/', async (req, res) => {
+router.post('/', checkPermission('monthly_checks', 'edit'), async (req, res) => {
   try {
     // אם מתקבל riderIds - זה יצירה מרובה (רק למנהלים)
     if (req.body.riderIds && Array.isArray(req.body.riderIds)) {
       // בדיקת הרשאות - רק מנהל ומעלה
-      if (req.user.role !== 'manager' && req.user.role !== 'super_admin') {
+      if (req.permissionLevel === 'self') {
         return res.status(403).json({
           success: false,
           message: 'אין הרשאה לפתיחת בקרות מרובות'
@@ -198,7 +199,7 @@ router.post('/', async (req, res) => {
 // @route   PUT /api/monthly-checks/:id
 // @desc    עדכון בקרה חודשית
 // @access  Private
-router.put('/:id', async (req, res) => {
+router.put('/:id', checkPermission('monthly_checks', 'edit'), async (req, res) => {
   try {
     const check = await MonthlyCheckModel.update(req.params.id, req.body, req.user.id);
 
@@ -432,7 +433,7 @@ async function sendDefectAlert(rider, vehicle, defects, checkData) {
 // @route   DELETE /api/monthly-checks/:id
 // @desc    מחיקת בקרה חודשית
 // @access  Private (מנהל-על בלבד)
-router.delete('/:id', authorize('super_admin', 'manager'), async (req, res) => {
+router.delete('/:id', checkPermission('monthly_checks', 'edit'), async (req, res) => {
   try {
     await MonthlyCheckModel.delete(req.params.id);
 
@@ -451,7 +452,7 @@ router.delete('/:id', authorize('super_admin', 'manager'), async (req, res) => {
 // @route   POST /api/monthly-checks/:id/send-notification
 // @desc    שליחה ידנית של הודעה לרוכב למילוי בקרה חודשית
 // @access  Private (מנהל/מנהל-על)
-router.post('/:id/send-notification', authorize('super_admin', 'manager'), async (req, res) => {
+router.post('/:id/send-notification', checkPermission('monthly_checks', 'edit'), async (req, res) => {
   try {
     // 1. קבלת הבקרה החודשית
     const check = await MonthlyCheckModel.findById(req.params.id);

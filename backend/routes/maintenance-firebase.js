@@ -4,7 +4,8 @@ const multer = require('multer');
 const MaintenanceModel = require('../models/firestore/MaintenanceModel');
 const VehicleModel = require('../models/firestore/VehicleModel');
 const googleDriveService = require('../services/googleDriveService');
-const { protect, authorize } = require('../middleware/auth-firebase');
+const { protect } = require('../middleware/auth-firebase');
+const { checkPermission } = require('../middleware/checkPermission');
 
 // הגדרת multer לטיפול בקבצים
 const upload = multer({
@@ -67,7 +68,7 @@ router.get('/', async (req, res) => {
 // @route   GET /api/maintenance/statistics
 // @desc    קבלת סטטיסטיקות טיפולים
 // @access  Private (מנהלים בלבד)
-router.get('/statistics', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.get('/statistics', checkPermission('maintenance', 'view'), async (req, res) => {
   try {
     const { vehicleId } = req.query;
     const statistics = await MaintenanceModel.getStatistics(vehicleId || null);
@@ -209,7 +210,7 @@ router.post('/', async (req, res) => {
 // @route   PUT /api/maintenance/:id
 // @desc    עדכון טיפול
 // @access  Private (מנהלים בלבד)
-router.put('/:id', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.put('/:id', checkPermission('maintenance', 'edit'), async (req, res) => {
   try {
     const maintenance = await MaintenanceModel.update(req.params.id, req.body, req.user.id);
 
@@ -236,7 +237,7 @@ router.put('/:id', authorize('super_admin', 'manager', 'secretary'), async (req,
 // @route   PUT /api/maintenance/:id/complete
 // @desc    סגירת טיפול (סימון כהושלם)
 // @access  Private (מנהלים בלבד)
-router.put('/:id/complete', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.put('/:id/complete', checkPermission('maintenance', 'edit'), async (req, res) => {
   try {
     // ולידציה - בדיקה שיש עלות כוללת
     if (!req.body.costs || req.body.costs.totalCost === undefined) {
@@ -278,7 +279,7 @@ router.put('/:id/complete', authorize('super_admin', 'manager', 'secretary'), as
 // @route   DELETE /api/maintenance/:id
 // @desc    מחיקת טיפול
 // @access  Private (מנהל-על בלבד)
-router.delete('/:id', authorize('super_admin', 'manager'), async (req, res) => {
+router.delete('/:id', checkPermission('maintenance', 'edit'), async (req, res) => {
   try {
     const maintenance = await MaintenanceModel.findById(req.params.id);
 

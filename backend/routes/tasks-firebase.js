@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const TaskModel = require('../models/firestore/TaskModel');
-const { protect, authorize } = require('../middleware/auth-firebase');
+const { protect } = require('../middleware/auth-firebase');
+const { checkPermission } = require('../middleware/checkPermission');
 
 // כל הנתיבים מוגנים - דורשים אימות
 router.use(protect);
@@ -79,7 +80,7 @@ router.get('/:id', async (req, res) => {
 // @route   POST /api/tasks
 // @desc    יצירת משימה חדשה
 // @access  Private (מנהלים בלבד)
-router.post('/', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.post('/', checkPermission('tasks', 'edit'), async (req, res) => {
   try {
     const task = await TaskModel.create(req.body, req.user.id);
 
@@ -98,7 +99,7 @@ router.post('/', authorize('super_admin', 'manager', 'secretary'), async (req, r
 // @route   PUT /api/tasks/:id
 // @desc    עדכון משימה
 // @access  Private (מנהלים בלבד)
-router.put('/:id', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.put('/:id', checkPermission('tasks', 'edit'), async (req, res) => {
   try {
     const task = await TaskModel.update(req.params.id, req.body, req.user.id);
 
@@ -124,7 +125,7 @@ router.put('/:id', authorize('super_admin', 'manager', 'secretary'), async (req,
 // @route   DELETE /api/tasks/:id
 // @desc    מחיקת משימה
 // @access  Private (מנהל-על בלבד)
-router.delete('/:id', authorize('super_admin', 'manager'), async (req, res) => {
+router.delete('/:id', checkPermission('tasks', 'edit'), async (req, res) => {
   try {
     await TaskModel.delete(req.params.id);
 

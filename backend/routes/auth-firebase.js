@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const UserModel = require('../models/firestore/UserModel');
-const { getSignedJwtToken } = require('../middleware/auth-firebase');
+const { getSignedJwtToken, protect } = require('../middleware/auth-firebase');
+const { checkPermission } = require('../middleware/checkPermission');
 
 // @route   POST /api/auth/register
 // @desc    רישום משתמש חדש
@@ -133,7 +134,7 @@ router.post('/login', async (req, res) => {
 // @route   GET /api/auth/me
 // @desc    קבלת פרטי המשתמש המחובר
 // @access  Private
-router.get('/me', require('../middleware/auth-firebase').protect, async (req, res) => {
+router.get('/me', protect, async (req, res) => {
   try {
     const user = await UserModel.findById(req.user.id);
 
@@ -162,7 +163,7 @@ router.get('/me', require('../middleware/auth-firebase').protect, async (req, re
 // @route   GET /api/auth/users
 // @desc    קבלת רשימת משתמשים
 // @access  Private (מנהלים בלבד)
-router.get('/users', require('../middleware/auth-firebase').protect, require('../middleware/auth-firebase').authorize('super_admin', 'manager'), async (req, res) => {
+router.get('/users', protect, checkPermission('users', 'view'), async (req, res) => {
   try {
     const { search, role, isActive, limit = 50 } = req.query;
 
@@ -204,7 +205,7 @@ router.get('/users', require('../middleware/auth-firebase').protect, require('..
 // @route   POST /api/auth/users
 // @desc    יצירת משתמש חדש (ע"י מנהל)
 // @access  Private (מנהלים בלבד)
-router.post('/users', require('../middleware/auth-firebase').protect, require('../middleware/auth-firebase').authorize('super_admin', 'manager'), async (req, res) => {
+router.post('/users', protect, checkPermission('users', 'edit'), async (req, res) => {
   try {
     const { username, email, password, firstName, lastName, phone, roles, riderId, vehicleAccess, isActive } = req.body;
 
@@ -249,7 +250,7 @@ router.post('/users', require('../middleware/auth-firebase').protect, require('.
 // @route   PUT /api/auth/users/:id
 // @desc    עדכון משתמש
 // @access  Private (מנהלים בלבד)
-router.put('/users/:id', require('../middleware/auth-firebase').protect, require('../middleware/auth-firebase').authorize('super_admin', 'manager'), async (req, res) => {
+router.put('/users/:id', protect, checkPermission('users', 'edit'), async (req, res) => {
   try {
     const user = await UserModel.update(req.params.id, req.body, req.user.id);
 
@@ -278,7 +279,7 @@ router.put('/users/:id', require('../middleware/auth-firebase').protect, require
 // @route   DELETE /api/auth/users/:id
 // @desc    מחיקת משתמש
 // @access  Private (מנהל-על בלבד)
-router.delete('/users/:id', require('../middleware/auth-firebase').protect, require('../middleware/auth-firebase').authorize('super_admin'), async (req, res) => {
+router.delete('/users/:id', protect, checkPermission('users', 'edit'), async (req, res) => {
   try {
     // מניעת מחיקה עצמית
     if (req.params.id === req.user.id) {

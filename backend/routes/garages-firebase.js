@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const GarageModel = require('../models/firestore/GarageModel');
 const { protect, authorize } = require('../middleware/auth-firebase');
+const { checkPermission } = require('../middleware/checkPermission');
 
 // כל הנתיבים מוגנים - דורשים אימות
 router.use(protect);
@@ -40,7 +41,7 @@ router.get('/', async (req, res) => {
 // @route   GET /api/garages/compare-prices
 // @desc    השוואת מחירים בין מוסכים
 // @access  Private (מנהלים בלבד)
-router.get('/compare-prices', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.get('/compare-prices', checkPermission('garages', 'view'), async (req, res) => {
   try {
     const { maintenanceType } = req.query;
     const comparison = await GarageModel.comparePrices(maintenanceType || null);
@@ -86,7 +87,7 @@ router.get('/:id', async (req, res) => {
 // @route   GET /api/garages/:id/statistics
 // @desc    קבלת סטטיסטיקות מוסך לפי סוג טיפול
 // @access  Private (מנהלים בלבד)
-router.get('/:id/statistics', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.get('/:id/statistics', checkPermission('garages', 'view'), async (req, res) => {
   try {
     const garage = await GarageModel.findById(req.params.id);
 
@@ -143,7 +144,7 @@ router.post('/', async (req, res) => {
 // @route   PUT /api/garages/:id
 // @desc    עדכון מוסך
 // @access  Private (מנהלים בלבד)
-router.put('/:id', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.put('/:id', checkPermission('garages', 'edit'), async (req, res) => {
   try {
     const garage = await GarageModel.update(req.params.id, req.body, req.user.id);
 
@@ -170,7 +171,7 @@ router.put('/:id', authorize('super_admin', 'manager', 'secretary'), async (req,
 // @route   DELETE /api/garages/:id
 // @desc    מחיקת מוסך (סימון כלא פעיל)
 // @access  Private (מנהלים בלבד)
-router.delete('/:id', authorize('super_admin', 'manager'), async (req, res) => {
+router.delete('/:id', checkPermission('garages', 'edit'), async (req, res) => {
   try {
     const garage = await GarageModel.findById(req.params.id);
 

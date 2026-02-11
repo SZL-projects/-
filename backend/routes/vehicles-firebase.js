@@ -5,6 +5,7 @@ const VehicleModel = require('../models/firestore/VehicleModel');
 const RiderModel = require('../models/firestore/RiderModel');
 const googleDriveService = require('../services/googleDriveService');
 const { protect, authorize } = require('../middleware/auth-firebase');
+const { checkPermission } = require('../middleware/checkPermission');
 
 // הגדרת multer לטיפול בקבצים
 const upload = multer({
@@ -20,7 +21,7 @@ router.use(protect);
 // @route   GET /api/vehicles
 // @desc    קבלת רשימת כלים
 // @access  Private
-router.get('/', async (req, res) => {
+router.get('/', checkPermission('vehicles', 'view'), async (req, res) => {
   try {
     const { search, status, type, limit = 50 } = req.query;
 
@@ -60,7 +61,7 @@ router.get('/', async (req, res) => {
 // @route   GET /api/vehicles/list-files
 // @desc    קבלת רשימת קבצים בתיקייה
 // @access  Private
-router.get('/list-files', async (req, res) => {
+router.get('/list-files', checkPermission('vehicles', 'view'), async (req, res) => {
   try {
     const { folderId } = req.query;
 
@@ -89,7 +90,7 @@ router.get('/list-files', async (req, res) => {
 // @route   GET /api/vehicles/drive-structure
 // @desc    קבלת מבנה התיקיות הנוכחי בדרייב
 // @access  Private (מנהלים בלבד)
-router.get('/drive-structure', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.get('/drive-structure', checkPermission('vehicles', 'edit'), async (req, res) => {
   try {
     const structure = await googleDriveService.getDriveFolderStructure();
 
@@ -109,7 +110,7 @@ router.get('/drive-structure', authorize('super_admin', 'manager', 'secretary'),
 // @route   DELETE /api/vehicles/delete-file
 // @desc    מחיקת קובץ מ-Drive
 // @access  Private (מנהלים בלבד)
-router.delete('/delete-file', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.delete('/delete-file', checkPermission('vehicles', 'edit'), async (req, res) => {
   try {
     const { fileId } = req.query;
 
@@ -138,7 +139,7 @@ router.delete('/delete-file', authorize('super_admin', 'manager', 'secretary'), 
 // @route   GET /api/vehicles/:id
 // @desc    קבלת כלי לפי ID
 // @access  Private
-router.get('/:id', async (req, res) => {
+router.get('/:id', checkPermission('vehicles', 'view'), async (req, res) => {
   try {
     const vehicle = await VehicleModel.findById(req.params.id);
 
@@ -164,7 +165,7 @@ router.get('/:id', async (req, res) => {
 // @route   POST /api/vehicles
 // @desc    יצירת כלי חדש
 // @access  Private (מנהלים בלבד)
-router.post('/', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.post('/', checkPermission('vehicles', 'edit'), async (req, res) => {
   try {
     const vehicle = await VehicleModel.create(req.body, req.user.id);
 
@@ -183,7 +184,7 @@ router.post('/', authorize('super_admin', 'manager', 'secretary'), async (req, r
 // @route   PUT /api/vehicles/:id
 // @desc    עדכון כלי
 // @access  Private (מנהלים בלבד)
-router.put('/:id', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.put('/:id', checkPermission('vehicles', 'edit'), async (req, res) => {
   try {
     const vehicle = await VehicleModel.update(req.params.id, req.body, req.user.id);
 
@@ -209,7 +210,7 @@ router.put('/:id', authorize('super_admin', 'manager', 'secretary'), async (req,
 // @route   PATCH /api/vehicles/:id/kilometers
 // @desc    עדכון קילומטראז'
 // @access  Private
-router.patch('/:id/kilometers', async (req, res) => {
+router.patch('/:id/kilometers', checkPermission('vehicles', 'edit'), async (req, res) => {
   try {
     const { kilometers, source, notes } = req.body;
 
@@ -243,7 +244,7 @@ router.patch('/:id/kilometers', async (req, res) => {
 // @route   DELETE /api/vehicles/:id
 // @desc    מחיקת כלי
 // @access  Private (מנהל-על בלבד)
-router.delete('/:id', authorize('super_admin'), async (req, res) => {
+router.delete('/:id', checkPermission('vehicles', 'edit'), async (req, res) => {
   try {
     await VehicleModel.delete(req.params.id);
 
@@ -264,7 +265,7 @@ router.delete('/:id', authorize('super_admin'), async (req, res) => {
 // @route   POST /api/vehicles/create-folder
 // @desc    יצירת מבנה תיקיות ב-Drive עבור כלי
 // @access  Private (מנהלים בלבד)
-router.post('/create-folder', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.post('/create-folder', checkPermission('vehicles', 'edit'), async (req, res) => {
   try {
     const { vehicleNumber, vehicleId } = req.body;
 
@@ -299,7 +300,7 @@ router.post('/create-folder', authorize('super_admin', 'manager', 'secretary'), 
 // @route   POST /api/vehicles/create-rider-folder
 // @desc    יצירת תיקיית רוכב בתוך תיקיית הביטוחים
 // @access  Private (מנהלים בלבד)
-router.post('/create-rider-folder', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.post('/create-rider-folder', checkPermission('vehicles', 'edit'), async (req, res) => {
   try {
     const { riderName, insuranceFolderId } = req.body;
 
@@ -329,7 +330,7 @@ router.post('/create-rider-folder', authorize('super_admin', 'manager', 'secreta
 // @route   POST /api/vehicles/upload-file
 // @desc    העלאת קובץ ל-Drive
 // @access  Private
-router.post('/upload-file', upload.single('file'), async (req, res) => {
+router.post('/upload-file', checkPermission('vehicles', 'edit'), upload.single('file'), async (req, res) => {
   try {
     const { folderId } = req.body;
 
@@ -371,7 +372,7 @@ router.post('/upload-file', upload.single('file'), async (req, res) => {
 // @route   POST /api/vehicles/create-rider-folder-structure
 // @desc    יצירת מבנה תיקיות עצמאי לרוכב (תחת תיקיית "רוכבים")
 // @access  Private (מנהלים בלבד)
-router.post('/create-rider-folder-structure', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.post('/create-rider-folder-structure', checkPermission('vehicles', 'edit'), async (req, res) => {
   try {
     const { riderName, riderId } = req.body;
 
@@ -406,7 +407,7 @@ router.post('/create-rider-folder-structure', authorize('super_admin', 'manager'
 // @route   POST /api/vehicles/refresh-drive-folders
 // @desc    ריענון וסידור מבנה התיקיות בדרייב
 // @access  Private (מנהל-על בלבד)
-router.post('/refresh-drive-folders', authorize('super_admin', 'manager'), async (req, res) => {
+router.post('/refresh-drive-folders', checkPermission('vehicles', 'edit'), async (req, res) => {
   try {
     // קבלת כל הכלים והרוכבים מהמערכת
     const vehicles = await VehicleModel.getAll({}, 1000);
@@ -458,7 +459,7 @@ router.post('/refresh-drive-folders', authorize('super_admin', 'manager'), async
 // @route   POST /api/vehicles/:id/assign
 // @desc    שיוך כלי לרוכב
 // @access  Private (מנהלים בלבד)
-router.post('/:id/assign', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.post('/:id/assign', checkPermission('vehicles', 'edit'), async (req, res) => {
   try {
     const { riderId } = req.body;
     const vehicleId = req.params.id;
@@ -531,7 +532,7 @@ router.post('/:id/assign', authorize('super_admin', 'manager', 'secretary'), asy
 // @route   POST /api/vehicles/:id/unassign
 // @desc    ביטול שיוך כלי מרוכב
 // @access  Private (מנהלים בלבד)
-router.post('/:id/unassign', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.post('/:id/unassign', checkPermission('vehicles', 'edit'), async (req, res) => {
   try {
     const vehicleId = req.params.id;
 

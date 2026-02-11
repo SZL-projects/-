@@ -1,11 +1,12 @@
 import { createContext, useState, useContext, useEffect } from 'react';
-import { authAPI } from '../services/api';
+import { authAPI, permissionsAPI } from '../services/api';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [userPermissions, setUserPermissions] = useState(null);
 
   useEffect(() => {
     // בדיקה אם יש משתמש מחובר (גם ב-localStorage וגם ב-sessionStorage)
@@ -101,12 +102,32 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // טעינת הרשאות המשתמש
+  const loadPermissions = async () => {
+    try {
+      const response = await permissionsAPI.getMy();
+      setUserPermissions(response.data.permissions);
+    } catch (error) {
+      console.error('Error loading permissions:', error);
+    }
+  };
+
+  // טעינת הרשאות כאשר המשתמש מתחבר
+  useEffect(() => {
+    if (user) {
+      loadPermissions();
+    } else {
+      setUserPermissions(null);
+    }
+  }, [user]);
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('user');
     setUser(null);
+    setUserPermissions(null);
   };
 
   // פונקציה לבדיקה אם למשתמש יש תפקיד מסוים
@@ -124,6 +145,32 @@ export const AuthProvider = ({ children }) => {
     return rolesArray.some(role => userRoles.includes(role));
   };
 
+  // בדיקת הרשאה לישות מסוימת
+  // entity: 'riders', 'vehicles', 'tasks'...
+  // requiredLevel: 'view', 'edit'
+  const hasPermission = (entity, requiredLevel = 'view') => {
+    if (!user) return false;
+    // super_admin תמיד מקבל הכל
+    const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
+    if (userRoles.includes('super_admin')) return true;
+
+    if (!userPermissions) return false;
+    const level = userPermissions[entity];
+    if (!level || level === 'none') return false;
+
+    const levelPriority = { none: 0, self: 1, view: 2, edit: 3 };
+    return (levelPriority[level] || 0) >= (levelPriority[requiredLevel] || 0);
+  };
+
+  // קבלת רמת הגישה לישות
+  const getPermissionLevel = (entity) => {
+    if (!user) return 'none';
+    const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
+    if (userRoles.includes('super_admin')) return 'edit';
+    if (!userPermissions) return 'none';
+    return userPermissions[entity] || 'none';
+  };
+
   const value = {
     user,
     loading,
@@ -133,6 +180,10 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     hasRole,
     hasAnyRole,
+    hasPermission,
+    getPermissionLevel,
+    userPermissions,
+    refreshPermissions: loadPermissions,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

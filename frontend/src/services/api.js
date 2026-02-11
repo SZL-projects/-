@@ -435,4 +435,19 @@ export const garagesAPI = {
   },
 };
 
+// Permissions API - הרשאות
+export const permissionsAPI = {
+  // קבלת הרשאות + מטא-דאטא
+  getAll: () => api.get('/permissions'),
+
+  // עדכון הרשאות
+  update: (permissions) => api.put('/permissions', { permissions }),
+
+  // איפוס לברירת מחדל
+  reset: () => api.post('/permissions/reset'),
+
+  // קבלת ההרשאות של המשתמש המחובר
+  getMy: () => cachedGet('/permissions/my'),
+};
+
 export default api;

@@ -10,7 +10,8 @@ const COLLECTIONS = {
   MAINTENANCE: 'maintenance',
   GARAGES: 'garages',
   INSURANCE_CLAIMS: 'insurance_claims',
-  AUDIT_LOGS: 'audit_logs'
+  AUDIT_LOGS: 'audit_logs',
+  PERMISSIONS: 'permissions'
 };
 
 module.exports = COLLECTIONS;

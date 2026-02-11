@@ -4,6 +4,7 @@ const multer = require('multer');
 const RiderModel = require('../models/firestore/RiderModel');
 const googleDriveService = require('../services/googleDriveService');
 const { protect, authorize } = require('../middleware/auth-firebase');
+const { checkPermission } = require('../middleware/checkPermission');
 
 // הגדרת multer לקבלת קבצים
 const upload = multer({
@@ -49,7 +50,7 @@ router.get('/list-files', async (req, res) => {
 // @route   POST /api/riders/upload-file
 // @desc    העלאת קובץ לתיקיית רוכב
 // @access  Private (מנהלים בלבד)
-router.post('/upload-file', authorize('super_admin', 'manager', 'secretary'), upload.single('file'), async (req, res) => {
+router.post('/upload-file', checkPermission('riders', 'edit'), upload.single('file'), async (req, res) => {
   try {
     const { folderId } = req.body;
     const file = req.file;
@@ -92,7 +93,7 @@ router.post('/upload-file', authorize('super_admin', 'manager', 'secretary'), up
 // @route   DELETE /api/riders/delete-file
 // @desc    מחיקת קובץ מתיקיית רוכב
 // @access  Private (מנהלים בלבד)
-router.delete('/delete-file', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.delete('/delete-file', checkPermission('riders', 'edit'), async (req, res) => {
   try {
     const { fileId } = req.query;
 
@@ -123,7 +124,7 @@ router.delete('/delete-file', authorize('super_admin', 'manager', 'secretary'), 
 // @route   GET /api/riders
 // @desc    קבלת רשימת רוכבים
 // @access  Private (כל המשתמשים המחוברים)
-router.get('/', async (req, res) => {
+router.get('/', checkPermission('riders', 'view'), async (req, res) => {
   try {
     const { search, status, district, area, limit = 50 } = req.query;
 
@@ -145,8 +146,8 @@ router.get('/', async (req, res) => {
       riders = await RiderModel.getAll(filters, parseInt(limit));
     }
 
-    // אם המשתמש הוא רוכב - רק את עצמו
-    if (req.user.role === 'rider' && req.user.riderId) {
+    // אם הרשאת "עצמי" - רק את עצמו
+    if (req.permissionLevel === 'self' && req.user.riderId) {
       riders = riders.filter(r => r.id === req.user.riderId);
     }
 
@@ -166,7 +167,7 @@ router.get('/', async (req, res) => {
 // @route   GET /api/riders/:id
 // @desc    קבלת רוכב לפי ID
 // @access  Private
-router.get('/:id', async (req, res) => {
+router.get('/:id', checkPermission('riders', 'view'), async (req, res) => {
   try {
     const rider = await RiderModel.findById(req.params.id);
 
@@ -177,8 +178,8 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // רוכב יכול לראות רק את עצמו
-    if (req.user.role === 'rider' && req.user.riderId !== rider.id) {
+    // אם הרשאת "עצמי" - רק את עצמו
+    if (req.permissionLevel === 'self' && req.user.riderId !== rider.id) {
       return res.status(403).json({
         success: false,
         message: 'אין הרשאה לצפות ברוכב זה'
@@ -200,7 +201,7 @@ router.get('/:id', async (req, res) => {
 // @route   POST /api/riders
 // @desc    יצירת רוכב חדש
 // @access  Private (מנהלים בלבד)
-router.post('/', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.post('/', checkPermission('riders', 'edit'), async (req, res) => {
   try {
     console.log('Creating rider with data:', req.body);
     const rider = await RiderModel.create(req.body, req.user.id);
@@ -221,7 +222,7 @@ router.post('/', authorize('super_admin', 'manager', 'secretary'), async (req, r
 // @route   PUT /api/riders/:id
 // @desc    עדכון רוכב
 // @access  Private (מנהלים בלבד)
-router.put('/:id', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.put('/:id', checkPermission('riders', 'edit'), async (req, res) => {
   try {
     const rider = await RiderModel.update(req.params.id, req.body, req.user.id);
 
@@ -247,7 +248,7 @@ router.put('/:id', authorize('super_admin', 'manager', 'secretary'), async (req,
 // @route   DELETE /api/riders/:id
 // @desc    מחיקת רוכב
 // @access  Private (מנהל-על בלבד)
-router.delete('/:id', authorize('super_admin'), async (req, res) => {
+router.delete('/:id', checkPermission('riders', 'edit'), async (req, res) => {
   try {
     await RiderModel.delete(req.params.id);
 
@@ -268,7 +269,7 @@ router.delete('/:id', authorize('super_admin'), async (req, res) => {
 // @route   POST /api/riders/:id/create-folder
 // @desc    יצירת מבנה תיקיות בדרייב לרוכב
 // @access  Private (מנהלים בלבד)
-router.post('/:id/create-folder', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.post('/:id/create-folder', checkPermission('riders', 'edit'), async (req, res) => {
   try {
     const riderId = req.params.id;
 

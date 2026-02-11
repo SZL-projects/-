@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const FaultModel = require('../models/firestore/FaultModel');
-const { protect, authorize } = require('../middleware/auth-firebase');
+const { protect } = require('../middleware/auth-firebase');
+const { checkPermission } = require('../middleware/checkPermission');
 
 // כל הנתיבים מוגנים - דורשים אימות
 router.use(protect);
@@ -98,7 +99,7 @@ router.post('/', async (req, res) => {
 // @route   PUT /api/faults/:id
 // @desc    עדכון תקלה
 // @access  Private (מנהלים בלבד)
-router.put('/:id', authorize('super_admin', 'manager', 'secretary'), async (req, res) => {
+router.put('/:id', checkPermission('faults', 'edit'), async (req, res) => {
   try {
     const fault = await FaultModel.update(req.params.id, req.body, req.user.id);
 
@@ -124,7 +125,7 @@ router.put('/:id', authorize('super_admin', 'manager', 'secretary'), async (req,
 // @route   DELETE /api/faults/:id
 // @desc    מחיקת תקלה
 // @access  Private (מנהל-על בלבד)
-router.delete('/:id', authorize('super_admin', 'manager'), async (req, res) => {
+router.delete('/:id', checkPermission('faults', 'edit'), async (req, res) => {
   try {
     await FaultModel.delete(req.params.id);
 
