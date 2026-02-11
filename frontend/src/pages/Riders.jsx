@@ -45,11 +45,13 @@ import {
 import { ridersAPI, vehiclesAPI } from '../services/api';
 import RiderDialog from '../components/RiderDialog';
 import { useDebounce } from '../hooks/useDebounce';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Riders() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { hasPermission } = useAuth();
   const [riders, setRiders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -220,28 +222,30 @@ export default function Riders() {
             </Typography>
           </Box>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          size={isMobile ? 'medium' : 'large'}
-          onClick={() => handleOpenDialog()}
-          fullWidth={isMobile}
-          sx={{
-            px: 3,
-            py: 1.5,
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-            boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)',
-            '&:hover': {
-              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-              boxShadow: '0 6px 20px rgba(99, 102, 241, 0.5)',
-              transform: 'translateY(-2px)',
-            },
-            transition: 'all 0.2s ease-in-out',
-          }}
-        >
-          רוכב חדש
-        </Button>
+        {hasPermission('riders', 'edit') && (
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            size={isMobile ? 'medium' : 'large'}
+            onClick={() => handleOpenDialog()}
+            fullWidth={isMobile}
+            sx={{
+              px: 3,
+              py: 1.5,
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                boxShadow: '0 6px 20px rgba(99, 102, 241, 0.5)',
+                transform: 'translateY(-2px)',
+              },
+              transition: 'all 0.2s ease-in-out',
+            }}
+          >
+            רוכב חדש
+          </Button>
+        )}
       </Box>
 
       {error && (
@@ -403,26 +407,30 @@ export default function Riders() {
                   צפייה
                 </Button>
                 <Box>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleOpenDialog(rider)}
-                    sx={{
-                      color: '#8b5cf6',
-                      '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.08)' },
-                    }}
-                  >
-                    <Edit />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDeleteClick(rider)}
-                    sx={{
-                      color: '#ef4444',
-                      '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' },
-                    }}
-                  >
-                    <Delete />
-                  </IconButton>
+                  {hasPermission('riders', 'edit') && (
+                    <IconButton
+                      size="small"
+                      onClick={() => handleOpenDialog(rider)}
+                      sx={{
+                        color: '#8b5cf6',
+                        '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.08)' },
+                      }}
+                    >
+                      <Edit />
+                    </IconButton>
+                  )}
+                  {hasPermission('riders', 'edit') && (
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteClick(rider)}
+                      sx={{
+                        color: '#ef4444',
+                        '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' },
+                      }}
+                    >
+                      <Delete />
+                    </IconButton>
+                  )}
                 </Box>
               </CardActions>
             </Card>
@@ -486,26 +494,30 @@ export default function Riders() {
                     >
                       <Visibility />
                     </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleOpenDialog(rider)}
-                      sx={{
-                        color: '#8b5cf6',
-                        '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.08)' },
-                      }}
-                    >
-                      <Edit />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteClick(rider)}
-                      sx={{
-                        color: '#ef4444',
-                        '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' },
-                      }}
-                    >
-                      <Delete />
-                    </IconButton>
+                    {hasPermission('riders', 'edit') && (
+                      <IconButton
+                        size="small"
+                        onClick={() => handleOpenDialog(rider)}
+                        sx={{
+                          color: '#8b5cf6',
+                          '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.08)' },
+                        }}
+                      >
+                        <Edit />
+                      </IconButton>
+                    )}
+                    {hasPermission('riders', 'edit') && (
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDeleteClick(rider)}
+                        sx={{
+                          color: '#ef4444',
+                          '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' },
+                        }}
+                      >
+                        <Delete />
+                      </IconButton>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

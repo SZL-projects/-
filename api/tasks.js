@@ -1,6 +1,6 @@
 // Vercel Serverless Function - /api/tasks
 const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
-const { authenticateToken, checkAuthorization } = require('./_utils/auth');
+const { authenticateToken, checkPermission } = require('./_utils/auth');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -50,7 +50,7 @@ module.exports = async (req, res) => {
       }
 
       if (req.method === 'PUT') {
-        checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+        await checkPermission(user, db, 'tasks', 'edit');
 
         const updateData = {
           ...req.body,
@@ -69,7 +69,7 @@ module.exports = async (req, res) => {
       }
 
       if (req.method === 'DELETE') {
-        checkAuthorization(user, ['super_admin']);
+        await checkPermission(user, db, 'tasks', 'edit');
 
         await taskRef.delete();
 
@@ -99,13 +99,10 @@ module.exports = async (req, res) => {
         query = query.where('vehicleId', '==', vehicleId);
       }
 
-      // סינון לפי תפקיד - רוכב רואה רק משימות של הכלי שלו
-      const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
-      const isAdminOrManager = userRoles.some(role =>
-        ['super_admin', 'manager', 'secretary'].includes(role)
-      );
+      // סינון לפי הרשאות - self רואה רק משימות של הכלי שלו
+      const permLevel = await checkPermission(user, db, 'tasks', 'view');
 
-      if (!isAdminOrManager && user.riderId) {
+      if (permLevel === 'self' && user.riderId) {
         // נמצא את הרוכב כדי לקבל את assignedVehicleId
         const riderSnapshot = await db.collection('riders').doc(user.riderId).get();
         if (riderSnapshot.exists) {
@@ -142,7 +139,7 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'tasks', 'edit');
 
       const taskData = {
         ...req.body,
@@ -169,16 +166,13 @@ module.exports = async (req, res) => {
   } catch (error) {
     console.error('Tasks error:', error);
 
-    if (error.message.includes('token') || error.message.includes('authorized')) {
-      return res.status(401).json({
-        success: false,
-        message: error.message
-      });
+    if (error.message.includes('token')) {
+      return res.status(401).json({ success: false, message: error.message });
+    }
+    if (error.message.includes('הרשאה') || error.message.includes('authorized')) {
+      return res.status(403).json({ success: false, message: error.message });
     }
 
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };

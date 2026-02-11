@@ -1,6 +1,6 @@
 // Vercel Serverless Function - /api/riders (all rider endpoints)
 const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
-const { authenticateToken, checkAuthorization } = require('./_utils/auth');
+const { authenticateToken, checkPermission } = require('./_utils/auth');
 const googleDriveService = require('./_services/googleDriveService');
 const Busboy = require('busboy');
 const getRawBody = require('raw-body');
@@ -61,11 +61,9 @@ module.exports = async (req, res) => {
 
       const files = await googleDriveService.listFiles(folderId);
 
-      // בדיקת תפקיד משתמש
-      const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
-      const isAdminOrManager = userRoles.some(role =>
-        ['super_admin', 'manager', 'secretary'].includes(role)
-      );
+      // בדיקת הרשאות משתמש
+      const listFilesPermLevel = await checkPermission(user, db, 'riders', 'view');
+      const isAdminOrManager = listFilesPermLevel !== 'self';
 
       // טעינת הגדרות נראות מ-Firestore
       let fileSettings = {};
@@ -107,7 +105,7 @@ module.exports = async (req, res) => {
 
     // POST /api/riders/upload-file
     if (url.endsWith('/upload-file') && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'riders', 'edit');
 
       return new Promise(async (resolve, reject) => {
         try {
@@ -199,7 +197,7 @@ module.exports = async (req, res) => {
 
     // DELETE /api/riders/delete-file
     if (url.endsWith('/delete-file') && req.method === 'DELETE') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'riders', 'edit');
 
       const { fileId, recursive } = req.query;
 
@@ -220,7 +218,7 @@ module.exports = async (req, res) => {
 
     // PATCH /api/riders/update-file-visibility - עדכון נראות קובץ לרוכב
     if (url.endsWith('/update-file-visibility') && req.method === 'PATCH') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'riders', 'edit');
 
       const { riderId, fileId, visibleToRider } = req.body;
 
@@ -265,7 +263,7 @@ module.exports = async (req, res) => {
 
     // POST /api/riders/move-file - העברת קובץ לתיקייה אחרת
     if (url.endsWith('/move-file') && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'riders', 'edit');
 
       const { riderId, fileId, targetFolderId } = req.body;
 
@@ -296,7 +294,7 @@ module.exports = async (req, res) => {
 
     // POST /api/riders/add-custom-folder - הוספת תיקייה מותאמת אישית
     if (url.endsWith('/add-custom-folder') && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'riders', 'edit');
 
       const { riderId, folderName } = req.body;
 
@@ -357,7 +355,7 @@ module.exports = async (req, res) => {
 
     // POST /api/riders/delete-custom-folder - מחיקת תיקייה מותאמת אישית
     if (url.endsWith('/delete-custom-folder') && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'riders', 'edit');
 
       const { riderId, folderId } = req.body;
 
@@ -399,7 +397,7 @@ module.exports = async (req, res) => {
 
     // POST /api/riders/delete-default-folder - מחיקת תיקייה דיפולטית (לא קבועה)
     if (url.endsWith('/delete-default-folder') && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'riders', 'edit');
 
       const { riderId, folderKey, folderId } = req.body;
 
@@ -448,7 +446,7 @@ module.exports = async (req, res) => {
 
     // POST /api/riders/rename-folder - שינוי שם תיקייה
     if (url.endsWith('/rename-folder') && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'riders', 'edit');
 
       const { riderId, folderId, newName, folderKey, isCustom } = req.body;
 
@@ -502,7 +500,7 @@ module.exports = async (req, res) => {
 
     // POST /api/riders/:id/create-folder - יצירת מבנה תיקיות לרוכב
     if (url.match(/\/[\w-]+\/create-folder$/) && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'riders', 'edit');
 
       const match = url.match(/\/riders\/([^/]+)\/create-folder$/) || url.match(/\/([^/]+)\/create-folder$/);
       const riderIdFromUrl = match ? match[1] : null;
@@ -567,7 +565,8 @@ module.exports = async (req, res) => {
 
       // GET single rider
       if (req.method === 'GET') {
-        if (user.role === 'rider' && user.riderId !== riderId) {
+        const singlePermLevel = await checkPermission(user, db, 'riders', 'view');
+        if (singlePermLevel === 'self' && user.riderId !== riderId) {
           return res.status(403).json({
             success: false,
             message: 'אין הרשאה לצפות ברוכב זה'
@@ -582,7 +581,7 @@ module.exports = async (req, res) => {
 
       // PUT - update rider
       if (req.method === 'PUT') {
-        checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+        await checkPermission(user, db, 'riders', 'edit');
 
         // שליפת מצב רוכב נוכחי לבדיקת שינויים בשיוך
         const currentRiderData = doc.data();
@@ -695,7 +694,7 @@ module.exports = async (req, res) => {
 
       // DELETE rider
       if (req.method === 'DELETE') {
-        checkAuthorization(user, ['super_admin']);
+        await checkPermission(user, db, 'riders', 'edit');
 
         await riderRef.delete();
 
@@ -725,14 +724,9 @@ module.exports = async (req, res) => {
         query = query.where('region.district', '==', region);
       }
 
-      // סינון לפי תפקיד - רוכב רואה רק את עצמו
-      const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
-      const isRider = userRoles.includes('rider');
-      const isAdminOrManager = userRoles.some(role =>
-        ['super_admin', 'manager', 'secretary'].includes(role)
-      );
-
-      if (isRider && !isAdminOrManager && user.riderId) {
+      // סינון לפי הרשאות - בדיקה אם המשתמש רואה רק את עצמו
+      const permLevel = await checkPermission(user, db, 'riders', 'view');
+      if (permLevel === 'self' && user.riderId) {
         query = query.where('__name__', '==', user.riderId);
       }
 
@@ -792,7 +786,7 @@ module.exports = async (req, res) => {
 
     // POST - create rider
     if (req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'riders', 'edit');
 
       const riderData = {
         ...req.body,
@@ -889,12 +883,11 @@ module.exports = async (req, res) => {
       method: req.method
     });
 
-    if (error.message.includes('token') || error.message.includes('authorized')) {
-      return res.status(401).json({
-        success: false,
-        message: 'שגיאת הרשאה',
-        error: error.message
-      });
+    if (error.message.includes('token')) {
+      return res.status(401).json({ success: false, message: error.message });
+    }
+    if (error.message.includes('הרשאה') || error.message.includes('authorized')) {
+      return res.status(403).json({ success: false, message: error.message });
     }
 
     res.status(500).json({

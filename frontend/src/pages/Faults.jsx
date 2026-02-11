@@ -46,9 +46,11 @@ import {
   TwoWheeler,
 } from '@mui/icons-material';
 import { faultsAPI, ridersAPI, vehiclesAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Faults() {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
   const [faults, setFaults] = useState([]);
   const [riders, setRiders] = useState([]);
   const [vehicles, setVehicles] = useState([]);
@@ -726,7 +728,7 @@ export default function Faults() {
                     >
                       <Visibility />
                     </IconButton>
-                    {fault.status === 'open' && (
+                    {hasPermission('faults', 'edit') && fault.status === 'open' && (
                       <IconButton
                         size="small"
                         onClick={() => handleUpdateStatus(fault._id || fault.id, 'in_progress')}
@@ -739,7 +741,7 @@ export default function Faults() {
                         <Build />
                       </IconButton>
                     )}
-                    {fault.status === 'in_progress' && (
+                    {hasPermission('faults', 'edit') && fault.status === 'in_progress' && (
                       <IconButton
                         size="small"
                         onClick={() => handleUpdateStatus(fault._id || fault.id, 'resolved')}
@@ -934,7 +936,7 @@ export default function Faults() {
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 600, mb: 1.5 }}>פעולות זמינות:</Typography>
                   <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-                    {selectedFault.status === 'open' && (
+                    {hasPermission('faults', 'edit') && selectedFault.status === 'open' && (
                       <Button
                         variant="contained"
                         size="small"
@@ -957,7 +959,7 @@ export default function Faults() {
                         העבר לטיפול
                       </Button>
                     )}
-                    {selectedFault.status === 'in_progress' && (
+                    {hasPermission('faults', 'edit') && selectedFault.status === 'in_progress' && (
                       <Button
                         variant="contained"
                         size="small"

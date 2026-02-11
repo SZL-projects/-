@@ -2,7 +2,7 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { initFirebase } = require('./_utils/firebase');
-const { authenticateToken, checkAuthorization } = require('./_utils/auth');
+const { authenticateToken, checkPermission } = require('./_utils/auth');
 const { sendLoginCredentials } = require('./_utils/emailService');
 
 module.exports = async (req, res) => {
@@ -46,7 +46,7 @@ module.exports = async (req, res) => {
 
     // POST /api/users/:id/send-credentials - Send login credentials to user
     if (userId && action === 'send-credentials' && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager']);
+      await checkPermission(user, db, 'users', 'edit');
 
       const userRef = db.collection('users').doc(userId);
       const doc = await userRef.get();
@@ -110,7 +110,7 @@ module.exports = async (req, res) => {
     // Single user operations
     if (userId && !action) {
       // בדיקת הרשאות למשתמש בודד
-      checkAuthorization(user, ['super_admin', 'manager']);
+      await checkPermission(user, db, 'users', 'view');
 
       const userRef = db.collection('users').doc(userId);
       const doc = await userRef.get();
@@ -172,7 +172,7 @@ module.exports = async (req, res) => {
 
       // DELETE user
       if (req.method === 'DELETE') {
-        checkAuthorization(user, ['super_admin']); // רק super_admin יכול למחוק
+        await checkPermission(user, db, 'users', 'edit');
 
         const existingUserData = doc.data();
 
@@ -197,7 +197,7 @@ module.exports = async (req, res) => {
     // GET - list users
     if (req.method === 'GET') {
       // בדיקת הרשאות לצפייה ברשימת משתמשים
-      checkAuthorization(user, ['super_admin', 'manager']);
+      await checkPermission(user, db, 'users', 'view');
 
       const { search, role, isActive, page = 1, limit = 50 } = req.query;
 
@@ -243,7 +243,7 @@ module.exports = async (req, res) => {
     // POST - create user
     if (req.method === 'POST') {
       // בדיקת הרשאות ליצירת משתמש
-      checkAuthorization(user, ['super_admin', 'manager']);
+      await checkPermission(user, db, 'users', 'edit');
 
       console.log('📝 Creating user - Request body:', {
         username: req.body?.username,
@@ -349,12 +349,11 @@ module.exports = async (req, res) => {
       method: req.method
     });
 
-    if (error.message.includes('token') || error.message.includes('authorized')) {
-      return res.status(401).json({
-        success: false,
-        message: 'שגיאת הרשאה',
-        error: error.message
-      });
+    if (error.message.includes('token')) {
+      return res.status(401).json({ success: false, message: error.message });
+    }
+    if (error.message.includes('הרשאה') || error.message.includes('authorized')) {
+      return res.status(403).json({ success: false, message: error.message });
     }
 
     res.status(500).json({

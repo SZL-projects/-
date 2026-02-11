@@ -59,19 +59,20 @@ const riderMenuItems = [
 ];
 
 // תפריט לניהול - למשתמשים עם הרשאות ניהול
+// permission: שם הישות שצריך הרשאת צפייה אליה כדי לראות את הפריט
 const managementMenuItems = [
   { text: 'דשבורד', icon: <Dashboard />, path: '/dashboard' },
-  { text: 'רוכבים', icon: <Person />, path: '/riders' },
-  { text: 'כלים', icon: <TwoWheeler />, path: '/vehicles' },
-  { text: 'משימות', icon: <Assignment />, path: '/tasks' },
-  { text: 'בקרה חודשית', icon: <Build />, path: '/monthly-checks' },
-  { text: 'תקלות', icon: <Warning />, path: '/faults' },
-  { text: 'טיפולים', icon: <Build />, path: '/maintenance' },
-  { text: 'דוחות', icon: <Assessment />, path: '/reports' },
+  { text: 'רוכבים', icon: <Person />, path: '/riders', permission: 'riders' },
+  { text: 'כלים', icon: <TwoWheeler />, path: '/vehicles', permission: 'vehicles' },
+  { text: 'משימות', icon: <Assignment />, path: '/tasks', permission: 'tasks' },
+  { text: 'בקרה חודשית', icon: <Build />, path: '/monthly-checks', permission: 'monthly_checks' },
+  { text: 'תקלות', icon: <Warning />, path: '/faults', permission: 'faults' },
+  { text: 'טיפולים', icon: <Build />, path: '/maintenance', permission: 'maintenance' },
+  { text: 'דוחות', icon: <Assessment />, path: '/reports', permission: 'reports' },
   { text: 'יוצר טפסים', icon: <Description />, path: '/form-builder' },
-  { text: 'משתמשים', icon: <People />, path: '/users' },
-  { text: 'הרשאות', icon: <Security />, path: '/permissions', adminOnly: true },
-  { text: 'הגדרות', icon: <Settings />, path: '/settings', adminOnly: true },
+  { text: 'משתמשים', icon: <People />, path: '/users', permission: 'users' },
+  { text: 'הרשאות', icon: <Security />, path: '/permissions', superAdminOnly: true },
+  { text: 'הגדרות', icon: <Settings />, path: '/settings', permission: 'settings' },
 ];
 
 export default function Layout() {
@@ -79,15 +80,17 @@ export default function Layout() {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { user, logout, hasRole, hasAnyRole } = useAuth();
+  const { user, logout, hasRole, hasAnyRole, hasPermission } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(!isMobile);
   const [anchorEl, setAnchorEl] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
-  // בדיקה אם יש למשתמש הרשאות ניהול
-  const hasManagementRole = hasAnyRole(['super_admin', 'manager', 'secretary', 'logistics', 'regional_manager']);
+  // בדיקה אם יש למשתמש הרשאות ניהול (לפחות הרשאת צפייה על משהו)
+  const hasManagementAccess = hasRole('super_admin') || managementMenuItems.some(
+    item => item.permission && hasPermission(item.permission, 'view')
+  );
   // בדיקה אם המשתמש הוא רוכב
   const isRider = hasRole('rider');
 
@@ -227,12 +230,12 @@ export default function Layout() {
                 </ListItem>
               );
             })}
-            {hasManagementRole && <Divider sx={{ my: 2, mx: 1 }} />}
+            {hasManagementAccess && <Divider sx={{ my: 2, mx: 1 }} />}
           </>
         )}
 
         {/* קטגוריית ניהול - רק אם יש הרשאות ניהול */}
-        {hasManagementRole && (
+        {hasManagementAccess && (
           <>
             {drawerOpen && (
               <ListItem sx={{ pb: 1 }}>
@@ -242,10 +245,9 @@ export default function Layout() {
               </ListItem>
             )}
             {managementMenuItems.map((item) => {
-              // אם הפריט מיועד רק לאדמין, בדוק אם המשתמש הוא super_admin
-              if (item.adminOnly && !hasRole('super_admin')) {
-                return null;
-              }
+              // בדיקת הרשאות לכל פריט תפריט
+              if (item.superAdminOnly && !hasRole('super_admin')) return null;
+              if (item.permission && !hasPermission(item.permission, 'view')) return null;
 
               const isSelected = location.pathname === item.path;
               return (
@@ -401,12 +403,12 @@ export default function Layout() {
                       </ListItem>
                     );
                   })}
-                  {hasManagementRole && <Divider sx={{ my: 2, mx: 1 }} />}
+                  {hasManagementAccess && <Divider sx={{ my: 2, mx: 1 }} />}
                 </>
               )}
 
               {/* קטגוריית ניהול - מובייל */}
-              {hasManagementRole && (
+              {hasManagementAccess && (
                 <>
                   <ListItem sx={{ pb: 1 }}>
                     <Typography variant="overline" sx={{ fontWeight: 600, color: '#94a3b8', letterSpacing: 1.2, fontSize: '0.7rem' }}>

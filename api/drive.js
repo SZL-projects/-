@@ -1,7 +1,7 @@
 // Vercel Serverless Function - /api/drive (OAuth2 flow)
 const { google } = require('googleapis');
 const { initFirebase } = require('./_utils/firebase');
-const { authenticateToken, checkAuthorization } = require('./_utils/auth');
+const { authenticateToken, checkPermission } = require('./_utils/auth');
 const googleDriveService = require('./_services/googleDriveService');
 
 // OAuth2 client configuration
@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
     // GET /api/drive/authorize - Start OAuth2 flow
     if (url.endsWith('/authorize') && req.method === 'GET') {
       const user = await authenticateToken(req, db);
-      checkAuthorization(user, ['super_admin']);
+      await checkPermission(user, db, 'settings', 'edit');
 
       const oauth2Client = getOAuth2Client();
 
@@ -177,7 +177,7 @@ module.exports = async (req, res) => {
     // POST /api/drive/revoke - Revoke authorization
     if (url.endsWith('/revoke') && req.method === 'POST') {
       const user = await authenticateToken(req, db);
-      checkAuthorization(user, ['super_admin']);
+      await checkPermission(user, db, 'settings', 'edit');
 
       const settingsRef = db.collection('settings').doc('googleDrive');
       await settingsRef.delete();

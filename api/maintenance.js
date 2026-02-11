@@ -1,6 +1,6 @@
 // Vercel Serverless Function - /api/maintenance AND /api/garages (combined to save function count)
 const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
-const { authenticateToken, checkAuthorization } = require('./_utils/auth');
+const { authenticateToken, checkPermission } = require('./_utils/auth');
 const googleDriveService = require('./_services/googleDriveService');
 const getRawBody = require('raw-body');
 const Busboy = require('busboy');
@@ -58,11 +58,11 @@ module.exports = async (req, res) => {
   } catch (error) {
     console.error('API error:', error.message, error.stack);
 
-    if (error.message.includes('token') || error.message.includes('authorized')) {
-      return res.status(401).json({
-        success: false,
-        message: error.message
-      });
+    if (error.message.includes('token')) {
+      return res.status(401).json({ success: false, message: error.message });
+    }
+    if (error.message.includes('הרשאה') || error.message.includes('authorized')) {
+      return res.status(403).json({ success: false, message: error.message });
     }
 
     res.status(500).json({
@@ -78,7 +78,7 @@ async function handleGaragesRequest(req, res, db, user, url) {
 
   // GET /api/garages/compare-prices - השוואת מחירים בין מוסכים
   if (url.endsWith('/compare-prices') && req.method === 'GET') {
-    checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+    await checkPermission(user, db, 'garages', 'view');
 
     const { maintenanceType } = req.query;
 
@@ -129,7 +129,7 @@ async function handleGaragesRequest(req, res, db, user, url) {
 
   // GET /api/garages/:id/statistics - סטטיסטיקות מוסך
   if (garageId && url.includes('/statistics') && req.method === 'GET') {
-    checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+    await checkPermission(user, db, 'garages', 'view');
 
     const garageDoc = await db.collection('garages').doc(garageId).get();
     if (!garageDoc.exists) {
@@ -196,7 +196,7 @@ async function handleGaragesRequest(req, res, db, user, url) {
     }
 
     if (req.method === 'PUT') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'garages', 'edit');
 
       const updateData = {
         ...req.body,
@@ -215,7 +215,7 @@ async function handleGaragesRequest(req, res, db, user, url) {
     }
 
     if (req.method === 'DELETE') {
-      checkAuthorization(user, ['super_admin', 'manager']);
+      await checkPermission(user, db, 'garages', 'edit');
 
       await garageRef.delete();
 
@@ -258,7 +258,7 @@ async function handleGaragesRequest(req, res, db, user, url) {
   }
 
   if (req.method === 'POST') {
-    checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+    await checkPermission(user, db, 'garages', 'edit');
 
     if (!req.body.name) {
       return res.status(400).json({
@@ -333,7 +333,7 @@ async function handleMaintenanceTypesRequest(req, res, db, user, url) {
 
   // POST /api/maintenance-types - הוספת סוג טיפול חדש (super_admin בלבד)
   if (req.method === 'POST') {
-    checkAuthorization(user, ['super_admin']);
+    await checkPermission(user, db, 'maintenance', 'edit');
 
     if (!req.body.key || !req.body.label) {
       return res.status(400).json({
@@ -380,7 +380,7 @@ async function handleMaintenanceTypesRequest(req, res, db, user, url) {
 
   // PUT /api/maintenance-types/:id - עדכון סוג טיפול (super_admin בלבד)
   if (req.method === 'PUT' && typeId) {
-    checkAuthorization(user, ['super_admin']);
+    await checkPermission(user, db, 'maintenance', 'edit');
 
     const typeRef = db.collection('maintenanceTypes').doc(typeId);
     const doc = await typeRef.get();
@@ -413,7 +413,7 @@ async function handleMaintenanceTypesRequest(req, res, db, user, url) {
 
   // DELETE /api/maintenance-types/:id - מחיקת סוג טיפול (super_admin בלבד)
   if (req.method === 'DELETE' && typeId) {
-    checkAuthorization(user, ['super_admin']);
+    await checkPermission(user, db, 'maintenance', 'edit');
 
     const typeRef = db.collection('maintenanceTypes').doc(typeId);
     const doc = await typeRef.get();
@@ -449,7 +449,7 @@ async function handleMaintenanceTypesRequest(req, res, db, user, url) {
 
   // POST /api/maintenance-types/init - אתחול סוגי טיפול ברירת מחדל (super_admin בלבד)
   if (url.includes('/init') && req.method === 'POST') {
-    checkAuthorization(user, ['super_admin']);
+    await checkPermission(user, db, 'maintenance', 'edit');
 
     const existingSnapshot = await db.collection('maintenanceTypes').get();
     if (!existingSnapshot.empty) {
@@ -503,7 +503,7 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
 
   // GET /api/maintenance/statistics - סטטיסטיקות טיפולים
   if (url.endsWith('/statistics') && req.method === 'GET') {
-    checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+    await checkPermission(user, db, 'maintenance', 'view');
 
     const { vehicleId } = req.query;
 
@@ -785,7 +785,7 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
 
   // PUT /api/maintenance/:id/complete
   if (maintenanceId && url.includes('/complete') && req.method === 'PUT') {
-    checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+    await checkPermission(user, db, 'maintenance', 'edit');
 
     if (!req.body.costs || req.body.costs.totalCost === undefined) {
       return res.status(400).json({
@@ -843,7 +843,7 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
     }
 
     if (req.method === 'PUT') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'maintenance', 'edit');
 
       // תמיכה גם בפורמט garage object וגם garageId/garageName
       const garageData = req.body.garage || {};
@@ -879,7 +879,7 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
     }
 
     if (req.method === 'DELETE') {
-      checkAuthorization(user, ['super_admin', 'manager']);
+      await checkPermission(user, db, 'maintenance', 'edit');
 
       // מחיקת קבצים מ-Google Drive לפני מחיקת הטיפול
       const maintenanceData = doc.data();

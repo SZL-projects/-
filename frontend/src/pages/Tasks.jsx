@@ -42,10 +42,12 @@ import {
   Flag,
 } from '@mui/icons-material';
 import { tasksAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import TaskDialog from '../components/TaskDialog';
 
 export default function Tasks() {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [tasks, setTasks] = useState([]);
@@ -230,28 +232,30 @@ export default function Tasks() {
             </Typography>
           </Box>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          size={isMobile ? 'medium' : 'large'}
-          onClick={() => handleOpenDialog()}
-          fullWidth={isMobile}
-          sx={{
-            px: 3,
-            py: 1.5,
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-            boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)',
-            '&:hover': {
-              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-              boxShadow: '0 6px 20px rgba(99, 102, 241, 0.5)',
-              transform: 'translateY(-2px)',
-            },
-            transition: 'all 0.2s ease-in-out',
-          }}
-        >
-          משימה חדשה
-        </Button>
+        {hasPermission('tasks', 'edit') && (
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            size={isMobile ? 'medium' : 'large'}
+            onClick={() => handleOpenDialog()}
+            fullWidth={isMobile}
+            sx={{
+              px: 3,
+              py: 1.5,
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                boxShadow: '0 6px 20px rgba(99, 102, 241, 0.5)',
+                transform: 'translateY(-2px)',
+              },
+              transition: 'all 0.2s ease-in-out',
+            }}
+          >
+            משימה חדשה
+          </Button>
+        )}
       </Box>
 
       {error && (
@@ -433,26 +437,30 @@ export default function Tasks() {
                   צפייה
                 </Button>
                 <Box>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleOpenDialog(task)}
-                    sx={{
-                      color: '#8b5cf6',
-                      '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.08)' },
-                    }}
-                  >
-                    <Edit />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDeleteClick(task)}
-                    sx={{
-                      color: '#ef4444',
-                      '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' },
-                    }}
-                  >
-                    <Delete />
-                  </IconButton>
+                  {hasPermission('tasks', 'edit') && (
+                    <IconButton
+                      size="small"
+                      onClick={() => handleOpenDialog(task)}
+                      sx={{
+                        color: '#8b5cf6',
+                        '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.08)' },
+                      }}
+                    >
+                      <Edit />
+                    </IconButton>
+                  )}
+                  {hasPermission('tasks', 'edit') && (
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteClick(task)}
+                      sx={{
+                        color: '#ef4444',
+                        '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' },
+                      }}
+                    >
+                      <Delete />
+                    </IconButton>
+                  )}
                 </Box>
               </CardActions>
             </Card>
@@ -514,26 +522,30 @@ export default function Tasks() {
                     >
                       <Visibility />
                     </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleOpenDialog(task)}
-                      sx={{
-                        color: '#8b5cf6',
-                        '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.08)' },
-                      }}
-                    >
-                      <Edit />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDeleteClick(task)}
-                      sx={{
-                        color: '#ef4444',
-                        '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' },
-                      }}
-                    >
-                      <Delete />
-                    </IconButton>
+                    {hasPermission('tasks', 'edit') && (
+                      <IconButton
+                        size="small"
+                        onClick={() => handleOpenDialog(task)}
+                        sx={{
+                          color: '#8b5cf6',
+                          '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.08)' },
+                        }}
+                      >
+                        <Edit />
+                      </IconButton>
+                    )}
+                    {hasPermission('tasks', 'edit') && (
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDeleteClick(task)}
+                        sx={{
+                          color: '#ef4444',
+                          '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' },
+                        }}
+                      >
+                        <Delete />
+                      </IconButton>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

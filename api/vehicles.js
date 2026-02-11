@@ -1,6 +1,6 @@
 // Vercel Serverless Function - /api/vehicles (all vehicle endpoints)
 const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
-const { authenticateToken, checkAuthorization } = require('./_utils/auth');
+const { authenticateToken, checkPermission } = require('./_utils/auth');
 const googleDriveService = require('./_services/googleDriveService');
 const Busboy = require('busboy');
 const getRawBody = require('raw-body');
@@ -45,7 +45,7 @@ module.exports = async (req, res) => {
 
     // POST /api/vehicles/create-folder
     if (url.endsWith('/create-folder') && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'vehicles', 'edit');
 
       const { vehicleNumber, vehicleId } = req.body;
 
@@ -82,7 +82,7 @@ module.exports = async (req, res) => {
 
     // POST /api/vehicles/create-rider-folder
     if (url.endsWith('/create-rider-folder') && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'vehicles', 'edit');
 
       const { riderName, insuranceFolderId } = req.body;
 
@@ -104,7 +104,7 @@ module.exports = async (req, res) => {
 
     // POST /api/vehicles/add-custom-folder - הוספת תיקייה מותאמת אישית
     if (url.endsWith('/add-custom-folder') && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'vehicles', 'edit');
 
       const { vehicleId, folderName } = req.body;
 
@@ -168,7 +168,7 @@ module.exports = async (req, res) => {
 
     // POST /api/vehicles/refresh-folders - ריענון מבנה התיקיות (הוספת תיקיות חסרות)
     if (url.endsWith('/refresh-folders') && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'vehicles', 'edit');
 
       const { vehicleId } = req.body;
 
@@ -256,7 +256,7 @@ module.exports = async (req, res) => {
 
     // POST /api/vehicles/delete-custom-folder - מחיקת תיקייה מותאמת אישית
     if (url.endsWith('/delete-custom-folder') && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'vehicles', 'edit');
 
       const { vehicleId, folderId } = req.body;
 
@@ -300,7 +300,7 @@ module.exports = async (req, res) => {
 
     // POST /api/vehicles/delete-default-folder - מחיקת תיקייה דיפולטית (לא קבועה)
     if (url.endsWith('/delete-default-folder') && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'vehicles', 'edit');
 
       const { vehicleId, folderKey, folderId } = req.body;
 
@@ -352,7 +352,7 @@ module.exports = async (req, res) => {
 
     // POST /api/vehicles/rename-folder - שינוי שם תיקייה
     if (url.endsWith('/rename-folder') && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'vehicles', 'edit');
 
       const { vehicleId, folderId, newName, folderKey, isCustom } = req.body;
 
@@ -552,13 +552,11 @@ module.exports = async (req, res) => {
       const files = await googleDriveService.listFiles(folderId);
       console.log('📄 Files from Drive:', files.length);
 
-      // בדיקת תפקיד משתמש
-      const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
-      const isAdminOrManager = userRoles.some(role =>
-        ['super_admin', 'manager', 'secretary'].includes(role)
-      );
+      // בדיקת הרשאות משתמש
+      const permLevel = await checkPermission(user, db, 'vehicles', 'view');
+      const isFullAccess = permLevel !== 'self';
 
-      console.log('👤 User check:', { userRoles, isAdminOrManager, viewAsRider });
+      console.log('👤 User check:', { permLevel, isFullAccess, viewAsRider });
 
       // טעינת הגדרות נראות מ-Firestore
       let fileSettings = {};
@@ -589,8 +587,8 @@ module.exports = async (req, res) => {
         });
       }
 
-      // מנהלים רואים הכל, רוכבים רק גלויים
-      const filteredFiles = isAdminOrManager
+      // הרשאה מלאה רואים הכל, רוכבים רק גלויים
+      const filteredFiles = isFullAccess
         ? filesWithMetadata
         : filesWithMetadata.filter(f => f.visibleToRider);
 
@@ -605,7 +603,7 @@ module.exports = async (req, res) => {
 
     // PATCH /api/vehicles/update-file-visibility
     if (url.endsWith('/update-file-visibility') && req.method === 'PATCH') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'vehicles', 'edit');
 
       const { vehicleId, fileId, visibleToRider } = req.body;
 
@@ -651,7 +649,7 @@ module.exports = async (req, res) => {
 
     // POST /api/vehicles/move-to-archive
     if (url.endsWith('/move-to-archive') && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'vehicles', 'edit');
 
       const { vehicleId, fileId } = req.body;
 
@@ -694,7 +692,7 @@ module.exports = async (req, res) => {
 
     // POST /api/vehicles/move-file - העברת קובץ לתיקייה אחרת
     if (url.endsWith('/move-file') && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'vehicles', 'edit');
 
       const { vehicleId, fileId, targetFolderId } = req.body;
 
@@ -727,7 +725,7 @@ module.exports = async (req, res) => {
 
     // POST /api/vehicles/refresh-drive-folders - ריענון וסידור מבנה התיקיות בדרייב
     if (url.endsWith('/refresh-drive-folders') && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager']);
+      await checkPermission(user, db, 'vehicles', 'edit');
 
       // קבלת כל הכלים והרוכבים מהמערכת
       const vehiclesSnapshot = await db.collection('vehicles').get();
@@ -782,7 +780,7 @@ module.exports = async (req, res) => {
 
     // DELETE /api/vehicles/delete-file
     if (url.endsWith('/delete-file') && req.method === 'DELETE') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'vehicles', 'edit');
 
       const { fileId, recursive } = req.query;
 
@@ -807,7 +805,7 @@ module.exports = async (req, res) => {
 
     // POST /api/vehicles/:id/assign - שיוך כלי לרוכב
     if (url.match(/\/[\w-]+\/assign$/) && req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'vehicles', 'edit');
 
       // Extract vehicleId from URL like /api/vehicles/abc123/assign or /vehicles/abc123/assign
       const match = url.match(/\/vehicles\/([^/]+)\/assign$/);
@@ -897,7 +895,7 @@ module.exports = async (req, res) => {
     // POST /api/vehicles/:id/unassign - ביטול שיוך כלי מרוכב
     if (url.match(/\/[\w-]+\/unassign$/) && req.method === 'POST') {
       console.log('[UNASSIGN] Request received - URL:', url);
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'vehicles', 'edit');
 
       // Extract vehicleId from URL like /api/vehicles/abc123/unassign or /vehicles/abc123/unassign
       const match = url.match(/\/vehicles\/([^/]+)\/unassign$/);
@@ -1043,7 +1041,7 @@ module.exports = async (req, res) => {
       }
 
       if (req.method === 'PUT') {
-        checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+        await checkPermission(user, db, 'vehicles', 'edit');
 
         const updateData = {
           ...req.body,
@@ -1062,7 +1060,7 @@ module.exports = async (req, res) => {
       }
 
       if (req.method === 'DELETE') {
-        checkAuthorization(user, ['super_admin']);
+        await checkPermission(user, db, 'vehicles', 'edit');
 
         await vehicleRef.delete();
 
@@ -1089,14 +1087,11 @@ module.exports = async (req, res) => {
         query = query.where('type', '==', type);
       }
 
-      // סינון לפי תפקיד משתמש
-      const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
-      const isAdminOrManager = userRoles.some(role =>
-        ['super_admin', 'manager', 'secretary'].includes(role)
-      );
+      // סינון לפי הרשאות משתמש
+      const permLevel = await checkPermission(user, db, 'vehicles', 'view');
 
-      // אם המשתמש הוא רוכב (לא מנהל) - הצג רק את הכלי המשויך אליו
-      if (!isAdminOrManager && user.riderId) {
+      // אם המשתמש עם הרשאת self - הצג רק את הכלי המשויך אליו
+      if (permLevel === 'self' && user.riderId) {
         // נמצא את הרוכב כדי לקבל את assignedVehicleId
         const riderSnapshot = await db.collection('riders').doc(user.riderId).get();
         if (riderSnapshot.exists) {
@@ -1180,7 +1175,7 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      checkAuthorization(user, ['super_admin', 'manager', 'secretary']);
+      await checkPermission(user, db, 'vehicles', 'edit');
 
       const vehicleData = {
         ...req.body,
@@ -1207,11 +1202,11 @@ module.exports = async (req, res) => {
   } catch (error) {
     console.error('Vehicles API error:', error.message, error.stack);
 
-    if (error.message.includes('token') || error.message.includes('authorized')) {
-      return res.status(401).json({
-        success: false,
-        message: error.message
-      });
+    if (error.message.includes('token')) {
+      return res.status(401).json({ success: false, message: error.message });
+    }
+    if (error.message.includes('הרשאה') || error.message.includes('authorized')) {
+      return res.status(403).json({ success: false, message: error.message });
     }
 
     res.status(500).json({

@@ -1,6 +1,6 @@
 // Vercel Serverless Function - /api/monthly-checks (all monthly check endpoints)
 const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
-const { authenticateToken, checkAuthorization } = require('./_utils/auth');
+const { authenticateToken, checkPermission } = require('./_utils/auth');
 const { sendMonthlyCheckReminder, sendCheckIssuesAlert } = require('./_utils/emailService');
 
 module.exports = async (req, res) => {
@@ -45,7 +45,7 @@ module.exports = async (req, res) => {
     if (checkId) {
       // Special endpoint: send-notification
       if (req.url.includes('/send-notification') && req.method === 'POST') {
-        checkAuthorization(user, ['super_admin', 'manager']);
+        await checkPermission(user, db, 'monthly_checks', 'edit');
 
         const checkRef = db.collection('monthly_checks').doc(checkId);
         const checkDoc = await checkRef.get();
@@ -287,7 +287,7 @@ module.exports = async (req, res) => {
 
       // DELETE check
       if (req.method === 'DELETE') {
-        checkAuthorization(user, ['super_admin', 'manager']);
+        await checkPermission(user, db, 'monthly_checks', 'edit');
 
         await checkRef.delete();
 
@@ -320,15 +320,11 @@ module.exports = async (req, res) => {
         query = query.where('status', '==', status);
       }
 
-      // סינון לפי תפקיד - רוכב רואה רק את עצמו
-      const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
-      const isRider = userRoles.includes('rider');
-      const isAdminOrManager = userRoles.some(role =>
-        ['super_admin', 'manager', 'secretary'].includes(role)
-      );
+      // סינון לפי הרשאות - רוכב רואה רק את עצמו
+      const permLevel = await checkPermission(user, db, 'monthly_checks', 'view');
 
-      // אם לא הוגדר riderId וזה רוכב - סנן לפי riderId שלו
-      if (!riderId && isRider && !isAdminOrManager && user.riderId) {
+      // אם לא הוגדר riderId וההרשאה היא self - סנן לפי riderId שלו
+      if (!riderId && permLevel === 'self' && user.riderId) {
         console.log('📋 [GET CHECKS] Rider filtering by own riderId:', user.riderId);
         query = db.collection('monthly_checks').where('riderId', '==', user.riderId);
       }
@@ -367,7 +363,7 @@ module.exports = async (req, res) => {
     if (req.method === 'POST') {
       // אם מתקבל riderIds - זה יצירה מרובה (רק למנהלים)
       if (req.body.riderIds && Array.isArray(req.body.riderIds)) {
-        checkAuthorization(user, ['super_admin', 'manager']);
+        await checkPermission(user, db, 'monthly_checks', 'edit');
 
         const { riderIds, month, year } = req.body;
         const createdChecks = [];
@@ -518,12 +514,11 @@ module.exports = async (req, res) => {
       method: req.method
     });
 
-    if (error.message.includes('token') || error.message.includes('authorized')) {
-      return res.status(401).json({
-        success: false,
-        message: 'שגיאת הרשאה',
-        error: error.message
-      });
+    if (error.message.includes('token')) {
+      return res.status(401).json({ success: false, message: error.message });
+    }
+    if (error.message.includes('הרשאה') || error.message.includes('authorized')) {
+      return res.status(403).json({ success: false, message: error.message });
     }
 
     res.status(500).json({

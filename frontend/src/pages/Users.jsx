@@ -42,11 +42,13 @@ import {
   Warning as WarningIcon,
 } from '@mui/icons-material';
 import { authAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import UserDialog from '../components/UserDialog';
 
 export default function Users() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { hasPermission } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -252,46 +254,52 @@ export default function Users() {
       <Divider />
 
       <CardActions sx={{ justifyContent: 'flex-end', px: 2, py: 1.5, gap: 1 }}>
-        <IconButton
-          size="small"
-          onClick={() => handleSendCredentials(user)}
-          title="שלח פרטי התחברות למייל"
-          sx={{
-            color: '#6366f1',
-            bgcolor: 'rgba(99, 102, 241, 0.1)',
-            '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.2)' },
-          }}
-        >
-          <SendIcon fontSize="small" />
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={() => handleOpenDialog(user)}
-          disabled={user.email === 'b0583639333@gmail.com'}
-          title={user.email === 'b0583639333@gmail.com' ? 'לא ניתן לערוך משתמש ראשי' : 'ערוך משתמש'}
-          sx={{
-            color: '#8b5cf6',
-            bgcolor: 'rgba(139, 92, 246, 0.1)',
-            '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.2)' },
-            '&.Mui-disabled': { color: '#cbd5e1', bgcolor: '#f1f5f9' },
-          }}
-        >
-          <Edit fontSize="small" />
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={() => handleDeleteClick(user)}
-          disabled={user.email === 'b0583639333@gmail.com'}
-          title={user.email === 'b0583639333@gmail.com' ? 'לא ניתן למחוק משתמש ראשי' : 'מחק משתמש'}
-          sx={{
-            color: '#ef4444',
-            bgcolor: 'rgba(239, 68, 68, 0.1)',
-            '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.2)' },
-            '&.Mui-disabled': { color: '#cbd5e1', bgcolor: '#f1f5f9' },
-          }}
-        >
-          <Delete fontSize="small" />
-        </IconButton>
+        {hasPermission('users', 'edit') && (
+          <IconButton
+            size="small"
+            onClick={() => handleSendCredentials(user)}
+            title="שלח פרטי התחברות למייל"
+            sx={{
+              color: '#6366f1',
+              bgcolor: 'rgba(99, 102, 241, 0.1)',
+              '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.2)' },
+            }}
+          >
+            <SendIcon fontSize="small" />
+          </IconButton>
+        )}
+        {hasPermission('users', 'edit') && (
+          <IconButton
+            size="small"
+            onClick={() => handleOpenDialog(user)}
+            disabled={user.email === 'b0583639333@gmail.com'}
+            title={user.email === 'b0583639333@gmail.com' ? 'לא ניתן לערוך משתמש ראשי' : 'ערוך משתמש'}
+            sx={{
+              color: '#8b5cf6',
+              bgcolor: 'rgba(139, 92, 246, 0.1)',
+              '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.2)' },
+              '&.Mui-disabled': { color: '#cbd5e1', bgcolor: '#f1f5f9' },
+            }}
+          >
+            <Edit fontSize="small" />
+          </IconButton>
+        )}
+        {hasPermission('users', 'edit') && (
+          <IconButton
+            size="small"
+            onClick={() => handleDeleteClick(user)}
+            disabled={user.email === 'b0583639333@gmail.com'}
+            title={user.email === 'b0583639333@gmail.com' ? 'לא ניתן למחוק משתמש ראשי' : 'מחק משתמש'}
+            sx={{
+              color: '#ef4444',
+              bgcolor: 'rgba(239, 68, 68, 0.1)',
+              '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.2)' },
+              '&.Mui-disabled': { color: '#cbd5e1', bgcolor: '#f1f5f9' },
+            }}
+          >
+            <Delete fontSize="small" />
+          </IconButton>
+        )}
       </CardActions>
     </Card>
   );
@@ -330,27 +338,29 @@ export default function Users() {
           </Box>
         </Box>
 
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => handleOpenDialog()}
-          sx={{
-            borderRadius: '12px',
-            px: 3,
-            py: 1.5,
-            fontWeight: 600,
-            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-            boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)',
-            '&:hover': {
-              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-              boxShadow: '0 6px 20px rgba(99, 102, 241, 0.4)',
-              transform: 'translateY(-1px)',
-            },
-            transition: 'all 0.2s ease-in-out',
-          }}
-        >
-          משתמש חדש
-        </Button>
+        {hasPermission('users', 'edit') && (
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => handleOpenDialog()}
+            sx={{
+              borderRadius: '12px',
+              px: 3,
+              py: 1.5,
+              fontWeight: 600,
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                boxShadow: '0 6px 20px rgba(99, 102, 241, 0.4)',
+                transform: 'translateY(-1px)',
+              },
+              transition: 'all 0.2s ease-in-out',
+            }}
+          >
+            משתמש חדש
+          </Button>
+        )}
       </Box>
 
       {error && (
@@ -519,43 +529,49 @@ export default function Users() {
                     </TableCell>
                     <TableCell align="center" sx={{ borderBottom: '1px solid #f1f5f9' }}>
                       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
-                        <IconButton
-                          size="small"
-                          onClick={() => handleSendCredentials(user)}
-                          title="שלח פרטי התחברות למייל"
-                          sx={{
-                            color: '#6366f1',
-                            '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.1)' },
-                          }}
-                        >
-                          <SendIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          onClick={() => handleOpenDialog(user)}
-                          disabled={user.email === 'b0583639333@gmail.com'}
-                          title={user.email === 'b0583639333@gmail.com' ? 'לא ניתן לערוך משתמש ראשי' : 'ערוך משתמש'}
-                          sx={{
-                            color: '#8b5cf6',
-                            '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.1)' },
-                            '&.Mui-disabled': { color: '#cbd5e1' },
-                          }}
-                        >
-                          <Edit fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          onClick={() => handleDeleteClick(user)}
-                          disabled={user.email === 'b0583639333@gmail.com'}
-                          title={user.email === 'b0583639333@gmail.com' ? 'לא ניתן למחוק משתמש ראשי' : 'מחק משתמש'}
-                          sx={{
-                            color: '#ef4444',
-                            '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' },
-                            '&.Mui-disabled': { color: '#cbd5e1' },
-                          }}
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
+                        {hasPermission('users', 'edit') && (
+                          <IconButton
+                            size="small"
+                            onClick={() => handleSendCredentials(user)}
+                            title="שלח פרטי התחברות למייל"
+                            sx={{
+                              color: '#6366f1',
+                              '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.1)' },
+                            }}
+                          >
+                            <SendIcon fontSize="small" />
+                          </IconButton>
+                        )}
+                        {hasPermission('users', 'edit') && (
+                          <IconButton
+                            size="small"
+                            onClick={() => handleOpenDialog(user)}
+                            disabled={user.email === 'b0583639333@gmail.com'}
+                            title={user.email === 'b0583639333@gmail.com' ? 'לא ניתן לערוך משתמש ראשי' : 'ערוך משתמש'}
+                            sx={{
+                              color: '#8b5cf6',
+                              '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.1)' },
+                              '&.Mui-disabled': { color: '#cbd5e1' },
+                            }}
+                          >
+                            <Edit fontSize="small" />
+                          </IconButton>
+                        )}
+                        {hasPermission('users', 'edit') && (
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteClick(user)}
+                            disabled={user.email === 'b0583639333@gmail.com'}
+                            title={user.email === 'b0583639333@gmail.com' ? 'לא ניתן למחוק משתמש ראשי' : 'מחק משתמש'}
+                            sx={{
+                              color: '#ef4444',
+                              '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' },
+                              '&.Mui-disabled': { color: '#cbd5e1' },
+                            }}
+                          >
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        )}
                       </Box>
                     </TableCell>
                   </TableRow>

@@ -83,11 +83,13 @@ import {
   Close,
 } from '@mui/icons-material';
 import { monthlyChecksAPI, ridersAPI, vehiclesAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function MonthlyChecks() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { hasPermission } = useAuth();
   const [checks, setChecks] = useState([]);
   const [riders, setRiders] = useState([]);
   const [vehicles, setVehicles] = useState([]);
@@ -498,59 +500,63 @@ export default function MonthlyChecks() {
           gap: 1,
           width: { xs: '100%', md: 'auto' }
         }}>
-          <Button
-            variant="contained"
-            startIcon={<AddTask />}
-            onClick={handleOpenChecksDialog}
-            fullWidth={isMobile}
-            sx={{
-              borderRadius: '12px',
-              px: 3,
-              py: 1.5,
-              fontWeight: 600,
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-              boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-                boxShadow: '0 6px 20px rgba(99, 102, 241, 0.4)',
-                transform: 'translateY(-1px)',
-              },
-              transition: 'all 0.2s ease-in-out',
-            }}
-          >
-            פתח בקרות
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={sendingNotification === 'all' ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
-            onClick={handleSendToAll}
-            disabled={sendingNotification === 'all' || stats.pending === 0}
-            fullWidth={isMobile}
-            sx={{
-              borderRadius: '12px',
-              px: 3,
-              py: 1.5,
-              fontWeight: 600,
-              background: 'linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)',
-              boxShadow: '0 4px 15px rgba(139, 92, 246, 0.3)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #7c3aed 0%, #9333ea 100%)',
-                boxShadow: '0 6px 20px rgba(139, 92, 246, 0.4)',
-                transform: 'translateY(-1px)',
-              },
-              '&:disabled': {
-                background: '#e2e8f0',
-                boxShadow: 'none',
-              },
-              transition: 'all 0.2s ease-in-out',
-            }}
-          >
-            {isMobile ? `שלח לממתינים (${stats.pending})` : (
-              <Badge badgeContent={stats.pending} color="error">
-                שלח הודעה לכל הממתינים
-              </Badge>
-            )}
-          </Button>
+          {hasPermission('monthly_checks', 'edit') && (
+            <Button
+              variant="contained"
+              startIcon={<AddTask />}
+              onClick={handleOpenChecksDialog}
+              fullWidth={isMobile}
+              sx={{
+                borderRadius: '12px',
+                px: 3,
+                py: 1.5,
+                fontWeight: 600,
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                  boxShadow: '0 6px 20px rgba(99, 102, 241, 0.4)',
+                  transform: 'translateY(-1px)',
+                },
+                transition: 'all 0.2s ease-in-out',
+              }}
+            >
+              פתח בקרות
+            </Button>
+          )}
+          {hasPermission('monthly_checks', 'edit') && (
+            <Button
+              variant="contained"
+              startIcon={sendingNotification === 'all' ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+              onClick={handleSendToAll}
+              disabled={sendingNotification === 'all' || stats.pending === 0}
+              fullWidth={isMobile}
+              sx={{
+                borderRadius: '12px',
+                px: 3,
+                py: 1.5,
+                fontWeight: 600,
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)',
+                boxShadow: '0 4px 15px rgba(139, 92, 246, 0.3)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #7c3aed 0%, #9333ea 100%)',
+                  boxShadow: '0 6px 20px rgba(139, 92, 246, 0.4)',
+                  transform: 'translateY(-1px)',
+                },
+                '&:disabled': {
+                  background: '#e2e8f0',
+                  boxShadow: 'none',
+                },
+                transition: 'all 0.2s ease-in-out',
+              }}
+            >
+              {isMobile ? `שלח לממתינים (${stats.pending})` : (
+                <Badge badgeContent={stats.pending} color="error">
+                  שלח הודעה לכל הממתינים
+                </Badge>
+              )}
+            </Button>
+          )}
           <IconButton
             onClick={loadData}
             disabled={loading}
@@ -855,7 +861,7 @@ export default function MonthlyChecks() {
                             >
                               <Visibility fontSize="small" />
                             </IconButton>
-                            {check.status === 'pending' && (
+                            {hasPermission('monthly_checks', 'edit') && check.status === 'pending' && (
                               <IconButton
                                 size="small"
                                 onClick={() => handleSendNotification(check._id || check.id)}
@@ -873,22 +879,24 @@ export default function MonthlyChecks() {
                                 )}
                               </IconButton>
                             )}
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDeleteCheck(check._id || check.id)}
-                              disabled={deletingCheck === (check._id || check.id)}
-                              title="מחק בקרה"
-                              sx={{
-                                color: '#ef4444',
-                                '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' },
-                              }}
-                            >
-                              {deletingCheck === (check._id || check.id) ? (
-                                <CircularProgress size={20} sx={{ color: '#ef4444' }} />
-                              ) : (
-                                <Delete fontSize="small" />
-                              )}
-                            </IconButton>
+                            {hasPermission('monthly_checks', 'edit') && (
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDeleteCheck(check._id || check.id)}
+                                disabled={deletingCheck === (check._id || check.id)}
+                                title="מחק בקרה"
+                                sx={{
+                                  color: '#ef4444',
+                                  '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' },
+                                }}
+                              >
+                                {deletingCheck === (check._id || check.id) ? (
+                                  <CircularProgress size={20} sx={{ color: '#ef4444' }} />
+                                ) : (
+                                  <Delete fontSize="small" />
+                                )}
+                              </IconButton>
+                            )}
                           </Box>
                         </TableCell>
                       </TableRow>
@@ -997,7 +1005,7 @@ export default function MonthlyChecks() {
                         >
                           פרטים
                         </Button>
-                        {check.status === 'pending' && (
+                        {hasPermission('monthly_checks', 'edit') && check.status === 'pending' && (
                           <Button
                             size="small"
                             startIcon={sendingNotification === (check._id || check.id) ?
@@ -1013,20 +1021,22 @@ export default function MonthlyChecks() {
                             שלח
                           </Button>
                         )}
-                        <Button
-                          size="small"
-                          startIcon={deletingCheck === (check._id || check.id) ?
-                            <CircularProgress size={16} sx={{ color: '#ef4444' }} /> : <Delete />}
-                          onClick={() => handleDeleteCheck(check._id || check.id)}
-                          disabled={deletingCheck === (check._id || check.id)}
-                          sx={{
-                            color: '#ef4444',
-                            fontWeight: 600,
-                            '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' },
-                          }}
-                        >
-                          מחק
-                        </Button>
+                        {hasPermission('monthly_checks', 'edit') && (
+                          <Button
+                            size="small"
+                            startIcon={deletingCheck === (check._id || check.id) ?
+                              <CircularProgress size={16} sx={{ color: '#ef4444' }} /> : <Delete />}
+                            onClick={() => handleDeleteCheck(check._id || check.id)}
+                            disabled={deletingCheck === (check._id || check.id)}
+                            sx={{
+                              color: '#ef4444',
+                              fontWeight: 600,
+                              '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' },
+                            }}
+                          >
+                            מחק
+                          </Button>
+                        )}
                       </CardActions>
                     </Card>
                   ))}

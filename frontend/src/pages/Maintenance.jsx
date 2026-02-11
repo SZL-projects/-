@@ -70,7 +70,7 @@ export default function Maintenance() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, hasPermission } = useAuth();
   const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.roles?.includes('super_admin');
 
   const [maintenances, setMaintenances] = useState([]);
@@ -567,22 +567,24 @@ export default function Maintenance() {
         }}>
           {isMobile ? (
             <>
-              <Button
-                variant="contained"
-                startIcon={<Add />}
-                onClick={handleAdd}
-                fullWidth
-                sx={{
-                  borderRadius: '12px',
-                  bgcolor: '#6366f1',
-                  fontWeight: 600,
-                  py: 1.2,
-                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
-                  '&:hover': { bgcolor: '#4f46e5' },
-                }}
-              >
-                טיפול חדש
-              </Button>
+              {hasPermission('maintenance', 'edit') && (
+                <Button
+                  variant="contained"
+                  startIcon={<Add />}
+                  onClick={handleAdd}
+                  fullWidth
+                  sx={{
+                    borderRadius: '12px',
+                    bgcolor: '#6366f1',
+                    fontWeight: 600,
+                    py: 1.2,
+                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                    '&:hover': { bgcolor: '#4f46e5' },
+                  }}
+                >
+                  טיפול חדש
+                </Button>
+              )}
               <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
                 <Tooltip title="רענן">
                   <IconButton onClick={loadData} disabled={loading} sx={{ border: '1px solid #e2e8f0', borderRadius: '10px' }}>
@@ -686,23 +688,25 @@ export default function Maintenance() {
               >
                 סוגי טיפולים
               </Button>
-              <Button
-                variant="contained"
-                startIcon={<Add />}
-                onClick={handleAdd}
-                sx={{
-                  borderRadius: '12px',
-                  bgcolor: '#6366f1',
-                  fontWeight: 600,
-                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
-                  '&:hover': {
-                    bgcolor: '#4f46e5',
-                    boxShadow: '0 6px 16px rgba(99, 102, 241, 0.4)',
-                  },
-                }}
-              >
-                טיפול חדש
-              </Button>
+              {hasPermission('maintenance', 'edit') && (
+                <Button
+                  variant="contained"
+                  startIcon={<Add />}
+                  onClick={handleAdd}
+                  sx={{
+                    borderRadius: '12px',
+                    bgcolor: '#6366f1',
+                    fontWeight: 600,
+                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                    '&:hover': {
+                      bgcolor: '#4f46e5',
+                      boxShadow: '0 6px 16px rgba(99, 102, 241, 0.4)',
+                    },
+                  }}
+                >
+                  טיפול חדש
+                </Button>
+              )}
             </>
           )}
         </Box>
@@ -1061,29 +1065,33 @@ export default function Maintenance() {
                       <IconButton size="small" onClick={() => handleViewDetails(maintenance)} sx={{ color: '#6366f1' }}>
                         <Visibility fontSize="small" />
                       </IconButton>
-                      <IconButton size="small" onClick={() => handleEdit(maintenance)} sx={{ color: '#64748b' }}>
-                        <Edit fontSize="small" />
-                      </IconButton>
-                      {maintenance.status === 'pending_approval' && (
+                      {hasPermission('maintenance', 'edit') && (
+                        <IconButton size="small" onClick={() => handleEdit(maintenance)} sx={{ color: '#64748b' }}>
+                          <Edit fontSize="small" />
+                        </IconButton>
+                      )}
+                      {hasPermission('maintenance', 'edit') && maintenance.status === 'pending_approval' && (
                         <Tooltip title="אשר טיפול">
                           <IconButton size="small" onClick={() => handleApproveMaintenance(maintenance.id)} sx={{ color: '#10b981' }}>
                             <CheckCircleOutline fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       )}
-                      {maintenance.status === 'scheduled' && (
+                      {hasPermission('maintenance', 'edit') && maintenance.status === 'scheduled' && (
                         <IconButton size="small" onClick={() => handleUpdateStatus(maintenance.id, 'in_progress')} sx={{ color: '#f59e0b' }}>
                           <Build fontSize="small" />
                         </IconButton>
                       )}
-                      {maintenance.status === 'in_progress' && (
+                      {hasPermission('maintenance', 'edit') && maintenance.status === 'in_progress' && (
                         <IconButton size="small" onClick={() => handleOpenComplete(maintenance)} sx={{ color: '#10b981' }}>
                           <CheckCircle fontSize="small" />
                         </IconButton>
                       )}
-                      <IconButton size="small" onClick={() => handleOpenDelete(maintenance)} sx={{ color: '#ef4444' }}>
-                        <Delete fontSize="small" />
-                      </IconButton>
+                      {hasPermission('maintenance', 'edit') && (
+                        <IconButton size="small" onClick={() => handleOpenDelete(maintenance)} sx={{ color: '#ef4444' }}>
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      )}
                     </Box>
                   </Box>
                 </CardContent>
@@ -1201,16 +1209,18 @@ export default function Maintenance() {
                           <Visibility />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="ערוך">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleEdit(maintenance)}
-                          sx={{ color: '#64748b', '&:hover': { bgcolor: 'rgba(100, 116, 139, 0.08)' } }}
-                        >
-                          <Edit />
-                        </IconButton>
-                      </Tooltip>
-                      {maintenance.status === 'pending_approval' && (
+                      {hasPermission('maintenance', 'edit') && (
+                        <Tooltip title="ערוך">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleEdit(maintenance)}
+                            sx={{ color: '#64748b', '&:hover': { bgcolor: 'rgba(100, 116, 139, 0.08)' } }}
+                          >
+                            <Edit />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {hasPermission('maintenance', 'edit') && maintenance.status === 'pending_approval' && (
                         <Tooltip title="אשר טיפול">
                           <IconButton
                             size="small"
@@ -1221,7 +1231,7 @@ export default function Maintenance() {
                           </IconButton>
                         </Tooltip>
                       )}
-                      {maintenance.status === 'scheduled' && (
+                      {hasPermission('maintenance', 'edit') && maintenance.status === 'scheduled' && (
                         <Tooltip title="התחל טיפול">
                           <IconButton
                             size="small"
@@ -1232,7 +1242,7 @@ export default function Maintenance() {
                           </IconButton>
                         </Tooltip>
                       )}
-                      {maintenance.status === 'in_progress' && (
+                      {hasPermission('maintenance', 'edit') && maintenance.status === 'in_progress' && (
                         <Tooltip title="סגור טיפול">
                           <IconButton
                             size="small"
@@ -1243,15 +1253,17 @@ export default function Maintenance() {
                           </IconButton>
                         </Tooltip>
                       )}
-                      <Tooltip title="מחק">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleOpenDelete(maintenance)}
-                          sx={{ color: '#ef4444', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' } }}
-                        >
-                          <Delete />
-                        </IconButton>
-                      </Tooltip>
+                      {hasPermission('maintenance', 'edit') && (
+                        <Tooltip title="מחק">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleOpenDelete(maintenance)}
+                            sx={{ color: '#ef4444', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' } }}
+                          >
+                            <Delete />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -1407,7 +1419,7 @@ export default function Maintenance() {
                 </Card>
               </Grid>
 
-              {selectedMaintenance.status !== 'completed' && selectedMaintenance.status !== 'cancelled' && (
+              {hasPermission('maintenance', 'edit') && selectedMaintenance.status !== 'completed' && selectedMaintenance.status !== 'cancelled' && (
                 <Grid item xs={12}>
                   <Divider sx={{ borderColor: '#e2e8f0' }} />
                   <Box sx={{ mt: 2 }}>
@@ -1848,81 +1860,83 @@ export default function Maintenance() {
         </DialogTitle>
         <DialogContent>
           {/* Add/Edit Form */}
-          <Box sx={{ mb: 3, p: 2, bgcolor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            <Typography variant="subtitle2" sx={{ color: '#6366f1', fontWeight: 600, mb: 2 }}>
-              {editingGarage ? 'עריכת מוסך' : 'הוספת מוסך חדש'}
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="שם המוסך *"
-                  value={garageFormData.name}
-                  onChange={(e) => setGarageFormData(prev => ({ ...prev, name: e.target.value }))}
-                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="טלפון"
-                  value={garageFormData.phone}
-                  onChange={(e) => setGarageFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="עיר"
-                  value={garageFormData.city}
-                  onChange={(e) => setGarageFormData(prev => ({ ...prev, city: e.target.value }))}
-                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="כתובת"
-                  value={garageFormData.address}
-                  onChange={(e) => setGarageFormData(prev => ({ ...prev, address: e.target.value }))}
-                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button
-                    variant="contained"
-                    onClick={handleSaveGarage}
-                    disabled={!garageFormData.name}
-                    sx={{
-                      bgcolor: '#10b981',
-                      borderRadius: '10px',
-                      fontWeight: 600,
-                      '&:hover': { bgcolor: '#059669' },
-                    }}
-                  >
-                    {editingGarage ? 'עדכן' : 'הוסף'}
-                  </Button>
-                  {editingGarage && (
+          {hasPermission('maintenance', 'edit') && (
+            <Box sx={{ mb: 3, p: 2, bgcolor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <Typography variant="subtitle2" sx={{ color: '#6366f1', fontWeight: 600, mb: 2 }}>
+                {editingGarage ? 'עריכת מוסך' : 'הוספת מוסך חדש'}
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="שם המוסך *"
+                    value={garageFormData.name}
+                    onChange={(e) => setGarageFormData(prev => ({ ...prev, name: e.target.value }))}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="טלפון"
+                    value={garageFormData.phone}
+                    onChange={(e) => setGarageFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="עיר"
+                    value={garageFormData.city}
+                    onChange={(e) => setGarageFormData(prev => ({ ...prev, city: e.target.value }))}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="כתובת"
+                    value={garageFormData.address}
+                    onChange={(e) => setGarageFormData(prev => ({ ...prev, address: e.target.value }))}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
                     <Button
-                      onClick={() => {
-                        setEditingGarage(null);
-                        setGarageFormData({ name: '', phone: '', address: '', city: '' });
+                      variant="contained"
+                      onClick={handleSaveGarage}
+                      disabled={!garageFormData.name}
+                      sx={{
+                        bgcolor: '#10b981',
+                        borderRadius: '10px',
+                        fontWeight: 600,
+                        '&:hover': { bgcolor: '#059669' },
                       }}
-                      sx={{ color: '#64748b', borderRadius: '10px' }}
                     >
-                      ביטול
+                      {editingGarage ? 'עדכן' : 'הוסף'}
                     </Button>
-                  )}
-                </Box>
+                    {editingGarage && (
+                      <Button
+                        onClick={() => {
+                          setEditingGarage(null);
+                          setGarageFormData({ name: '', phone: '', address: '', city: '' });
+                        }}
+                        sx={{ color: '#64748b', borderRadius: '10px' }}
+                      >
+                        ביטול
+                      </Button>
+                    )}
+                  </Box>
+                </Grid>
               </Grid>
-            </Grid>
-          </Box>
+            </Box>
+          )}
 
           {/* Garages List */}
           <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 600, mb: 1 }}>
@@ -1946,14 +1960,16 @@ export default function Maintenance() {
                     primary={garage.name}
                     secondary={`${garage.city || ''}${garage.phone ? ` • ${garage.phone}` : ''}`}
                   />
-                  <ListItemSecondaryAction>
-                    <IconButton size="small" onClick={() => handleEditGarage(garage)} sx={{ color: '#6366f1' }}>
-                      <Edit fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleDeleteGarage(garage.id)} sx={{ color: '#ef4444' }}>
-                      <Delete fontSize="small" />
-                    </IconButton>
-                  </ListItemSecondaryAction>
+                  {hasPermission('maintenance', 'edit') && (
+                    <ListItemSecondaryAction>
+                      <IconButton size="small" onClick={() => handleEditGarage(garage)} sx={{ color: '#6366f1' }}>
+                        <Edit fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => handleDeleteGarage(garage.id)} sx={{ color: '#ef4444' }}>
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </ListItemSecondaryAction>
+                  )}
                 </ListItem>
               ))
             )}
