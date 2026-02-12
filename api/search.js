@@ -1,0 +1,262 @@
+// Vercel Serverless Function - /api/search
+const { initFirebase } = require('./_utils/firebase');
+const { authenticateToken, checkPermission } = require('./_utils/auth');
+
+// הגדרות ישויות לחיפוש
+const ENTITY_CONFIGS = [
+  {
+    key: 'riders',
+    permissionKey: 'riders',
+    collection: 'riders',
+    normalize: (rider) => ({
+      id: rider.id,
+      type: 'riders',
+      title: `${rider.firstName || ''} ${rider.lastName || ''}`.trim(),
+      subtitle: rider.idNumber ? `ת.ז. ${rider.idNumber}` : rider.phone || '',
+      url: `/riders/${rider.id}`,
+    }),
+  },
+  {
+    key: 'vehicles',
+    permissionKey: 'vehicles',
+    collection: 'vehicles',
+    normalize: (vehicle) => ({
+      id: vehicle.id,
+      type: 'vehicles',
+      title: vehicle.licensePlate || '',
+      subtitle: [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' '),
+      url: `/vehicles/${vehicle.id}`,
+    }),
+  },
+  {
+    key: 'faults',
+    permissionKey: 'faults',
+    collection: 'faults',
+    normalize: (fault) => ({
+      id: fault.id,
+      type: 'faults',
+      title: fault.description?.substring(0, 60) || 'תקלה',
+      subtitle: [fault.vehiclePlate, fault.riderName].filter(Boolean).join(' | '),
+      url: '/faults',
+    }),
+  },
+  {
+    key: 'tasks',
+    permissionKey: 'tasks',
+    collection: 'tasks',
+    normalize: (task) => ({
+      id: task.id,
+      type: 'tasks',
+      title: task.title || 'משימה',
+      subtitle: task.description?.substring(0, 60) || '',
+      url: '/tasks',
+    }),
+  },
+  {
+    key: 'maintenance',
+    permissionKey: 'maintenance',
+    collection: 'maintenance',
+    normalize: (m) => ({
+      id: m.id,
+      type: 'maintenance',
+      title: m.maintenanceNumber || m.description?.substring(0, 60) || 'טיפול',
+      subtitle: [m.vehiclePlate, m.riderName].filter(Boolean).join(' | '),
+      url: '/maintenance',
+    }),
+  },
+];
+
+// פונקציות חיפוש לכל ישות
+async function searchRiders(db, term, limit) {
+  let riders = [];
+
+  // חיפוש לפי ת"ז
+  if (/^\d/.test(term)) {
+    const idSnap = await db.collection('riders')
+      .where('idNumber', '>=', term)
+      .where('idNumber', '<=', term + '\uf8ff')
+      .limit(limit)
+      .get();
+    idSnap.forEach(doc => riders.push({ id: doc.id, ...doc.data() }));
+  }
+
+  // חיפוש לפי טלפון
+  if (/^05/.test(term)) {
+    const phoneSnap = await db.collection('riders')
+      .where('phone', '>=', term)
+      .where('phone', '<=', term + '\uf8ff')
+      .limit(limit)
+      .get();
+    phoneSnap.forEach(doc => {
+      if (!riders.find(r => r.id === doc.id)) {
+        riders.push({ id: doc.id, ...doc.data() });
+      }
+    });
+  }
+
+  // חיפוש לפי שם
+  if (riders.length === 0) {
+    const allSnap = await db.collection('riders').limit(500).get();
+    const lowerSearch = term.toLowerCase();
+    allSnap.forEach(doc => {
+      const data = doc.data();
+      if (
+        data.firstName?.toLowerCase().includes(lowerSearch) ||
+        data.lastName?.toLowerCase().includes(lowerSearch)
+      ) {
+        riders.push({ id: doc.id, ...data });
+      }
+    });
+  }
+
+  return riders.slice(0, limit);
+}
+
+async function searchVehicles(db, term, limit) {
+  let vehicles = [];
+  const upperSearch = term.toUpperCase();
+
+  // חיפוש לפי מספר רישוי
+  const plateSnap = await db.collection('vehicles')
+    .where('licensePlate', '>=', upperSearch)
+    .where('licensePlate', '<=', upperSearch + '\uf8ff')
+    .limit(limit)
+    .get();
+  plateSnap.forEach(doc => vehicles.push({ id: doc.id, ...doc.data() }));
+
+  // חיפוש לפי מספר פנימי
+  if (vehicles.length < limit) {
+    const internalSnap = await db.collection('vehicles')
+      .where('internalNumber', '>=', term)
+      .where('internalNumber', '<=', term + '\uf8ff')
+      .limit(limit)
+      .get();
+    internalSnap.forEach(doc => {
+      if (!vehicles.find(v => v.id === doc.id)) {
+        vehicles.push({ id: doc.id, ...doc.data() });
+      }
+    });
+  }
+
+  // חיפוש לפי יצרן/דגם
+  if (vehicles.length === 0) {
+    const allSnap = await db.collection('vehicles').limit(500).get();
+    const lowerSearch = term.toLowerCase();
+    allSnap.forEach(doc => {
+      const data = doc.data();
+      if (
+        data.manufacturer?.toLowerCase().includes(lowerSearch) ||
+        data.model?.toLowerCase().includes(lowerSearch)
+      ) {
+        vehicles.push({ id: doc.id, ...data });
+      }
+    });
+  }
+
+  return vehicles.slice(0, limit);
+}
+
+async function searchCollection(db, collectionName, fields, term, limit) {
+  const allSnap = await db.collection(collectionName).limit(1000).get();
+  const searchLower = term.toLowerCase();
+  const results = [];
+
+  allSnap.forEach(doc => {
+    const data = doc.data();
+    const match = fields.some(field => {
+      const value = field.includes('.')
+        ? field.split('.').reduce((obj, key) => obj?.[key], data)
+        : data[field];
+      return value?.toLowerCase?.()?.includes(searchLower);
+    });
+    if (match) {
+      results.push({ id: doc.id, ...data });
+    }
+  });
+
+  return results.slice(0, limit);
+}
+
+const SEARCH_FUNCTIONS = {
+  riders: (db, term, limit) => searchRiders(db, term, limit),
+  vehicles: (db, term, limit) => searchVehicles(db, term, limit),
+  faults: (db, term, limit) => searchCollection(db, 'faults', ['description', 'vehiclePlate', 'riderName', 'notes'], term, limit),
+  tasks: (db, term, limit) => searchCollection(db, 'tasks', ['title', 'description', 'riderName', 'vehiclePlate'], term, limit),
+  maintenance: (db, term, limit) => searchCollection(db, 'maintenance', ['maintenanceNumber', 'description', 'vehiclePlate', 'riderName', 'garage.name', 'notes'], term, limit),
+};
+
+module.exports = async (req, res) => {
+  // CORS Headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'GET') {
+    return res.status(405).json({ success: false, message: 'Method not allowed' });
+  }
+
+  try {
+    const { db } = initFirebase();
+    const user = await authenticateToken(req, db);
+
+    const { q, limit = 5 } = req.query;
+    const limitPerType = Math.min(parseInt(limit) || 5, 10);
+
+    // מינימום 2 תווים
+    if (!q || q.trim().length < 2) {
+      return res.status(200).json({ success: true, results: {}, totalCount: 0 });
+    }
+
+    const searchTerm = q.trim();
+    const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
+
+    // בדיקת הרשאות וחיפוש במקביל
+    const searchPromises = ENTITY_CONFIGS.map(async (config) => {
+      try {
+        // בדיקת הרשאה
+        await checkPermission(user, db, config.permissionKey, 'view');
+
+        // חיפוש
+        const rawResults = await SEARCH_FUNCTIONS[config.key](db, searchTerm, limitPerType);
+        return {
+          key: config.key,
+          items: rawResults.slice(0, limitPerType).map(config.normalize),
+        };
+      } catch (err) {
+        // אם אין הרשאה או שגיאה אחרת - מדלגים
+        return { key: config.key, items: [] };
+      }
+    });
+
+    const settledResults = await Promise.allSettled(searchPromises);
+
+    // בניית אובייקט תוצאות
+    const results = {};
+    let totalCount = 0;
+
+    settledResults.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        const { key, items } = result.value;
+        if (items.length > 0) {
+          results[key] = items;
+          totalCount += items.length;
+        }
+      }
+    });
+
+    return res.status(200).json({ success: true, results, totalCount });
+  } catch (error) {
+    console.error('Search error:', error);
+
+    if (error.message.includes('token') || error.message.includes('authorized')) {
+      return res.status(401).json({ success: false, message: error.message });
+    }
+
+    return res.status(500).json({ success: false, message: 'שגיאה בחיפוש' });
+  }
+};

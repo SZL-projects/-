@@ -12,6 +12,7 @@
     { "source": "/api/maintenance/:path*", "destination": "/api/maintenance" },
     { "source": "/api/garages/:path*", "destination": "/api/maintenance" },
     { "source": "/api/maintenance-types/:path*", "destination": "/api/maintenance" },
-    { "source": "/api/permissions/:path*", "destination": "/api/permissions" }
+    { "source": "/api/permissions/:path*", "destination": "/api/permissions" },
+    { "source": "/api/search/:path*", "destination": "/api/search" }
   ]
 }
