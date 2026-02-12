@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
-import { authAPI, permissionsAPI } from '../services/api';
+import { authAPI, permissionsAPI, setLogoutCallback } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -140,14 +140,19 @@ export const AuthProvider = ({ children }) => {
     };
   }, [user?.id]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('user');
     setUser(null);
     setUserPermissions(null);
-  };
+  }, []);
+
+  // חיבור logout ל-axios interceptor (בלי רענון דף מלא)
+  useEffect(() => {
+    setLogoutCallback(logout);
+  }, [logout]);
 
   // פונקציה לבדיקה אם למשתמש יש תפקיד מסוים
   const hasRole = (role) => {

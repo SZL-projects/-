@@ -75,22 +75,28 @@ api.interceptors.request.use(
   }
 );
 
+// callback להתנתקות - יוגדר מ-AuthContext (בלי רענון דף מלא)
+let _logoutCallback = null;
+export const setLogoutCallback = (cb) => { _logoutCallback = cb; };
+
 // טיפול בשגיאות
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // לא לעשות redirect אם זו קריאת login/register - שם 401 זה צפוי (סיסמה שגויה)
+      // לא לעשות כלום אם זו קריאת login/register - שם 401 זה צפוי (סיסמה שגויה)
       const url = error.config?.url || '';
       const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register');
 
       if (!isAuthEndpoint) {
-        // רק אם זה לא endpoint של login - נקה token ותחזיר ללוגין
+        // נקה token וקרא ל-logout דרך React (בלי window.location.href שמרענן דף)
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('user');
-        window.location.href = '/login';
+        if (_logoutCallback) {
+          _logoutCallback();
+        }
       }
     }
     return Promise.reject(error);
