@@ -25,7 +25,7 @@ const ENTITIES = [
 const ROLES = [
   { key: 'super_admin', label: 'מנהל על' },
   { key: 'manager', label: 'מנהל' },
-  { key: 'secretary', label: 'מזכירה' },
+  { key: 'secretary', label: 'מזכיר' },
   { key: 'logistics', label: 'לוגיסטיקה' },
   { key: 'rider', label: 'רוכב' },
   { key: 'regional_manager', label: 'מנהל אזורי' },

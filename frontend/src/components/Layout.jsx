@@ -598,7 +598,7 @@ export default function Layout() {
                     const roleLabels = {
                       'super_admin': 'מנהל על',
                       'manager': 'מנהל',
-                      'secretary': 'מזכירה',
+                      'secretary': 'מזכיר',
                       'logistics': 'לוגיסטיקה',
                       'rider': 'רוכב',
                       'regional_manager': 'מנהל אזורי'
@@ -644,7 +644,7 @@ export default function Layout() {
                     const roleLabels = {
                       'super_admin': 'מנהל על',
                       'manager': 'מנהל',
-                      'secretary': 'מזכירה',
+                      'secretary': 'מזכיר',
                       'logistics': 'לוגיסטיקה',
                       'rider': 'רוכב',
                       'regional_manager': 'מנהל אזורי'

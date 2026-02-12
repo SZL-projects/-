@@ -72,7 +72,7 @@ export default function MyProfile() {
   const roleMap = useMemo(() => ({
     super_admin: { label: 'מנהל על', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#dc2626' },
     manager: { label: 'מנהל', bgcolor: 'rgba(245, 158, 11, 0.1)', color: '#d97706' },
-    secretary: { label: 'מזכירה', bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#2563eb' },
+    secretary: { label: 'מזכיר', bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#2563eb' },
     logistics: { label: 'לוגיסטיקה', bgcolor: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' },
     rider: { label: 'רוכב', bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#059669' },
     regional_manager: { label: 'מנהל אזורי', bgcolor: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6' },

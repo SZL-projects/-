@@ -25,7 +25,7 @@ import { vehiclesAPI, ridersAPI } from '../services/api';
 const userRoles = [
   { value: 'super_admin', label: 'מנהל על' },
   { value: 'manager', label: 'מנהל' },
-  { value: 'secretary', label: 'מזכירה' },
+  { value: 'secretary', label: 'מזכיר' },
   { value: 'logistics', label: 'לוגיסטיקה' },
   { value: 'rider', label: 'רוכב' },
   { value: 'regional_manager', label: 'מנהל אזורי' },

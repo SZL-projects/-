@@ -533,7 +533,7 @@ function getRoleLabel(role) {
   const roles = {
     super_admin: 'מנהל על',
     manager: 'מנהל',
-    secretary: 'מזכירה',
+    secretary: 'מזכיר',
     rider: 'רוכב',
     viewer: 'צופה'
   };
