@@ -462,4 +462,9 @@ export const permissionsAPI = {
   getMy: () => api.get('/permissions/my'),
 };
 
+// Global Search API - חיפוש גלובלי (ללא cache - תמיד עדכני)
+export const searchAPI = {
+  search: (query, limit = 5) => api.get('/search', { params: { q: query, limit } }),
+};
+
 export default api;

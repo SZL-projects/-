@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -23,6 +23,7 @@ import {
   DialogContent,
   useMediaQuery,
   useTheme,
+  CircularProgress,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -47,6 +48,8 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import ChangePasswordDialog from './ChangePasswordDialog';
+import GlobalSearchResults from './GlobalSearchResults';
+import { useGlobalSearch } from '../hooks/useGlobalSearch';
 
 const drawerWidth = 280;
 const drawerWidthClosed = 72;
@@ -86,6 +89,70 @@ export default function Layout() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+
+  // חיפוש גלובלי
+  const search = useGlobalSearch();
+  const searchInputRef = useRef(null);
+  const searchContainerRef = useRef(null);
+  const [activeIndex, setActiveIndex] = useState(-1);
+
+  // רשימה שטוחה לניווט מקלדת
+  const flatResults = [];
+  Object.values(search.results).forEach(items => {
+    items.forEach(item => flatResults.push(item));
+  });
+
+  // סגירת dropdown בלחיצה מחוץ לאזור
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
+        search.setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // איפוס אינדקס מקלדת כשהתוצאות משתנות
+  useEffect(() => {
+    setActiveIndex(-1);
+  }, [search.results]);
+
+  // ניווט מקלדת בחיפוש
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      search.setIsOpen(false);
+      searchInputRef.current?.blur();
+      return;
+    }
+
+    if (!search.isOpen || flatResults.length === 0) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setActiveIndex(prev => (prev + 1) % flatResults.length);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setActiveIndex(prev => (prev - 1 + flatResults.length) % flatResults.length);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (activeIndex >= 0 && activeIndex < flatResults.length) {
+          navigate(flatResults[activeIndex].url);
+          search.clearSearch();
+          setSearchOpen(false);
+        }
+        break;
+    }
+  };
+
+  // כשנבחרת תוצאה
+  const handleSearchNavigate = () => {
+    search.clearSearch();
+    setSearchOpen(false);
+  };
 
   // בדיקה אם יש למשתמש הרשאות ניהול (לפחות הרשאת צפייה על משהו)
   const hasManagementAccess = hasRole('super_admin') || managementMenuItems.some(
@@ -533,16 +600,35 @@ export default function Layout() {
             </Typography>
 
             {/* Global Search - Desktop */}
-            <Box sx={{ flexGrow: 1, maxWidth: 400, display: { xs: 'none', sm: 'block' } }}>
+            <Box
+              ref={searchContainerRef}
+              sx={{
+                flexGrow: 1,
+                maxWidth: 400,
+                display: { xs: 'none', sm: 'block' },
+                position: 'relative',
+              }}
+            >
               <TextField
+                inputRef={searchInputRef}
                 size="small"
-                placeholder="חיפוש..."
+                placeholder="חיפוש רוכבים, כלים, משימות..."
                 variant="outlined"
                 fullWidth
+                value={search.query}
+                onChange={(e) => search.setQuery(e.target.value)}
+                onFocus={() => {
+                  if (search.query.trim().length >= 2) search.setIsOpen(true);
+                }}
+                onKeyDown={handleSearchKeyDown}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Search sx={{ color: 'rgba(255,255,255,0.7)' }} />
+                      {search.isLoading ? (
+                        <CircularProgress size={20} sx={{ color: 'rgba(255,255,255,0.7)' }} />
+                      ) : (
+                        <Search sx={{ color: 'rgba(255,255,255,0.7)' }} />
+                      )}
                     </InputAdornment>
                   ),
                   sx: {
@@ -568,6 +654,15 @@ export default function Layout() {
                     opacity: 1,
                   },
                 }}
+              />
+              <GlobalSearchResults
+                results={search.results}
+                totalCount={search.totalCount}
+                isLoading={search.isLoading}
+                isOpen={search.isOpen && search.query.trim().length >= 2}
+                onClose={() => search.setIsOpen(false)}
+                onNavigate={handleSearchNavigate}
+                activeIndex={activeIndex}
               />
             </Box>
 
@@ -675,27 +770,46 @@ export default function Layout() {
       {/* Mobile Search Dialog */}
       <Dialog
         open={searchOpen}
-        onClose={() => setSearchOpen(false)}
+        onClose={() => { setSearchOpen(false); search.clearSearch(); }}
         fullWidth
         maxWidth="sm"
         dir="rtl"
       >
         <DialogTitle>חיפוש</DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ minHeight: 200 }}>
           <TextField
             autoFocus
             fullWidth
             placeholder="חפש רוכבים, כלים, משימות..."
             variant="outlined"
+            value={search.query}
+            onChange={(e) => search.setQuery(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
             sx={{ mt: 1 }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <Search />
+                  {search.isLoading ? (
+                    <CircularProgress size={20} />
+                  ) : (
+                    <Search />
+                  )}
                 </InputAdornment>
               ),
             }}
           />
+          {search.query.trim().length >= 2 && (
+            <GlobalSearchResults
+              results={search.results}
+              totalCount={search.totalCount}
+              isLoading={search.isLoading}
+              isOpen={true}
+              onClose={() => { setSearchOpen(false); search.clearSearch(); }}
+              onNavigate={handleSearchNavigate}
+              activeIndex={activeIndex}
+              inline
+            />
+          )}
         </DialogContent>
       </Dialog>
 
