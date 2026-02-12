@@ -126,19 +126,32 @@ module.exports = async (req, res) => {
 
       // אופטימיזציה: אם אין חיפוש, השתמש ב-Firestore pagination אמיתי
       if (!search) {
-        // מיון לפי תאריך דיווח (תקלות חדשות ראשונות)
-        query = query.orderBy('createdAt', 'desc');
+        let faults = [];
+        try {
+          // מיון לפי תאריך דיווח (תקלות חדשות ראשונות)
+          let paginatedQuery = query.orderBy('createdAt', 'desc');
 
-        // דילוג על תוצאות קודמות
-        if (pageNum > 1) {
-          const skipCount = (pageNum - 1) * limitNum;
-          query = query.offset(skipCount);
+          // דילוג על תוצאות קודמות
+          if (pageNum > 1) {
+            const skipCount = (pageNum - 1) * limitNum;
+            paginatedQuery = paginatedQuery.offset(skipCount);
+          }
+
+          paginatedQuery = paginatedQuery.limit(limitNum);
+
+          const snapshot = await paginatedQuery.get();
+          faults = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (queryError) {
+          // fallback בלי orderBy אם חסר אינדקס
+          console.warn('Faults query with orderBy failed, trying without:', queryError.message);
+          const snapshot = await query.limit(limitNum).get();
+          faults = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          faults.sort((a, b) => {
+            const dateA = a.createdAt?.seconds || a.createdAt?._seconds || 0;
+            const dateB = b.createdAt?.seconds || b.createdAt?._seconds || 0;
+            return dateB - dateA;
+          });
         }
-
-        query = query.limit(limitNum);
-
-        const snapshot = await query.get();
-        const faults = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         // ספירה כוללת
         const countSnapshot = await db.collection('faults').count().get();

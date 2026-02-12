@@ -569,16 +569,46 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
       });
     }
 
+    // בדיקת הרשאות - self רואה רק טיפולי הכלי שלו
+    const permLevel = await checkPermission(user, db, 'maintenance', 'view');
+    if (permLevel === 'self' && user.riderId) {
+      const riderDoc = await db.collection('riders').doc(user.riderId).get();
+      if (riderDoc.exists) {
+        const riderData = riderDoc.data();
+        if (riderData.assignedVehicleId !== vehicleId) {
+          return res.status(403).json({
+            success: false,
+            message: 'אין הרשאה לצפות בטיפולי כלי זה'
+          });
+        }
+      }
+    }
+
     const { limit = 50 } = req.query;
     const limitNum = Math.min(parseInt(limit), 200);
 
-    const snapshot = await db.collection('maintenance')
-      .where('vehicleId', '==', vehicleId)
-      .orderBy('createdAt', 'desc')
-      .limit(limitNum)
-      .get();
-
-    const maintenances = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // fallback בלי orderBy אם חסר אינדקס ב-Firestore
+    let maintenances = [];
+    try {
+      const snapshot = await db.collection('maintenance')
+        .where('vehicleId', '==', vehicleId)
+        .orderBy('createdAt', 'desc')
+        .limit(limitNum)
+        .get();
+      maintenances = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (queryError) {
+      console.warn('Maintenance query with orderBy failed, trying without:', queryError.message);
+      const snapshot = await db.collection('maintenance')
+        .where('vehicleId', '==', vehicleId)
+        .limit(limitNum)
+        .get();
+      maintenances = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      maintenances.sort((a, b) => {
+        const dateA = a.createdAt?.seconds || a.createdAt?._seconds || 0;
+        const dateB = b.createdAt?.seconds || b.createdAt?._seconds || 0;
+        return dateB - dateA;
+      });
+    }
 
     return res.json({
       success: true,
