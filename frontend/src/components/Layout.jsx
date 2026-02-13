@@ -653,6 +653,10 @@ export default function Layout() {
                     color: 'rgba(255, 255, 255, 0.6)',
                     opacity: 1,
                   },
+                  '& input::selection': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+                    color: 'white',
+                  },
                 }}
               />
               <GlobalSearchResults

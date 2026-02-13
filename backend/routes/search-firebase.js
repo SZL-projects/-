@@ -7,6 +7,8 @@ const VehicleModel = require('../models/firestore/VehicleModel');
 const FaultModel = require('../models/firestore/FaultModel');
 const TaskModel = require('../models/firestore/TaskModel');
 const MaintenanceModel = require('../models/firestore/MaintenanceModel');
+const GarageModel = require('../models/firestore/GarageModel');
+const UserModel = require('../models/firestore/UserModel');
 
 // כל הנתיבים דורשים אימות
 router.use(protect);
@@ -71,6 +73,30 @@ const entityConfigs = [
       title: m.maintenanceNumber || m.description?.substring(0, 60) || 'טיפול',
       subtitle: [m.vehiclePlate, m.riderName].filter(Boolean).join(' | '),
       url: '/maintenance',
+    }),
+  },
+  {
+    key: 'garages',
+    permissionKey: 'garages',
+    search: (term, limit) => GarageModel.search(term, {}),
+    normalize: (garage) => ({
+      id: garage.id,
+      type: 'garages',
+      title: garage.name || 'מוסך',
+      subtitle: [garage.city, garage.contactPerson, garage.phone].filter(Boolean).join(' | '),
+      url: '/garages',
+    }),
+  },
+  {
+    key: 'users',
+    permissionKey: 'users',
+    search: (term, limit) => UserModel.search(term, {}, limit),
+    normalize: (user) => ({
+      id: user.id,
+      type: 'users',
+      title: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || '',
+      subtitle: [user.email, user.role].filter(Boolean).join(' | '),
+      url: '/users',
     }),
   },
 ];

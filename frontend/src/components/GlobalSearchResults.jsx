@@ -10,6 +10,7 @@ import {
   ListItemText,
   CircularProgress,
   Divider,
+  Chip,
 } from '@mui/material';
 import {
   Person,
@@ -17,6 +18,9 @@ import {
   Warning,
   Assignment,
   Build,
+  HomeRepairService,
+  People,
+  Shield,
 } from '@mui/icons-material';
 
 const TYPE_LABELS = {
@@ -25,6 +29,9 @@ const TYPE_LABELS = {
   faults: 'תקלות',
   tasks: 'משימות',
   maintenance: 'טיפולים',
+  garages: 'מוסכים',
+  users: 'משתמשים',
+  insurance_claims: 'תביעות ביטוח',
 };
 
 const TYPE_ICONS = {
@@ -33,6 +40,9 @@ const TYPE_ICONS = {
   faults: <Warning />,
   tasks: <Assignment />,
   maintenance: <Build />,
+  garages: <HomeRepairService />,
+  users: <People />,
+  insurance_claims: <Shield />,
 };
 
 export default function GlobalSearchResults({
@@ -155,6 +165,18 @@ export default function GlobalSearchResults({
                         secondaryTypographyProps={{
                           fontSize: '0.75rem',
                           noWrap: true,
+                        }}
+                      />
+                      <Chip
+                        label={TYPE_LABELS[item.type] || item.type}
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          ml: 1,
+                          fontSize: '0.65rem',
+                          height: 22,
+                          color: '#6366f1',
+                          borderColor: 'rgba(99, 102, 241, 0.3)',
                         }}
                       />
                     </ListItemButton>

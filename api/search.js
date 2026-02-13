@@ -64,6 +64,42 @@ const ENTITY_CONFIGS = [
       url: '/maintenance',
     }),
   },
+  {
+    key: 'garages',
+    permissionKey: 'garages',
+    collection: 'garages',
+    normalize: (garage) => ({
+      id: garage.id,
+      type: 'garages',
+      title: garage.name || 'מוסך',
+      subtitle: [garage.city, garage.contactPerson, garage.phone].filter(Boolean).join(' | '),
+      url: '/garages',
+    }),
+  },
+  {
+    key: 'users',
+    permissionKey: 'users',
+    collection: 'users',
+    normalize: (user) => ({
+      id: user.id,
+      type: 'users',
+      title: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || '',
+      subtitle: [user.email, user.role].filter(Boolean).join(' | '),
+      url: '/users',
+    }),
+  },
+  {
+    key: 'insurance_claims',
+    permissionKey: 'insurance_claims',
+    collection: 'insurance_claims',
+    normalize: (claim) => ({
+      id: claim.id,
+      type: 'insurance_claims',
+      title: claim.claimNumber || claim.externalClaimNumber || 'תביעת ביטוח',
+      subtitle: [claim.vehiclePlate, claim.riderName, claim.description?.substring(0, 40)].filter(Boolean).join(' | '),
+      url: '/insurance-claims',
+    }),
+  },
 ];
 
 // פונקציות חיפוש לכל ישות
@@ -183,6 +219,9 @@ const SEARCH_FUNCTIONS = {
   faults: (db, term, limit) => searchCollection(db, 'faults', ['description', 'vehiclePlate', 'riderName', 'notes'], term, limit),
   tasks: (db, term, limit) => searchCollection(db, 'tasks', ['title', 'description', 'riderName', 'vehiclePlate'], term, limit),
   maintenance: (db, term, limit) => searchCollection(db, 'maintenance', ['maintenanceNumber', 'description', 'vehiclePlate', 'riderName', 'garage.name', 'notes'], term, limit),
+  garages: (db, term, limit) => searchCollection(db, 'garages', ['name', 'city', 'contactPerson', 'phone'], term, limit),
+  users: (db, term, limit) => searchCollection(db, 'users', ['username', 'email', 'firstName', 'lastName'], term, limit),
+  insurance_claims: (db, term, limit) => searchCollection(db, 'insurance_claims', ['claimNumber', 'externalClaimNumber', 'description', 'vehiclePlate', 'riderName'], term, limit),
 };
 
 module.exports = async (req, res) => {
