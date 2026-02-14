@@ -46,6 +46,7 @@ import {
   Settings,
   Security,
   History,
+  VolunteerActivism,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import ChangePasswordDialog from './ChangePasswordDialog';
@@ -73,6 +74,7 @@ const managementMenuItems = [
   { text: 'תקלות', icon: <Warning />, path: '/faults', permission: 'faults' },
   { text: 'טיפולים', icon: <Build />, path: '/maintenance', permission: 'maintenance' },
   { text: 'תביעות ביטוח', icon: <Assignment />, path: '/insurance-claims', permission: 'insurance_claims' },
+  { text: 'תרומות', icon: <VolunteerActivism />, path: '/donations', permission: 'donations' },
   { text: 'דוחות', icon: <Assessment />, path: '/reports', permission: 'reports' },
   { text: 'לוג פעילות', icon: <History />, path: '/audit-log', permission: 'audit_logs' },
   { text: 'יוצר טפסים', icon: <Description />, path: '/form-builder' },

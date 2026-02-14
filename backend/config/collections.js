@@ -11,7 +11,8 @@ const COLLECTIONS = {
   GARAGES: 'garages',
   INSURANCE_CLAIMS: 'insurance_claims',
   AUDIT_LOGS: 'audit_logs',
-  PERMISSIONS: 'permissions'
+  PERMISSIONS: 'permissions',
+  DONATIONS: 'donations'
 };
 
 module.exports = COLLECTIONS;

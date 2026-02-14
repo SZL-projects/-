@@ -517,6 +517,36 @@ export const auditLogsAPI = {
   getUsers: () => cachedGet('/audit-logs/users'),
 };
 
+// Donations API - תרומות
+export const donationsAPI = {
+  getAll: (params) => cachedGet('/donations', { params }),
+  getById: (id) => cachedGet(`/donations/${id}`),
+  getByRider: (riderId, limit = 50) => cachedGet(`/donations/rider/${riderId}`, { params: { limit } }),
+  getStatistics: () => cachedGet('/donations/statistics'),
+
+  create: (data) => {
+    invalidateCache('/donations');
+    return api.post('/donations', data);
+  },
+  update: (id, data) => {
+    invalidateCache('/donations');
+    return api.put(`/donations/${id}`, data);
+  },
+  delete: (id) => {
+    invalidateCache('/donations');
+    return api.delete(`/donations/${id}`);
+  },
+  uploadFile: (formData) => {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    return axios.post(`${API_URL}/donations/upload-file`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  },
+};
+
 // Global Search API - חיפוש גלובלי (ללא cache - תמיד עדכני)
 export const searchAPI = {
   search: (query, limit = 5) => api.get('/search', { params: { q: query, limit } }),

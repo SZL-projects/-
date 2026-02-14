@@ -33,6 +33,7 @@ const MyFaults = lazy(() => import('./pages/MyFaults'));
 const MyProfile = lazy(() => import('./pages/MyProfile'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Permissions = lazy(() => import('./pages/Permissions'));
+const Donations = lazy(() => import('./pages/Donations'));
 
 // Loading component לטעינה עצלה
 const PageLoader = () => (
@@ -411,6 +412,7 @@ function AppRoutes() {
           <Route path="users" element={<Users />} />
           <Route path="settings" element={<Settings />} />
           <Route path="permissions" element={<Permissions />} />
+          <Route path="donations" element={<Donations />} />
           <Route path="my-vehicle" element={<MyVehicle />} />
           <Route path="my-faults" element={<MyFaults />} />
           <Route path="my-profile" element={<MyProfile />} />
