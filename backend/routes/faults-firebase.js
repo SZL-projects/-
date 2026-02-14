@@ -3,6 +3,7 @@ const router = express.Router();
 const FaultModel = require('../models/firestore/FaultModel');
 const { protect } = require('../middleware/auth-firebase');
 const { checkPermission } = require('../middleware/checkPermission');
+const { logAudit } = require('../middleware/auditLogger');
 
 // כל הנתיבים מוגנים - דורשים אימות
 router.use(protect);
@@ -84,6 +85,14 @@ router.post('/', async (req, res) => {
   try {
     const fault = await FaultModel.create(req.body, req.user.id);
 
+    logAudit(req, {
+      action: 'create',
+      entityType: 'fault',
+      entityId: fault.id,
+      entityName: fault.description?.substring(0, 40) || 'תקלה חדשה',
+      description: 'תקלה חדשה נוצרה'
+    });
+
     res.status(201).json({
       success: true,
       fault
@@ -110,6 +119,14 @@ router.put('/:id', checkPermission('faults', 'edit'), async (req, res) => {
       });
     }
 
+    logAudit(req, {
+      action: 'update',
+      entityType: 'fault',
+      entityId: fault.id,
+      entityName: fault.description?.substring(0, 40) || 'תקלה',
+      description: 'תקלה עודכנה'
+    });
+
     res.json({
       success: true,
       fault
@@ -127,7 +144,16 @@ router.put('/:id', checkPermission('faults', 'edit'), async (req, res) => {
 // @access  Private (מנהל-על בלבד)
 router.delete('/:id', checkPermission('faults', 'edit'), async (req, res) => {
   try {
+    const existingFault = await FaultModel.findById(req.params.id);
     await FaultModel.delete(req.params.id);
+
+    logAudit(req, {
+      action: 'delete',
+      entityType: 'fault',
+      entityId: req.params.id,
+      entityName: existingFault?.description?.substring(0, 40) || 'תקלה',
+      description: 'תקלה נמחקה'
+    });
 
     res.json({
       success: true,

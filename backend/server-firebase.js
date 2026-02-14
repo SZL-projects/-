@@ -55,6 +55,9 @@ app.use('/api/maintenance', require('./routes/maintenance-firebase'));
 app.use('/api/garages', require('./routes/garages-firebase'));
 app.use('/api/permissions', require('./routes/permissions-firebase'));
 app.use('/api/search', require('./routes/search-firebase'));
+app.use('/api/insurance-claims', require('./routes/insurance-claims-firebase'));
+app.use('/api/reports', require('./routes/reports-firebase'));
+app.use('/api/audit-logs', require('./routes/audit-log-firebase'));
 
 // נתיבים להרצה ידנית של משימות (למנהלי על בלבד)
 if (process.env.NODE_ENV !== 'production') {

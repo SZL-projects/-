@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const PermissionModel = require('../models/firestore/PermissionModel');
 const { protect } = require('../middleware/auth-firebase');
+const { logAudit } = require('../middleware/auditLogger');
 
 // כל הנתיבים מוגנים
 router.use(protect);
@@ -64,6 +65,15 @@ router.put('/', async (req, res) => {
       message: 'ההרשאות עודכנו בהצלחה',
       permissions: updated,
     });
+
+    for (const role of Object.keys(permissions)) {
+      logAudit(req, {
+        action: 'update',
+        entityType: 'permission',
+        entityName: role,
+        description: `הרשאות עודכנו לתפקיד: ${role}`
+      });
+    }
   } catch (error) {
     console.error('שגיאה בעדכון הרשאות:', error);
     res.status(500).json({
@@ -92,6 +102,12 @@ router.post('/reset', async (req, res) => {
       success: true,
       message: 'ההרשאות אופסו לברירת מחדל',
       permissions,
+    });
+
+    logAudit(req, {
+      action: 'update',
+      entityType: 'permission',
+      description: 'הרשאות אופסו לברירת מחדל'
     });
   } catch (error) {
     console.error('שגיאה באיפוס הרשאות:', error);

@@ -6,6 +6,7 @@ const RiderModel = require('../models/firestore/RiderModel');
 const googleDriveService = require('../services/googleDriveService');
 const { protect, authorize } = require('../middleware/auth-firebase');
 const { checkPermission } = require('../middleware/checkPermission');
+const { logAudit } = require('../middleware/auditLogger');
 
 // הגדרת multer לטיפול בקבצים
 const upload = multer({
@@ -169,6 +170,14 @@ router.post('/', checkPermission('vehicles', 'edit'), async (req, res) => {
   try {
     const vehicle = await VehicleModel.create(req.body, req.user.id);
 
+    logAudit(req, {
+      action: 'create',
+      entityType: 'vehicle',
+      entityId: vehicle.id,
+      entityName: req.body.licensePlate,
+      description: `כלי חדש נוצר: ${req.body.licensePlate}`
+    });
+
     res.status(201).json({
       success: true,
       vehicle
@@ -186,6 +195,7 @@ router.post('/', checkPermission('vehicles', 'edit'), async (req, res) => {
 // @access  Private (מנהלים בלבד)
 router.put('/:id', checkPermission('vehicles', 'edit'), async (req, res) => {
   try {
+    const existingVehicle = await VehicleModel.findById(req.params.id);
     const vehicle = await VehicleModel.update(req.params.id, req.body, req.user.id);
 
     if (!vehicle) {
@@ -194,6 +204,15 @@ router.put('/:id', checkPermission('vehicles', 'edit'), async (req, res) => {
         message: 'כלי לא נמצא'
       });
     }
+
+    logAudit(req, {
+      action: 'update',
+      entityType: 'vehicle',
+      entityId: req.params.id,
+      entityName: existingVehicle?.licensePlate || vehicle.licensePlate,
+      changes: req.body,
+      description: `כלי עודכן: ${existingVehicle?.licensePlate || vehicle.licensePlate}`
+    });
 
     res.json({
       success: true,
@@ -246,7 +265,16 @@ router.patch('/:id/kilometers', checkPermission('vehicles', 'edit'), async (req,
 // @access  Private (מנהל-על בלבד)
 router.delete('/:id', checkPermission('vehicles', 'edit'), async (req, res) => {
   try {
+    const vehicle = await VehicleModel.findById(req.params.id);
     await VehicleModel.delete(req.params.id);
+
+    logAudit(req, {
+      action: 'delete',
+      entityType: 'vehicle',
+      entityId: req.params.id,
+      entityName: vehicle?.licensePlate,
+      description: `כלי נמחק: ${vehicle?.licensePlate}`
+    });
 
     res.json({
       success: true,
@@ -515,6 +543,15 @@ router.post('/:id/assign', checkPermission('vehicles', 'edit'), async (req, res)
       updatedBy: req.user.id
     });
 
+    logAudit(req, {
+      action: 'assign',
+      entityType: 'vehicle',
+      entityId: vehicleId,
+      entityName: vehicle.licensePlate,
+      changes: { riderId },
+      description: `רוכב הוקצה לכלי ${vehicle.licensePlate}`
+    });
+
     res.json({
       success: true,
       message: 'כלי שוייך בהצלחה לרוכב',
@@ -576,6 +613,15 @@ router.post('/:id/unassign', checkPermission('vehicles', 'edit'), async (req, re
         updatedBy: req.user.id
       });
     }
+
+    logAudit(req, {
+      action: 'unassign',
+      entityType: 'vehicle',
+      entityId: vehicleId,
+      entityName: vehicle.licensePlate,
+      changes: { riderId },
+      description: `רוכב הוסר מכלי ${vehicle.licensePlate}`
+    });
 
     res.json({
       success: true,

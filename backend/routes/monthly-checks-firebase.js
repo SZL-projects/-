@@ -6,6 +6,7 @@ const { checkPermission } = require('../middleware/checkPermission');
 const { db } = require('../config/firebase');
 const COLLECTIONS = require('../config/collections');
 const emailService = require('../services/emailService');
+const { logAudit } = require('../middleware/auditLogger');
 
 // כל הנתיבים מוגנים - דורשים אימות
 router.use(protect);
@@ -171,6 +172,16 @@ router.post('/', checkPermission('monthly_checks', 'edit'), async (req, res) => 
         } catch (error) {
           errors.push({ riderId, error: error.message });
         }
+      }
+
+      for (const created of createdChecks) {
+        logAudit(req, {
+          action: 'create',
+          entityType: 'monthly_check',
+          entityId: created.id,
+          entityName: 'בקרה חודשית',
+          description: `בקרה חודשית חדשה נוצרה`
+        });
       }
 
       res.status(201).json({

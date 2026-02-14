@@ -8,6 +8,7 @@ const FaultModel = require('../models/firestore/FaultModel');
 const TaskModel = require('../models/firestore/TaskModel');
 const MaintenanceModel = require('../models/firestore/MaintenanceModel');
 const GarageModel = require('../models/firestore/GarageModel');
+const InsuranceClaimModel = require('../models/firestore/InsuranceClaimModel');
 const UserModel = require('../models/firestore/UserModel');
 
 // כל הנתיבים דורשים אימות
@@ -85,6 +86,18 @@ const entityConfigs = [
       title: garage.name || 'מוסך',
       subtitle: [garage.city, garage.contactPerson, garage.phone].filter(Boolean).join(' | '),
       url: '/garages',
+    }),
+  },
+  {
+    key: 'insurance_claims',
+    permissionKey: 'insurance_claims',
+    search: (term, limit) => InsuranceClaimModel.search(term, {}, limit),
+    normalize: (claim) => ({
+      id: claim.id,
+      type: 'insurance_claims',
+      title: claim.claimNumber || claim.description?.substring(0, 60) || 'תביעת ביטוח',
+      subtitle: [claim.vehiclePlate, claim.insuranceCompany, claim.status].filter(Boolean).join(' | '),
+      url: '/insurance-claims',
     }),
   },
   {

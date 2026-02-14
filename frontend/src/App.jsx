@@ -22,8 +22,10 @@ const MonthlyChecks = lazy(() => import('./pages/MonthlyChecks'));
 const Users = lazy(() => import('./pages/Users'));
 const Faults = lazy(() => import('./pages/Faults'));
 const Maintenance = lazy(() => import('./pages/Maintenance'));
+const InsuranceClaims = lazy(() => import('./pages/InsuranceClaims'));
 const FormBuilder = lazy(() => import('./pages/FormBuilder'));
 const Reports = lazy(() => import('./pages/Reports'));
+const AuditLog = lazy(() => import('./pages/AuditLog'));
 const FaultReport = lazy(() => import('./pages/FaultReport'));
 const MonthlyCheckForm = lazy(() => import('./pages/MonthlyCheckForm'));
 const MyVehicle = lazy(() => import('./pages/MyVehicle'));
@@ -400,9 +402,11 @@ function AppRoutes() {
           <Route path="monthly-check/:id" element={<MonthlyCheckForm />} />
           <Route path="faults" element={<Faults />} />
           <Route path="maintenance" element={<Maintenance />} />
+          <Route path="insurance-claims" element={<InsuranceClaims />} />
           <Route path="fault-report" element={<FaultReport />} />
           <Route path="monthly-check-form" element={<MonthlyCheckForm />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="audit-log" element={<AuditLog />} />
           <Route path="form-builder" element={<FormBuilder />} />
           <Route path="users" element={<Users />} />
           <Route path="settings" element={<Settings />} />

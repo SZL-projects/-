@@ -5,6 +5,7 @@ const RiderModel = require('../models/firestore/RiderModel');
 const googleDriveService = require('../services/googleDriveService');
 const { protect, authorize } = require('../middleware/auth-firebase');
 const { checkPermission } = require('../middleware/checkPermission');
+const { logAudit } = require('../middleware/auditLogger');
 
 // הגדרת multer לקבלת קבצים
 const upload = multer({
@@ -206,6 +207,15 @@ router.post('/', checkPermission('riders', 'edit'), async (req, res) => {
     console.log('Creating rider with data:', req.body);
     const rider = await RiderModel.create(req.body, req.user.id);
 
+    const riderName = `${req.body.firstName} ${req.body.lastName}`.trim();
+    logAudit(req, {
+      action: 'create',
+      entityType: 'rider',
+      entityId: rider.id,
+      entityName: riderName,
+      description: `רוכב חדש נוצר: ${riderName}`
+    });
+
     res.status(201).json({
       success: true,
       rider
@@ -224,6 +234,7 @@ router.post('/', checkPermission('riders', 'edit'), async (req, res) => {
 // @access  Private (מנהלים בלבד)
 router.put('/:id', checkPermission('riders', 'edit'), async (req, res) => {
   try {
+    const existingRider = await RiderModel.findById(req.params.id);
     const rider = await RiderModel.update(req.params.id, req.body, req.user.id);
 
     if (!rider) {
@@ -232,6 +243,18 @@ router.put('/:id', checkPermission('riders', 'edit'), async (req, res) => {
         message: 'רוכב לא נמצא'
       });
     }
+
+    const riderName = existingRider
+      ? `${existingRider.firstName} ${existingRider.lastName}`.trim()
+      : `${rider.firstName} ${rider.lastName}`.trim();
+    logAudit(req, {
+      action: 'update',
+      entityType: 'rider',
+      entityId: req.params.id,
+      entityName: riderName,
+      changes: req.body,
+      description: `רוכב עודכן: ${riderName}`
+    });
 
     res.json({
       success: true,
@@ -250,7 +273,17 @@ router.put('/:id', checkPermission('riders', 'edit'), async (req, res) => {
 // @access  Private (מנהל-על בלבד)
 router.delete('/:id', checkPermission('riders', 'edit'), async (req, res) => {
   try {
+    const rider = await RiderModel.findById(req.params.id);
     await RiderModel.delete(req.params.id);
+
+    const riderName = rider ? `${rider.firstName} ${rider.lastName}`.trim() : req.params.id;
+    logAudit(req, {
+      action: 'delete',
+      entityType: 'rider',
+      entityId: req.params.id,
+      entityName: riderName,
+      description: `רוכב נמחק: ${riderName}`
+    });
 
     res.json({
       success: true,

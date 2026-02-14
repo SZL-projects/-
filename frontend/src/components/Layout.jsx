@@ -45,6 +45,7 @@ import {
   DirectionsBike,
   Settings,
   Security,
+  History,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import ChangePasswordDialog from './ChangePasswordDialog';
@@ -71,7 +72,9 @@ const managementMenuItems = [
   { text: 'בקרה חודשית', icon: <Build />, path: '/monthly-checks', permission: 'monthly_checks' },
   { text: 'תקלות', icon: <Warning />, path: '/faults', permission: 'faults' },
   { text: 'טיפולים', icon: <Build />, path: '/maintenance', permission: 'maintenance' },
+  { text: 'תביעות ביטוח', icon: <Assignment />, path: '/insurance-claims', permission: 'insurance_claims' },
   { text: 'דוחות', icon: <Assessment />, path: '/reports', permission: 'reports' },
+  { text: 'לוג פעילות', icon: <History />, path: '/audit-log', permission: 'audit_logs' },
   { text: 'יוצר טפסים', icon: <Description />, path: '/form-builder' },
   { text: 'משתמשים', icon: <People />, path: '/users', permission: 'users' },
   { text: 'הרשאות', icon: <Security />, path: '/permissions', superAdminOnly: true },

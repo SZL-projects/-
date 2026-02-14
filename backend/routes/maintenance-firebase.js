@@ -6,6 +6,7 @@ const VehicleModel = require('../models/firestore/VehicleModel');
 const googleDriveService = require('../services/googleDriveService');
 const { protect } = require('../middleware/auth-firebase');
 const { checkPermission } = require('../middleware/checkPermission');
+const { logAudit } = require('../middleware/auditLogger');
 
 // הגדרת multer לטיפול בקבצים
 const upload = multer({
@@ -194,6 +195,14 @@ router.post('/', async (req, res) => {
 
     const maintenance = await MaintenanceModel.create(req.body, req.user.id);
 
+    logAudit(req, {
+      action: 'create',
+      entityType: 'maintenance',
+      entityId: maintenance.id,
+      entityName: maintenance.maintenanceNumber || 'טיפול חדש',
+      description: `טיפול חדש נוצר: ${maintenance.maintenanceNumber || maintenance.id}`
+    });
+
     res.status(201).json({
       success: true,
       message: 'טיפול נוצר בהצלחה',
@@ -220,6 +229,14 @@ router.put('/:id', checkPermission('maintenance', 'edit'), async (req, res) => {
         message: 'טיפול לא נמצא'
       });
     }
+
+    logAudit(req, {
+      action: 'update',
+      entityType: 'maintenance',
+      entityId: req.params.id,
+      entityName: maintenance.maintenanceNumber || req.params.id,
+      description: `טיפול עודכן: ${maintenance.maintenanceNumber || req.params.id}`
+    });
 
     res.json({
       success: true,
@@ -263,6 +280,14 @@ router.put('/:id/complete', checkPermission('maintenance', 'edit'), async (req, 
       });
     }
 
+    logAudit(req, {
+      action: 'status_change',
+      entityType: 'maintenance',
+      entityId: req.params.id,
+      entityName: maintenance.maintenanceNumber || req.params.id,
+      description: `טיפול הושלם: ${maintenance.maintenanceNumber || req.params.id}`
+    });
+
     res.json({
       success: true,
       message: 'טיפול נסגר בהצלחה',
@@ -291,6 +316,14 @@ router.delete('/:id', checkPermission('maintenance', 'edit'), async (req, res) =
     }
 
     await MaintenanceModel.delete(req.params.id);
+
+    logAudit(req, {
+      action: 'delete',
+      entityType: 'maintenance',
+      entityId: req.params.id,
+      entityName: maintenance.maintenanceNumber || req.params.id,
+      description: `טיפול נמחק: ${maintenance.maintenanceNumber || req.params.id}`
+    });
 
     res.json({
       success: true,
@@ -371,6 +404,14 @@ router.post('/upload-file', upload.single('file'), async (req, res) => {
       targetFolderId,
       req.file.mimetype
     );
+
+    logAudit(req, {
+      action: 'create',
+      entityType: 'maintenance',
+      entityId: maintenanceId || vehicleId,
+      entityName: req.file.originalname,
+      description: `קובץ טיפול הועלה: ${req.file.originalname}`
+    });
 
     res.json({
       success: true,

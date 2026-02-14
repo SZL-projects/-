@@ -3,6 +3,7 @@ const router = express.Router();
 const TaskModel = require('../models/firestore/TaskModel');
 const { protect } = require('../middleware/auth-firebase');
 const { checkPermission } = require('../middleware/checkPermission');
+const { logAudit } = require('../middleware/auditLogger');
 
 // כל הנתיבים מוגנים - דורשים אימות
 router.use(protect);
@@ -84,6 +85,14 @@ router.post('/', checkPermission('tasks', 'edit'), async (req, res) => {
   try {
     const task = await TaskModel.create(req.body, req.user.id);
 
+    logAudit(req, {
+      action: 'create',
+      entityType: 'task',
+      entityId: task.id,
+      entityName: task.title || 'משימה חדשה',
+      description: `משימה חדשה נוצרה: ${task.title || 'משימה חדשה'}`
+    });
+
     res.status(201).json({
       success: true,
       task
@@ -110,6 +119,14 @@ router.put('/:id', checkPermission('tasks', 'edit'), async (req, res) => {
       });
     }
 
+    logAudit(req, {
+      action: 'update',
+      entityType: 'task',
+      entityId: task.id,
+      entityName: task.title || 'משימה',
+      description: `משימה עודכנה: ${task.title || 'משימה'}`
+    });
+
     res.json({
       success: true,
       task
@@ -127,7 +144,16 @@ router.put('/:id', checkPermission('tasks', 'edit'), async (req, res) => {
 // @access  Private (מנהל-על בלבד)
 router.delete('/:id', checkPermission('tasks', 'edit'), async (req, res) => {
   try {
+    const existingTask = await TaskModel.findById(req.params.id);
     await TaskModel.delete(req.params.id);
+
+    logAudit(req, {
+      action: 'delete',
+      entityType: 'task',
+      entityId: req.params.id,
+      entityName: existingTask?.title || 'משימה',
+      description: `משימה נמחקה: ${existingTask?.title || 'משימה'}`
+    });
 
     res.json({
       success: true,

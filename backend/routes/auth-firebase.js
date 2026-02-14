@@ -3,6 +3,7 @@ const router = express.Router();
 const UserModel = require('../models/firestore/UserModel');
 const { getSignedJwtToken, protect } = require('../middleware/auth-firebase');
 const { checkPermission } = require('../middleware/checkPermission');
+const { logAudit } = require('../middleware/auditLogger');
 
 // @route   POST /api/auth/register
 // @desc    רישום משתמש חדש
@@ -122,6 +123,14 @@ router.post('/login', async (req, res) => {
         riderId: user.riderId,
         vehicleAccess: user.vehicleAccess || []
       }
+    });
+
+    logAudit(req, {
+      action: 'login',
+      entityType: 'user',
+      entityId: user.id,
+      entityName: `${user.firstName} ${user.lastName}`.trim() || user.username,
+      description: 'משתמש התחבר למערכת'
     });
   } catch (error) {
     res.status(500).json({

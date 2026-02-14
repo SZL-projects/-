@@ -380,6 +380,44 @@ export const maintenanceAPI = {
   },
 };
 
+// Insurance Claims API - תביעות ביטוח
+export const insuranceClaimsAPI = {
+  getAll: (params) => cachedGet('/insurance-claims', { params }),
+  getById: (id) => cachedGet(`/insurance-claims/${id}`),
+  getByVehicle: (vehicleId, limit = 50) => cachedGet(`/insurance-claims/vehicle/${vehicleId}`, { params: { limit } }),
+  getByRider: (riderId, limit = 50) => cachedGet(`/insurance-claims/rider/${riderId}`, { params: { limit } }),
+  getStatistics: (vehicleId = null) => cachedGet('/insurance-claims/statistics', { params: { vehicleId } }),
+
+  create: (data) => {
+    invalidateCache('/insurance-claims');
+    return api.post('/insurance-claims', data);
+  },
+  update: (id, data) => {
+    invalidateCache('/insurance-claims');
+    return api.put(`/insurance-claims/${id}`, data);
+  },
+  submit: (id) => {
+    invalidateCache('/insurance-claims');
+    return api.put(`/insurance-claims/${id}/submit`);
+  },
+  approve: (id, data) => {
+    invalidateCache('/insurance-claims');
+    return api.put(`/insurance-claims/${id}/approve`, data);
+  },
+  reject: (id, data) => {
+    invalidateCache('/insurance-claims');
+    return api.put(`/insurance-claims/${id}/reject`, data);
+  },
+  close: (id) => {
+    invalidateCache('/insurance-claims');
+    return api.put(`/insurance-claims/${id}/close`);
+  },
+  delete: (id) => {
+    invalidateCache('/insurance-claims');
+    return api.delete(`/insurance-claims/${id}`);
+  },
+};
+
 // Maintenance Types API - סוגי טיפולים
 export const maintenanceTypesAPI = {
   // קבלת כל סוגי הטיפולים
@@ -460,6 +498,23 @@ export const permissionsAPI = {
 
   // קבלת ההרשאות של המשתמש המחובר (ללא cache - תמיד עדכני)
   getMy: () => api.get('/permissions/my'),
+};
+
+// Reports API - דוחות וסטטיסטיקות
+export const reportsAPI = {
+  getSummary: () => cachedGet('/reports/summary'),
+  getMonthlyTrends: (months = 6) => cachedGet('/reports/monthly-trends', { params: { months } }),
+  getVehicles: () => cachedGet('/reports/vehicles'),
+  getFaults: () => cachedGet('/reports/faults'),
+  getMaintenance: () => cachedGet('/reports/maintenance'),
+  getTasks: () => cachedGet('/reports/tasks'),
+  getInsurance: () => cachedGet('/reports/insurance'),
+};
+
+// Audit Logs API - לוג פעילות (read-only)
+export const auditLogsAPI = {
+  getAll: (params) => cachedGet('/audit-logs', { params }),
+  getUsers: () => cachedGet('/audit-logs/users'),
 };
 
 // Global Search API - חיפוש גלובלי (ללא cache - תמיד עדכני)
