@@ -408,6 +408,28 @@ module.exports = async (req, res) => {
       });
     }
 
+    // POST /api/vehicles/rename-file - שינוי שם קובץ ב-Drive
+    if (url.endsWith('/rename-file') && req.method === 'POST') {
+      await checkPermission(user, db, 'vehicles', 'edit');
+
+      const { fileId, newName } = req.body;
+
+      if (!fileId || !newName) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה קובץ ושם חדש הם שדות חובה'
+        });
+      }
+
+      const updatedFile = await googleDriveService.renameFile(fileId, newName.trim());
+
+      return res.json({
+        success: true,
+        message: 'שם הקובץ שונה בהצלחה',
+        data: updatedFile
+      });
+    }
+
     // POST /api/vehicles/upload-file
     if (url.endsWith('/upload-file') && req.method === 'POST') {
       return new Promise(async (resolve, reject) => {

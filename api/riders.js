@@ -195,6 +195,28 @@ module.exports = async (req, res) => {
       });
     }
 
+    // POST /api/riders/rename-file - שינוי שם קובץ בתיקיית רוכב
+    if (url.endsWith('/rename-file') && req.method === 'POST') {
+      await checkPermission(user, db, 'riders', 'edit');
+
+      const { fileId, newName } = req.body;
+
+      if (!fileId || !newName) {
+        return res.status(400).json({
+          success: false,
+          message: 'מזהה קובץ ושם חדש הם שדות חובה'
+        });
+      }
+
+      const updatedFile = await googleDriveService.renameFile(fileId, newName.trim());
+
+      return res.json({
+        success: true,
+        message: 'שם הקובץ שונה בהצלחה',
+        data: updatedFile
+      });
+    }
+
     // DELETE /api/riders/delete-file
     if (url.endsWith('/delete-file') && req.method === 'DELETE') {
       await checkPermission(user, db, 'riders', 'edit');
