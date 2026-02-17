@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { formatDateTime } from '../utils/dateUtils';
 import {
   Box,
-  Paper,
   Typography,
   Button,
   Alert,
@@ -10,6 +10,8 @@ import {
   Card,
   CardContent,
   Chip,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import {
   CloudDone,
@@ -18,10 +20,30 @@ import {
   Link as LinkIcon,
   Settings as SettingsIcon,
   Sync,
+  People,
+  Security,
+  History,
+  Assessment,
+  Description,
 } from '@mui/icons-material';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
-const Settings = () => {
+// Lazy load tab components
+const Users = lazy(() => import('./Users'));
+const Permissions = lazy(() => import('./Permissions'));
+const AuditLog = lazy(() => import('./AuditLog'));
+const Reports = lazy(() => import('./Reports'));
+const FormBuilder = lazy(() => import('./FormBuilder'));
+
+const TabLoader = () => (
+  <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
+    <CircularProgress />
+  </Box>
+);
+
+// Google Drive settings tab content
+const GoogleDriveTab = () => {
   const [driveStatus, setDriveStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [authorizing, setAuthorizing] = useState(false);
@@ -141,33 +163,7 @@ const Settings = () => {
   };
 
   return (
-    <Box sx={{ animation: 'fadeIn 0.3s ease-out', '@keyframes fadeIn': { from: { opacity: 0 }, to: { opacity: 1 } } }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
-        <Box
-          sx={{
-            width: 56,
-            height: 56,
-            borderRadius: '16px',
-            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 8px 24px rgba(99, 102, 241, 0.3)',
-          }}
-        >
-          <SettingsIcon sx={{ fontSize: 28, color: '#ffffff' }} />
-        </Box>
-        <Box>
-          <Typography variant="h4" fontWeight="bold" sx={{ color: '#1e293b' }}>
-            הגדרות מערכת
-          </Typography>
-          <Typography variant="body1" sx={{ color: '#64748b' }}>
-            נהל את הגדרות המערכת והחיבורים שלך
-          </Typography>
-        </Box>
-      </Box>
-
+    <>
       {error && (
         <Alert
           severity="error"
@@ -394,6 +390,137 @@ const Settings = () => {
           </Box>
         </CardContent>
       </Card>
+    </>
+  );
+};
+
+// Tab definitions with permissions
+const allTabs = [
+  { id: 'google', label: 'חיבור Google', icon: <LinkIcon />, path: '/settings' },
+  { id: 'users', label: 'משתמשים', icon: <People />, path: '/settings/users', permission: 'users' },
+  { id: 'permissions', label: 'הרשאות', icon: <Security />, path: '/settings/permissions', superAdminOnly: true },
+  { id: 'audit-log', label: 'לוג פעילות', icon: <History />, path: '/settings/audit-log', permission: 'audit_logs' },
+  { id: 'reports', label: 'דוחות', icon: <Assessment />, path: '/settings/reports', permission: 'reports' },
+  { id: 'form-builder', label: 'יוצר טפסים', icon: <Description />, path: '/settings/form-builder' },
+];
+
+const Settings = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { hasRole, hasPermission } = useAuth();
+
+  // Filter tabs based on permissions
+  const visibleTabs = useMemo(() => {
+    return allTabs.filter(tab => {
+      if (tab.superAdminOnly && !hasRole('super_admin')) return false;
+      if (tab.permission && !hasPermission(tab.permission, 'view')) return false;
+      return true;
+    });
+  }, [hasRole, hasPermission]);
+
+  // Determine active tab from URL
+  const activeTabIndex = useMemo(() => {
+    const currentPath = location.pathname;
+    const idx = visibleTabs.findIndex(tab => {
+      if (tab.path === '/settings') return currentPath === '/settings';
+      return currentPath.startsWith(tab.path);
+    });
+    return idx >= 0 ? idx : 0;
+  }, [location.pathname, visibleTabs]);
+
+  const handleTabChange = (event, newValue) => {
+    navigate(visibleTabs[newValue].path);
+  };
+
+  const renderTabContent = () => {
+    const activeTab = visibleTabs[activeTabIndex];
+    if (!activeTab) return null;
+
+    switch (activeTab.id) {
+      case 'google':
+        return <GoogleDriveTab />;
+      case 'users':
+        return <Suspense fallback={<TabLoader />}><Users /></Suspense>;
+      case 'permissions':
+        return <Suspense fallback={<TabLoader />}><Permissions /></Suspense>;
+      case 'audit-log':
+        return <Suspense fallback={<TabLoader />}><AuditLog /></Suspense>;
+      case 'reports':
+        return <Suspense fallback={<TabLoader />}><Reports /></Suspense>;
+      case 'form-builder':
+        return <Suspense fallback={<TabLoader />}><FormBuilder /></Suspense>;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Box sx={{ animation: 'fadeIn 0.3s ease-out', '@keyframes fadeIn': { from: { opacity: 0 }, to: { opacity: 1 } } }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+        <Box
+          sx={{
+            width: 56,
+            height: 56,
+            borderRadius: '16px',
+            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 8px 24px rgba(99, 102, 241, 0.3)',
+          }}
+        >
+          <SettingsIcon sx={{ fontSize: 28, color: '#ffffff' }} />
+        </Box>
+        <Box>
+          <Typography variant="h4" fontWeight="bold" sx={{ color: '#1e293b' }}>
+            הגדרות מערכת
+          </Typography>
+          <Typography variant="body1" sx={{ color: '#64748b' }}>
+            נהל את הגדרות המערכת, משתמשים, הרשאות ודוחות
+          </Typography>
+        </Box>
+      </Box>
+
+      {/* Tabs */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs
+          value={activeTabIndex}
+          onChange={handleTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{
+            '& .MuiTab-root': {
+              fontWeight: 600,
+              fontSize: '0.9rem',
+              textTransform: 'none',
+              minHeight: 56,
+              gap: 1,
+              color: '#64748b',
+              '&.Mui-selected': {
+                color: '#6366f1',
+              },
+            },
+            '& .MuiTabs-indicator': {
+              backgroundColor: '#6366f1',
+              height: 3,
+              borderRadius: '3px 3px 0 0',
+            },
+          }}
+        >
+          {visibleTabs.map((tab) => (
+            <Tab
+              key={tab.id}
+              icon={tab.icon}
+              iconPosition="start"
+              label={tab.label}
+            />
+          ))}
+        </Tabs>
+      </Box>
+
+      {/* Tab Content */}
+      {renderTabContent()}
     </Box>
   );
 };

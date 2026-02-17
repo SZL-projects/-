@@ -406,12 +406,18 @@ function AppRoutes() {
           <Route path="insurance-claims" element={<InsuranceClaims />} />
           <Route path="fault-report" element={<FaultReport />} />
           <Route path="monthly-check-form" element={<MonthlyCheckForm />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="audit-log" element={<AuditLog />} />
-          <Route path="form-builder" element={<FormBuilder />} />
-          <Route path="users" element={<Users />} />
           <Route path="settings" element={<Settings />} />
-          <Route path="permissions" element={<Permissions />} />
+          <Route path="settings/users" element={<Settings />} />
+          <Route path="settings/permissions" element={<Settings />} />
+          <Route path="settings/audit-log" element={<Settings />} />
+          <Route path="settings/reports" element={<Settings />} />
+          <Route path="settings/form-builder" element={<Settings />} />
+          {/* Redirects from old paths */}
+          <Route path="users" element={<Navigate to="/settings/users" replace />} />
+          <Route path="permissions" element={<Navigate to="/settings/permissions" replace />} />
+          <Route path="reports" element={<Navigate to="/settings/reports" replace />} />
+          <Route path="audit-log" element={<Navigate to="/settings/audit-log" replace />} />
+          <Route path="form-builder" element={<Navigate to="/settings/form-builder" replace />} />
           <Route path="donations" element={<Donations />} />
           <Route path="my-vehicle" element={<MyVehicle />} />
           <Route path="my-faults" element={<MyFaults />} />

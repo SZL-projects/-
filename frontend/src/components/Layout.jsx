@@ -33,19 +33,13 @@ import {
   Assignment,
   Build,
   Warning,
-  Assessment,
   Logout,
   AccountCircle,
   ChevronRight,
   ChevronLeft,
   Search,
-  People,
-  Description,
   Lock,
-  DirectionsBike,
   Settings,
-  Security,
-  History,
   VolunteerActivism,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
@@ -75,11 +69,6 @@ const managementMenuItems = [
   { text: 'טיפולים', icon: <Build />, path: '/maintenance', permission: 'maintenance' },
   { text: 'תביעות ביטוח', icon: <Assignment />, path: '/insurance-claims', permission: 'insurance_claims' },
   { text: 'תרומות', icon: <VolunteerActivism />, path: '/donations', permission: 'donations' },
-  { text: 'דוחות', icon: <Assessment />, path: '/reports', permission: 'reports' },
-  { text: 'לוג פעילות', icon: <History />, path: '/audit-log', permission: 'audit_logs' },
-  { text: 'יוצר טפסים', icon: <Description />, path: '/form-builder' },
-  { text: 'משתמשים', icon: <People />, path: '/users', permission: 'users' },
-  { text: 'הרשאות', icon: <Security />, path: '/permissions', superAdminOnly: true },
   { text: 'הגדרות', icon: <Settings />, path: '/settings', permission: 'settings' },
 ];
 
@@ -321,7 +310,9 @@ export default function Layout() {
               if (item.superAdminOnly && !hasRole('super_admin')) return null;
               if (item.permission && !hasPermission(item.permission, 'view')) return null;
 
-              const isSelected = location.pathname === item.path;
+              const isSelected = item.path === '/settings'
+                ? location.pathname.startsWith('/settings')
+                : location.pathname === item.path;
               return (
                 <ListItem key={item.text} disablePadding sx={{ display: 'block', mb: 0.5 }}>
                   <ListItemButton
@@ -492,7 +483,9 @@ export default function Layout() {
                     if (item.superAdminOnly && !hasRole('super_admin')) return null;
                     if (item.permission && !hasPermission(item.permission, 'view')) return null;
 
-                    const isSelected = location.pathname === item.path;
+                    const isSelected = item.path === '/settings'
+                      ? location.pathname.startsWith('/settings')
+                      : location.pathname === item.path;
                     return (
                       <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
                         <ListItemButton
