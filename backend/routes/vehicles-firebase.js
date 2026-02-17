@@ -108,6 +108,36 @@ router.get('/drive-structure', checkPermission('vehicles', 'edit'), async (req, 
   }
 });
 
+// @route   POST /api/vehicles/rename-file
+// @desc    שינוי שם קובץ ב-Drive
+// @access  Private (מנהלים בלבד)
+router.post('/rename-file', checkPermission('vehicles', 'edit'), async (req, res) => {
+  try {
+    const { fileId, newName } = req.body;
+
+    if (!fileId || !newName) {
+      return res.status(400).json({
+        success: false,
+        message: 'מזהה קובץ ושם חדש הם שדות חובה'
+      });
+    }
+
+    const updatedFile = await googleDriveService.renameFile(fileId, newName.trim());
+
+    res.json({
+      success: true,
+      message: 'שם הקובץ שונה בהצלחה',
+      data: updatedFile
+    });
+  } catch (error) {
+    console.error('Error renaming file:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה בשינוי שם הקובץ'
+    });
+  }
+});
+
 // @route   DELETE /api/vehicles/delete-file
 // @desc    מחיקת קובץ מ-Drive
 // @access  Private (מנהלים בלבד)

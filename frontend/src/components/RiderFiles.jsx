@@ -62,6 +62,10 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [renamingFolder, setRenamingFolder] = useState(false);
+  const [renameFileDialogOpen, setRenameFileDialogOpen] = useState(false);
+  const [newFileName, setNewFileName] = useState('');
+  const [selectedFileForRename, setSelectedFileForRename] = useState(null);
+  const [renamingFile, setRenamingFile] = useState(false);
   const [addFolderDialogOpen, setAddFolderDialogOpen] = useState(false);
   const [customFolderName, setCustomFolderName] = useState('');
   const [addingFolder, setAddingFolder] = useState(false);
@@ -307,6 +311,39 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
       showSnackbar(error.response?.data?.message || 'שגיאה ביצירת תיקייה', 'error');
     } finally {
       setAddingFolder(false);
+    }
+  };
+
+  // פתיחת דיאלוג שינוי שם קובץ
+  const handleOpenRenameFileDialog = (file) => {
+    setSelectedFileForRename(file);
+    const lastDot = file.name.lastIndexOf('.');
+    const nameWithoutExt = lastDot > 0 ? file.name.substring(0, lastDot) : file.name;
+    setNewFileName(nameWithoutExt);
+    setRenameFileDialogOpen(true);
+  };
+
+  // שינוי שם קובץ
+  const handleRenameFile = async () => {
+    if (!selectedFileForRename || !newFileName.trim()) return;
+
+    setRenamingFile(true);
+    try {
+      const lastDot = selectedFileForRename.name.lastIndexOf('.');
+      const ext = lastDot > 0 ? selectedFileForRename.name.substring(lastDot) : '';
+      const fullNewName = newFileName.trim() + ext;
+
+      await ridersAPI.renameFile(selectedFileForRename.id, fullNewName);
+      showSnackbar('שם הקובץ שונה בהצלחה', 'success');
+      setRenameFileDialogOpen(false);
+      setNewFileName('');
+      setSelectedFileForRename(null);
+      loadFiles();
+    } catch (error) {
+      console.error('Error renaming file:', error);
+      showSnackbar('שגיאה בשינוי שם הקובץ', 'error');
+    } finally {
+      setRenamingFile(false);
     }
   };
 
@@ -584,6 +621,17 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
 
                     {!viewAsRider && (
                       <>
+                        {/* כפתור שינוי שם קובץ */}
+                        <Tooltip title="שנה שם קובץ">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleOpenRenameFileDialog(file)}
+                            sx={{ color: '#6366f1' }}
+                          >
+                            <Edit fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+
                         {/* כפתור נראות לרוכב */}
                         <Tooltip title={file.visibleToRider ? 'הסתר מהרוכב' : 'הצג לרוכב'}>
                           <IconButton
@@ -722,6 +770,56 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
               disabled={renamingFolder || !newFolderName.trim()}
             >
               {renamingFolder ? 'משנה...' : 'שנה שם'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* דיאלוג שינוי שם קובץ */}
+        <Dialog
+          open={renameFileDialogOpen}
+          onClose={() => {
+            setRenameFileDialogOpen(false);
+            setNewFileName('');
+            setSelectedFileForRename(null);
+          }}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>שינוי שם קובץ</DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="שם חדש"
+              fullWidth
+              value={newFileName}
+              onChange={(e) => setNewFileName(e.target.value)}
+              sx={{ mt: 1 }}
+              helperText={selectedFileForRename ? `סיומת הקובץ (${selectedFileForRename.name.substring(selectedFileForRename.name.lastIndexOf('.'))}) תישמר אוטומטית` : ''}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setRenameFileDialogOpen(false);
+                setNewFileName('');
+                setSelectedFileForRename(null);
+              }}
+            >
+              ביטול
+            </Button>
+            <Button
+              onClick={handleRenameFile}
+              variant="contained"
+              disabled={renamingFile || !newFileName.trim()}
+              sx={{
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                },
+              }}
+            >
+              {renamingFile ? 'משנה...' : 'שנה שם'}
             </Button>
           </DialogActions>
         </Dialog>

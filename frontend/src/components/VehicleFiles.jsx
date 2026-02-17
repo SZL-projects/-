@@ -61,6 +61,10 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [renamingFolder, setRenamingFolder] = useState(false);
+  const [renameFileDialogOpen, setRenameFileDialogOpen] = useState(false);
+  const [newFileName, setNewFileName] = useState('');
+  const [selectedFileForRename, setSelectedFileForRename] = useState(null);
+  const [renamingFile, setRenamingFile] = useState(false);
 
   // בניית רשימת הקטגוריות - כולל תיקיות מותאמות אישית
   const categories = [
@@ -287,6 +291,41 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
     }
   };
 
+  // פתיחת דיאלוג שינוי שם קובץ
+  const handleOpenRenameFileDialog = (file) => {
+    setSelectedFileForRename(file);
+    // הצגת השם בלי הסיומת
+    const lastDot = file.name.lastIndexOf('.');
+    const nameWithoutExt = lastDot > 0 ? file.name.substring(0, lastDot) : file.name;
+    setNewFileName(nameWithoutExt);
+    setRenameFileDialogOpen(true);
+  };
+
+  // שינוי שם קובץ
+  const handleRenameFile = async () => {
+    if (!selectedFileForRename || !newFileName.trim()) return;
+
+    setRenamingFile(true);
+    try {
+      // שמירת הסיומת המקורית
+      const lastDot = selectedFileForRename.name.lastIndexOf('.');
+      const ext = lastDot > 0 ? selectedFileForRename.name.substring(lastDot) : '';
+      const fullNewName = newFileName.trim() + ext;
+
+      await vehiclesAPI.renameFile(selectedFileForRename.id, fullNewName);
+      showSnackbar('שם הקובץ שונה בהצלחה', 'success');
+      setRenameFileDialogOpen(false);
+      setNewFileName('');
+      setSelectedFileForRename(null);
+      loadFiles();
+    } catch (error) {
+      console.error('Error renaming file:', error);
+      showSnackbar('שגיאה בשינוי שם הקובץ', 'error');
+    } finally {
+      setRenamingFile(false);
+    }
+  };
+
   // קבלת רשימת תיקיות יעד להעברה (כל התיקיות חוץ מהנוכחית)
   const getMoveTargetFolders = () => {
     return categories.filter((cat, index) => {
@@ -430,6 +469,17 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
                         </IconButton>
                       </Tooltip>
 
+                      {/* כפתור שינוי שם קובץ */}
+                      <Tooltip title="שנה שם קובץ">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleOpenRenameFileDialog(file)}
+                          color="primary"
+                        >
+                          <Edit fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+
                       {/* כפתור נראות לרוכב */}
                       <Tooltip title={file.visibleToRider ? 'הסתר מהרוכב' : 'הצג לרוכב'}>
                         <IconButton
@@ -563,6 +613,50 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
               disabled={renamingFolder || !newFolderName.trim()}
             >
               {renamingFolder ? 'משנה...' : 'שנה שם'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* דיאלוג שינוי שם קובץ */}
+        <Dialog
+          open={renameFileDialogOpen}
+          onClose={() => {
+            setRenameFileDialogOpen(false);
+            setNewFileName('');
+            setSelectedFileForRename(null);
+          }}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>שינוי שם קובץ</DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="שם חדש"
+              fullWidth
+              value={newFileName}
+              onChange={(e) => setNewFileName(e.target.value)}
+              sx={{ mt: 1 }}
+              helperText={selectedFileForRename ? `סיומת הקובץ (${selectedFileForRename.name.substring(selectedFileForRename.name.lastIndexOf('.'))}) תישמר אוטומטית` : ''}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setRenameFileDialogOpen(false);
+                setNewFileName('');
+                setSelectedFileForRename(null);
+              }}
+            >
+              ביטול
+            </Button>
+            <Button
+              onClick={handleRenameFile}
+              variant="contained"
+              disabled={renamingFile || !newFileName.trim()}
+            >
+              {renamingFile ? 'משנה...' : 'שנה שם'}
             </Button>
           </DialogActions>
         </Dialog>

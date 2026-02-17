@@ -91,6 +91,36 @@ router.post('/upload-file', checkPermission('riders', 'edit'), upload.single('fi
   }
 });
 
+// @route   POST /api/riders/rename-file
+// @desc    שינוי שם קובץ בתיקיית רוכב
+// @access  Private (מנהלים בלבד)
+router.post('/rename-file', checkPermission('riders', 'edit'), async (req, res) => {
+  try {
+    const { fileId, newName } = req.body;
+
+    if (!fileId || !newName) {
+      return res.status(400).json({
+        success: false,
+        message: 'מזהה קובץ ושם חדש הם שדות חובה'
+      });
+    }
+
+    const updatedFile = await googleDriveService.renameFile(fileId, newName.trim());
+
+    res.json({
+      success: true,
+      message: 'שם הקובץ שונה בהצלחה',
+      data: updatedFile
+    });
+  } catch (error) {
+    console.error('Error renaming rider file:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'שגיאה בשינוי שם הקובץ'
+    });
+  }
+});
+
 // @route   DELETE /api/riders/delete-file
 // @desc    מחיקת קובץ מתיקיית רוכב
 // @access  Private (מנהלים בלבד)

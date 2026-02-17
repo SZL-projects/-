@@ -379,6 +379,32 @@ class GoogleDriveService {
     }
   }
 
+  // שינוי שם קובץ/תיקייה
+  async renameFile(fileId, newName) {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    if (!this.initialized) {
+      throw new Error('Google Drive service not initialized');
+    }
+
+    try {
+      const response = await this.drive.files.update({
+        fileId: fileId,
+        requestBody: { name: newName },
+        fields: 'id, name, webViewLink, size, createdTime, mimeType',
+        supportsAllDrives: true
+      });
+
+      console.log(`Renamed file ${fileId} to "${newName}"`);
+      return response.data;
+    } catch (error) {
+      console.error('Error renaming file:', error);
+      throw error;
+    }
+  }
+
   // מחיקת קובץ
   async deleteFile(fileId) {
     if (!this.initialized) {

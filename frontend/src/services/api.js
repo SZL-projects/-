@@ -182,6 +182,10 @@ export const ridersAPI = {
     invalidateCache('/riders');
     return api.post('/riders/rename-folder', { riderId, folderId, newName, folderKey, isCustom });
   },
+  renameFile: (fileId, newName) => {
+    invalidateCache('/riders');
+    return api.post('/riders/rename-file', { fileId, newName });
+  },
 };
 
 // Vehicles API - עם cache לשיפור ביצועים
@@ -251,6 +255,10 @@ export const vehiclesAPI = {
   renameFolder: (vehicleId, folderId, newName, folderKey, isCustom) => {
     invalidateCache('/vehicles');
     return api.post('/vehicles/rename-folder', { vehicleId, folderId, newName, folderKey, isCustom });
+  },
+  renameFile: (fileId, newName) => {
+    invalidateCache('/vehicles');
+    return api.post('/vehicles/rename-file', { fileId, newName });
   },
   refreshFolders: (vehicleId) => {
     invalidateCache('/vehicles');
