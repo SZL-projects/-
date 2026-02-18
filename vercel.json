@@ -16,6 +16,6 @@
     { "source": "/api/search/:path*", "destination": "/api/search" },
     { "source": "/api/reports/:path*", "destination": "/api/reports" },
     { "source": "/api/audit-logs/:path*", "destination": "/api/reports" },
-    { "source": "/api/donations/:path*", "destination": "/api/donations" }
+    { "source": "/api/donations/:path*", "destination": "/api/faults" }
   ]
 }
