@@ -111,13 +111,11 @@ async function handleDonationsRequest(req, res, db, user, url) {
               return resolve();
             }
 
-            if (!folderId) {
-              res.status(400).json({ success: false, message: 'מזהה תיקייה הוא שדה חובה' });
-              return resolve();
-            }
+            // אם אין folderId, ננסה להשתמש בתיקיית ברירת מחדל של דונציות
+            const targetFolderId = folderId || process.env.GOOGLE_DRIVE_DEFAULT_FOLDER_ID || null;
 
             const fileData = await googleDriveService.uploadFile(
-              fileName, fileBuffer, folderId, mimeType
+              fileName, fileBuffer, targetFolderId, mimeType
             );
 
             if (donationIdField) {

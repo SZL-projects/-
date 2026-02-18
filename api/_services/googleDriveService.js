@@ -590,8 +590,10 @@ class GoogleDriveService {
 
       const fileMetadata = {
         name: safeFileName,
-        parents: [folderId]
       };
+      if (folderId) {
+        fileMetadata.parents = [folderId];
+      }
 
       const media = {
         mimeType: mimeType,

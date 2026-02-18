@@ -246,18 +246,14 @@ router.post('/upload-file', upload.single('file'), async (req, res) => {
       });
     }
 
-    if (!folderId) {
-      return res.status(400).json({
-        success: false,
-        message: 'מזהה תיקייה הוא שדה חובה'
-      });
-    }
+    // אם אין folderId, ננסה להשתמש בתיקיית ברירת מחדל
+    const targetFolderId = folderId || process.env.GOOGLE_DRIVE_DEFAULT_FOLDER_ID || null;
 
     // העלאת הקובץ ל-Google Drive
     const fileData = await googleDriveService.uploadFile(
       req.file.originalname,
       req.file.buffer,
-      folderId,
+      targetFolderId,
       req.file.mimetype
     );
 
