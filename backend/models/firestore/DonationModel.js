@@ -21,7 +21,8 @@ class DonationModel {
   // יצירת תרומה חדשה
   async create(donationData, createdByUserId) {
     try {
-      const donationNumber = await this.generateDonationNumber();
+      // שימוש במספר אסמכתא שהוזן, או מספר אוטומטי אם לא הוזן
+      const donationNumber = donationData.donationNumber || await this.generateDonationNumber();
 
       const donationDoc = {
         donationNumber,
@@ -84,7 +85,6 @@ class DonationModel {
 
       // הסרת שדות שלא צריך לעדכן
       delete updates.id;
-      delete updates.donationNumber;
       delete updates.createdAt;
       delete updates.createdBy;
 

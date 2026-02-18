@@ -73,6 +73,7 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
     amount: '',
     paymentMethod: 'credit_card',
     donationDate: new Date().toISOString().split('T')[0],
+    referenceNumber: '',
     notes: '',
   });
 
@@ -92,6 +93,7 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
         amount: donation.amount || '',
         paymentMethod: donation.paymentMethod || 'credit_card',
         donationDate: parseDate(donation.donationDate),
+        referenceNumber: donation.donationNumber || '',
         notes: donation.notes || '',
       });
     } else {
@@ -101,6 +103,7 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
         amount: '',
         paymentMethod: 'credit_card',
         donationDate: new Date().toISOString().split('T')[0],
+        referenceNumber: '',
         notes: '',
       });
     }
@@ -127,16 +130,40 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
     }
   };
 
+  const handleReferenceNumberChange = (value) => {
+    setFormData(prev => ({ ...prev, referenceNumber: value }));
+    // שינוי אוטומטי של שמות הקבצים למספר האסמכתא
+    if (value.trim()) {
+      setSelectedFiles(prev => prev.map((f, i) => ({
+        ...f,
+        customName: prev.length > 1 ? `${value}_${i + 1}` : value,
+      })));
+    }
+  };
+
   const handleFileSelect = (event) => {
     const files = Array.from(event.target.files);
-    const newFiles = files.map(file => {
-      // הפרדת שם קובץ מסיומת
+    const currentCount = selectedFiles.length;
+    const newFiles = files.map((file, i) => {
       const lastDot = file.name.lastIndexOf('.');
       const nameWithoutExt = lastDot > 0 ? file.name.substring(0, lastDot) : file.name;
       const ext = lastDot > 0 ? file.name.substring(lastDot) : '';
-      return { file, customName: nameWithoutExt, ext, editingName: false };
+      // אם יש מספר אסמכתא, שם הקובץ יהיה המספר
+      let customName = nameWithoutExt;
+      if (formData.referenceNumber.trim()) {
+        const totalFiles = currentCount + files.length;
+        customName = totalFiles > 1 ? `${formData.referenceNumber}_${currentCount + i + 1}` : formData.referenceNumber;
+      }
+      return { file, customName, ext, editingName: false };
     });
-    setSelectedFiles(prev => [...prev, ...newFiles]);
+    setSelectedFiles(prev => {
+      const updated = [...prev, ...newFiles];
+      // עדכון מספור אם יש יותר מקובץ אחד ויש מספר אסמכתא
+      if (formData.referenceNumber.trim() && updated.length > 1) {
+        return updated.map((f, idx) => ({ ...f, customName: `${formData.referenceNumber}_${idx + 1}` }));
+      }
+      return updated;
+    });
   };
 
   const handleRemoveFile = (index) => {
@@ -161,6 +188,10 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
       setError('סכום חייב להיות גדול מאפס');
       return;
     }
+    if (!formData.referenceNumber.trim()) {
+      setError('יש להזין מספר אסמכתא');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -171,7 +202,9 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
       const dataToSend = {
         ...formData,
         amount: Number(formData.amount),
+        donationNumber: formData.referenceNumber.trim(),
       };
+      delete dataToSend.referenceNumber;
 
       if (isEditing) {
         const response = await donationsAPI.update(donation.id, dataToSend);
@@ -264,6 +297,17 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
               )}
               noOptionsText="לא נמצאו רוכבים"
               isOptionEqualToValue={(option, value) => option.id === value?.id}
+            />
+          </Grid>
+
+          {/* מספר אסמכתא */}
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="מספר אסמכתא *"
+              value={formData.referenceNumber}
+              onChange={(e) => handleReferenceNumberChange(e.target.value)}
+              placeholder="הזן מספר אסמכתא..."
             />
           </Grid>
 

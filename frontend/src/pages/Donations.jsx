@@ -424,7 +424,7 @@ export default function Donations() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>מספר תרומה</TableCell>
+                <TableCell>מספר אסמכתא</TableCell>
                 <TableCell>רוכב</TableCell>
                 <TableCell>סכום</TableCell>
                 <TableCell>אמצעי תשלום</TableCell>

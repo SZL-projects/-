@@ -219,7 +219,6 @@ async function handleDonationsRequest(req, res, db, user, url) {
     if (req.method === 'PUT') {
       const updateData = { ...req.body, updatedBy: user.id, updatedAt: new Date() };
       delete updateData.id;
-      delete updateData.donationNumber;
       delete updateData.createdAt;
       delete updateData.createdBy;
       if (updateData.donationDate) updateData.donationDate = new Date(updateData.donationDate);
@@ -270,21 +269,25 @@ async function handleDonationsRequest(req, res, db, user, url) {
     if (!req.body.riderId) return res.status(400).json({ success: false, message: 'רוכב הוא שדה חובה' });
     if (!req.body.amount || req.body.amount <= 0) return res.status(400).json({ success: false, message: 'סכום תרומה חייב להיות גדול מאפס' });
 
-    // מספר תרומה אוטומטי
-    const year = new Date().getFullYear();
-    let count = 1;
-    try {
-      const countSnapshot = await db.collection('donations')
-        .where('createdAt', '>=', new Date(year, 0, 1))
-        .where('createdAt', '<', new Date(year + 1, 0, 1)).get();
-      count = countSnapshot.size + 1;
-    } catch (e) {
-      const allSnapshot = await db.collection('donations').get();
-      count = allSnapshot.size + 1;
+    // מספר תרומה - מספר אסמכתא שהוזן, או אוטומטי
+    let donationNumber = req.body.donationNumber;
+    if (!donationNumber) {
+      const year = new Date().getFullYear();
+      let count = 1;
+      try {
+        const countSnapshot = await db.collection('donations')
+          .where('createdAt', '>=', new Date(year, 0, 1))
+          .where('createdAt', '<', new Date(year + 1, 0, 1)).get();
+        count = countSnapshot.size + 1;
+      } catch (e) {
+        const allSnapshot = await db.collection('donations').get();
+        count = allSnapshot.size + 1;
+      }
+      donationNumber = `D-${year}-${String(count).padStart(5, '0')}`;
     }
 
     const donationData = {
-      donationNumber: `D-${year}-${String(count).padStart(5, '0')}`,
+      donationNumber,
       riderId: req.body.riderId,
       riderName: req.body.riderName || '',
       amount: Number(req.body.amount),

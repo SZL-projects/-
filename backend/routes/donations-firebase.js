@@ -145,7 +145,7 @@ router.post('/', async (req, res) => {
       entityType: 'donation',
       entityId: donation.id,
       entityName: donation.donationNumber || 'תרומה חדשה',
-      description: `תרומה חדשה נוצרה: ${donation.donationNumber || donation.id}`
+      description: `תרומה חדשה נוצרה: ${donation.donationNumber}`
     });
 
     res.status(201).json({
