@@ -31,6 +31,8 @@ import {
   CloudUpload,
   InsertDriveFile,
   Delete,
+  Edit,
+  Check,
   VolunteerActivism,
 } from '@mui/icons-material';
 import { donationsAPI } from '../services/api';
@@ -76,7 +78,7 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [selectedFiles, setSelectedFiles] = useState([]); // [{ file, customName, editingName }]
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
   const isEditing = !!donation;
@@ -127,11 +129,26 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
 
   const handleFileSelect = (event) => {
     const files = Array.from(event.target.files);
-    setSelectedFiles(prev => [...prev, ...files]);
+    const newFiles = files.map(file => {
+      // הפרדת שם קובץ מסיומת
+      const lastDot = file.name.lastIndexOf('.');
+      const nameWithoutExt = lastDot > 0 ? file.name.substring(0, lastDot) : file.name;
+      const ext = lastDot > 0 ? file.name.substring(lastDot) : '';
+      return { file, customName: nameWithoutExt, ext, editingName: false };
+    });
+    setSelectedFiles(prev => [...prev, ...newFiles]);
   };
 
   const handleRemoveFile = (index) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleToggleEditFileName = (index) => {
+    setSelectedFiles(prev => prev.map((f, i) => i === index ? { ...f, editingName: !f.editingName } : f));
+  };
+
+  const handleChangeFileName = (index, newName) => {
+    setSelectedFiles(prev => prev.map((f, i) => i === index ? { ...f, customName: newName } : f));
   };
 
   const handleSubmit = async () => {
@@ -167,11 +184,13 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
       // העלאת קבצים אם יש
       if (selectedFiles.length > 0 && result?.id) {
         setUploadingFiles(true);
-        for (const file of selectedFiles) {
+        for (const fileEntry of selectedFiles) {
+          const finalName = (fileEntry.customName || 'file') + fileEntry.ext;
+          // יצירת קובץ חדש עם השם המותאם
+          const renamedFile = new File([fileEntry.file], finalName, { type: fileEntry.file.type });
           const formDataUpload = new FormData();
-          formDataUpload.append('file', file);
+          formDataUpload.append('file', renamedFile);
           formDataUpload.append('donationId', result.id);
-          // אם יש folderId מהרוכב - השתמש בו
           if (selectedRider?.driveFolderId) {
             formDataUpload.append('folderId', selectedRider.driveFolderId);
           }
@@ -328,16 +347,38 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
 
             {selectedFiles.length > 0 && (
               <List dense>
-                {selectedFiles.map((file, index) => (
-                  <ListItem key={index}>
+                {selectedFiles.map((fileEntry, index) => (
+                  <ListItem key={index} sx={{ pr: 12 }}>
                     <ListItemIcon sx={{ minWidth: 36 }}>
                       <InsertDriveFile fontSize="small" color="primary" />
                     </ListItemIcon>
-                    <ListItemText
-                      primary={file.name}
-                      secondary={`${(file.size / 1024).toFixed(1)} KB`}
-                    />
+                    {fileEntry.editingName ? (
+                      <TextField
+                        size="small"
+                        variant="standard"
+                        value={fileEntry.customName}
+                        onChange={(e) => handleChangeFileName(index, e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleToggleEditFileName(index); }}
+                        autoFocus
+                        fullWidth
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <Typography variant="caption" color="text.secondary">{fileEntry.ext}</Typography>
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                    ) : (
+                      <ListItemText
+                        primary={fileEntry.customName + fileEntry.ext}
+                        secondary={`${(fileEntry.file.size / 1024).toFixed(1)} KB`}
+                      />
+                    )}
                     <ListItemSecondaryAction>
+                      <IconButton edge="end" size="small" onClick={() => handleToggleEditFileName(index)} title="שנה שם קובץ">
+                        {fileEntry.editingName ? <Check fontSize="small" color="success" /> : <Edit fontSize="small" />}
+                      </IconButton>
                       <IconButton edge="end" size="small" onClick={() => handleRemoveFile(index)}>
                         <Delete fontSize="small" />
                       </IconButton>
