@@ -23,11 +23,14 @@ router.use(protect);
 // @access  Private
 router.get('/', async (req, res) => {
   try {
-    const { search, paymentMethod, riderId, limit = 100 } = req.query;
+    const { search, paymentMethod, riderId, type, limit = 100 } = req.query;
 
     let donations;
     let filters = {};
 
+    if (type) {
+      filters.type = type;
+    }
     if (paymentMethod) {
       filters.paymentMethod = paymentMethod;
     }
@@ -125,7 +128,8 @@ router.get('/:id', async (req, res) => {
 // @access  Private
 router.post('/', async (req, res) => {
   try {
-    if (!req.body.riderId) {
+    const entryType = req.body.type || 'donation';
+    if (entryType === 'donation' && !req.body.riderId) {
       return res.status(400).json({
         success: false,
         message: 'רוכב הוא שדה חובה'
@@ -134,7 +138,7 @@ router.post('/', async (req, res) => {
     if (!req.body.amount || req.body.amount <= 0) {
       return res.status(400).json({
         success: false,
-        message: 'סכום תרומה חייב להיות גדול מאפס'
+        message: 'סכום חייב להיות גדול מאפס'
       });
     }
 
@@ -237,7 +241,7 @@ router.delete('/:id', async (req, res) => {
 // @access  Private
 router.post('/upload-file', upload.single('file'), async (req, res) => {
   try {
-    const { donationId, folderId } = req.body;
+    const { donationId } = req.body;
 
     if (!req.file) {
       return res.status(400).json({
@@ -246,8 +250,15 @@ router.post('/upload-file', upload.single('file'), async (req, res) => {
       });
     }
 
-    // אם אין folderId, ננסה להשתמש בתיקיית ברירת מחדל
-    const targetFolderId = folderId || process.env.GOOGLE_DRIVE_DEFAULT_FOLDER_ID || null;
+    // תמיד להעלות לתיקיית "תרומות" קבועה ב-Drive
+    const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || '186mat7V_XgO02xkmIqjQXeZDs26S1SFY';
+    let targetFolderId;
+    try {
+      const donationsFolder = await googleDriveService.findOrCreateFolder('תרומות', rootFolderId);
+      targetFolderId = donationsFolder.id;
+    } catch (e) {
+      targetFolderId = rootFolderId;
+    }
 
     // העלאת הקובץ ל-Google Drive
     const fileData = await googleDriveService.uploadFile(

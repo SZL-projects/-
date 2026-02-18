@@ -31,6 +31,9 @@ import {
   useMediaQuery,
   useTheme,
   Tooltip,
+  Tabs,
+  Tab,
+  Menu,
 } from '@mui/material';
 import {
   Search,
@@ -39,10 +42,11 @@ import {
   Refresh,
   Add,
   VolunteerActivism,
-  AttachMoney,
   Person,
-  CreditCard,
   Visibility,
+  AccountBalance,
+  RemoveCircleOutline,
+  ArrowDropDown,
 } from '@mui/icons-material';
 import { donationsAPI, ridersAPI } from '../services/api';
 import DonationDialog from '../components/DonationDialog';
@@ -62,7 +66,14 @@ const paymentMethodColors = {
   other: '#64748b',
 };
 
-// פורמט תאריך
+const expenseCategoryLabels = {
+  retreat: 'גיבוש',
+  equipment: 'ציוד',
+  food: 'אוכל',
+  transport: 'הסעות',
+  other: 'אחר',
+};
+
 const formatDate = (timestamp) => {
   if (!timestamp) return '-';
   try {
@@ -81,7 +92,6 @@ const formatDate = (timestamp) => {
   }
 };
 
-// פורמט מספר לש"ח
 const formatCurrency = (amount) => {
   if (!amount && amount !== 0) return '-';
   return `₪${Number(amount).toLocaleString('he-IL')}`;
@@ -100,10 +110,13 @@ export default function Donations() {
   const [error, setError] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingDonation, setEditingDonation] = useState(null);
+  const [editingType, setEditingType] = useState('donation');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingDonation, setDeletingDonation] = useState(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedDonation, setSelectedDonation] = useState(null);
+  const [activeTab, setActiveTab] = useState(0); // 0=הכל, 1=תרומות, 2=הוצאות
+  const [addMenuAnchor, setAddMenuAnchor] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -130,25 +143,42 @@ export default function Donations() {
 
   // סטטיסטיקות
   const stats = useMemo(() => {
-    let totalAmount = 0;
-    let countByMethod = {};
+    let totalDonations = 0;
+    let totalExpenses = 0;
+    let donationsCount = 0;
+    let expensesCount = 0;
 
     for (const d of donations) {
-      totalAmount += d.amount || 0;
-      const method = d.paymentMethod || 'other';
-      countByMethod[method] = (countByMethod[method] || 0) + 1;
+      const type = d.type || 'donation';
+      if (type === 'expense') {
+        totalExpenses += d.amount || 0;
+        expensesCount++;
+      } else {
+        totalDonations += d.amount || 0;
+        donationsCount++;
+      }
     }
 
     return {
       total: donations.length,
-      totalAmount,
-      countByMethod,
+      donationsCount,
+      expensesCount,
+      totalDonations,
+      totalExpenses,
+      balance: totalDonations - totalExpenses,
     };
   }, [donations]);
 
-  // סינון תרומות
+  // סינון
   const filteredDonations = useMemo(() => {
     let result = [...donations];
+
+    // סינון לפי טאב
+    if (activeTab === 1) {
+      result = result.filter(d => (d.type || 'donation') === 'donation');
+    } else if (activeTab === 2) {
+      result = result.filter(d => d.type === 'expense');
+    }
 
     if (filterPaymentMethod !== 'all') {
       result = result.filter(d => d.paymentMethod === filterPaymentMethod);
@@ -160,20 +190,31 @@ export default function Donations() {
         d.donationNumber?.toLowerCase().includes(search) ||
         d.riderName?.toLowerCase().includes(search) ||
         d.notes?.toLowerCase().includes(search) ||
+        d.category?.toLowerCase().includes(search) ||
         String(d.amount).includes(search)
       );
     }
 
     return result;
-  }, [donations, filterPaymentMethod, searchTerm]);
+  }, [donations, activeTab, filterPaymentMethod, searchTerm]);
 
-  const handleAdd = useCallback(() => {
+  const handleAddDonation = useCallback(() => {
     setEditingDonation(null);
+    setEditingType('donation');
     setEditDialogOpen(true);
+    setAddMenuAnchor(null);
+  }, []);
+
+  const handleAddExpense = useCallback(() => {
+    setEditingDonation(null);
+    setEditingType('expense');
+    setEditDialogOpen(true);
+    setAddMenuAnchor(null);
   }, []);
 
   const handleEdit = useCallback((donation) => {
     setEditingDonation(donation);
+    setEditingType(donation.type || 'donation');
     setEditDialogOpen(true);
   }, []);
 
@@ -195,8 +236,8 @@ export default function Donations() {
       setDeleteDialogOpen(false);
       setDeletingDonation(null);
     } catch (err) {
-      console.error('Error deleting donation:', err);
-      setError('שגיאה במחיקת התרומה');
+      console.error('Error deleting:', err);
+      setError('שגיאה במחיקה');
     }
   }, [deletingDonation]);
 
@@ -229,14 +270,14 @@ export default function Donations() {
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-            <VolunteerActivism sx={{ color: 'white', fontSize: 28 }} />
+            <AccountBalance sx={{ color: 'white', fontSize: 28 }} />
           </Box>
           <Box>
             <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              תרומות
+              קופה
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              ניהול תרומות ותורמים
+              ניהול תרומות והוצאות
             </Typography>
           </Box>
         </Box>
@@ -252,11 +293,26 @@ export default function Donations() {
           <Button
             variant="contained"
             startIcon={<Add />}
-            onClick={handleAdd}
+            endIcon={<ArrowDropDown />}
+            onClick={(e) => setAddMenuAnchor(e.currentTarget)}
             size={isMobile ? 'small' : 'medium'}
           >
-            תרומה חדשה
+            הוספה
           </Button>
+          <Menu
+            anchorEl={addMenuAnchor}
+            open={Boolean(addMenuAnchor)}
+            onClose={() => setAddMenuAnchor(null)}
+          >
+            <MenuItem onClick={handleAddDonation}>
+              <VolunteerActivism sx={{ ml: 1, color: '#10b981' }} fontSize="small" />
+              תרומה חדשה
+            </MenuItem>
+            <MenuItem onClick={handleAddExpense}>
+              <RemoveCircleOutline sx={{ ml: 1, color: '#ef4444' }} fontSize="small" />
+              הוצאה חדשה
+            </MenuItem>
+          </Menu>
         </Box>
       </Box>
 
@@ -271,52 +327,66 @@ export default function Donations() {
         <Grid item xs={6} sm={3}>
           <Card>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#10b981' }}>
+                {formatCurrency(stats.totalDonations)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                סה"כ תרומות ({stats.donationsCount})
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <Card>
+            <CardContent sx={{ textAlign: 'center', py: 2 }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#ef4444' }}>
+                {formatCurrency(stats.totalExpenses)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                סה"כ הוצאות ({stats.expensesCount})
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <Card sx={{ border: '2px solid', borderColor: stats.balance >= 0 ? '#10b981' : '#ef4444' }}>
+            <CardContent sx={{ textAlign: 'center', py: 2 }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: stats.balance >= 0 ? '#10b981' : '#ef4444' }}>
+                {formatCurrency(stats.balance)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                יתרה בקופה
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <Card>
+            <CardContent sx={{ textAlign: 'center', py: 2 }}>
               <Typography variant="h4" sx={{ fontWeight: 700, color: '#6366f1' }}>
                 {stats.total}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                סה"כ תרומות
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={6} sm={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: '#10b981' }}>
-                {formatCurrency(stats.totalAmount)}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                סה"כ סכום
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={6} sm={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: '#f59e0b' }}>
-                {stats.countByMethod['credit_card'] || 0}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                אשראי
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={6} sm={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: '#3b82f6' }}>
-                {(stats.countByMethod['bit'] || 0) + (stats.countByMethod['nedarim_plus'] || 0)}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                ביט / נדרים פלוס
+                סה"כ רשומות
               </Typography>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
+
+      {/* טאבים */}
+      <Paper sx={{ mb: 2 }}>
+        <Tabs
+          value={activeTab}
+          onChange={(_, newValue) => setActiveTab(newValue)}
+          variant="fullWidth"
+          sx={{ borderBottom: 1, borderColor: 'divider' }}
+        >
+          <Tab label="הכל" />
+          <Tab label={`תרומות (${stats.donationsCount})`} />
+          <Tab label={`הוצאות (${stats.expensesCount})`} />
+        </Tabs>
+      </Paper>
 
       {/* חיפוש וסינון */}
       <Paper sx={{ p: 2, mb: 2 }}>
@@ -325,7 +395,7 @@ export default function Donations() {
             <TextField
               fullWidth
               size="small"
-              placeholder="חיפוש תרומות..."
+              placeholder="חיפוש..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               InputProps={{
@@ -337,97 +407,102 @@ export default function Donations() {
               }}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth size="small">
-              <InputLabel>אמצעי תשלום</InputLabel>
-              <Select
-                value={filterPaymentMethod}
-                onChange={(e) => setFilterPaymentMethod(e.target.value)}
-                label="אמצעי תשלום"
-              >
-                <MenuItem value="all">הכל</MenuItem>
-                <MenuItem value="credit_card">אשראי</MenuItem>
-                <MenuItem value="bit">ביט</MenuItem>
-                <MenuItem value="nedarim_plus">נדרים פלוס</MenuItem>
-                <MenuItem value="other">אחר</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
+          {activeTab !== 2 && (
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl fullWidth size="small">
+                <InputLabel>אמצעי תשלום</InputLabel>
+                <Select
+                  value={filterPaymentMethod}
+                  onChange={(e) => setFilterPaymentMethod(e.target.value)}
+                  label="אמצעי תשלום"
+                >
+                  <MenuItem value="all">הכל</MenuItem>
+                  <MenuItem value="credit_card">אשראי</MenuItem>
+                  <MenuItem value="bit">ביט</MenuItem>
+                  <MenuItem value="nedarim_plus">נדרים פלוס</MenuItem>
+                  <MenuItem value="other">אחר</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          )}
           <Grid item xs={12} sm={12} md={5}>
             <Typography variant="body2" color="text.secondary">
-              {filteredDonations.length} תרומות מוצגות מתוך {donations.length}
+              {filteredDonations.length} רשומות מוצגות מתוך {donations.length}
             </Typography>
           </Grid>
         </Grid>
       </Paper>
 
-      {/* טבלת תרומות */}
+      {/* טבלה / כרטיסים */}
       {isMobile ? (
-        // תצוגת מובייל - כרטיסים
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           {filteredDonations.length === 0 ? (
             <Paper sx={{ p: 4, textAlign: 'center' }}>
               <Typography color="text.secondary">
-                {donations.length === 0 ? 'אין תרומות במערכת' : 'לא נמצאו תרומות מתאימות'}
+                {donations.length === 0 ? 'אין רשומות במערכת' : 'לא נמצאו רשומות מתאימות'}
               </Typography>
             </Paper>
           ) : (
-            filteredDonations.map((donation) => (
-              <Paper key={donation.id} sx={{ p: 2 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                      {donation.riderName || 'לא ידוע'}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {donation.donationNumber}
+            filteredDonations.map((donation) => {
+              const isExp = donation.type === 'expense';
+              return (
+                <Paper key={donation.id} sx={{ p: 2, borderRight: `4px solid ${isExp ? '#ef4444' : '#10b981'}` }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Chip
+                          label={isExp ? 'הוצאה' : 'תרומה'}
+                          size="small"
+                          sx={{
+                            bgcolor: isExp ? '#fef2f2' : '#f0fdf4',
+                            color: isExp ? '#ef4444' : '#10b981',
+                            fontWeight: 600,
+                            fontSize: '0.7rem',
+                          }}
+                        />
+                        <Typography variant="caption" color="text.secondary">
+                          {donation.donationNumber}
+                        </Typography>
+                      </Box>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mt: 0.5 }}>
+                        {isExp ? (expenseCategoryLabels[donation.category] || donation.notes || 'הוצאה') : (donation.riderName || 'לא ידוע')}
+                      </Typography>
+                    </Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: isExp ? '#ef4444' : '#10b981' }}>
+                      {isExp ? '-' : '+'}{formatCurrency(donation.amount)}
                     </Typography>
                   </Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700, color: '#10b981' }}>
-                    {formatCurrency(donation.amount)}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                    <Chip
-                      label={paymentMethodLabels[donation.paymentMethod] || donation.paymentMethod}
-                      size="small"
-                      sx={{
-                        bgcolor: `${paymentMethodColors[donation.paymentMethod] || '#64748b'}20`,
-                        color: paymentMethodColors[donation.paymentMethod] || '#64748b',
-                        fontWeight: 600,
-                      }}
-                    />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant="caption" color="text.secondary">
                       {formatDate(donation.donationDate)}
                     </Typography>
+                    <Box>
+                      <IconButton size="small" onClick={() => handleViewDetails(donation)}>
+                        <Visibility fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => handleEdit(donation)}>
+                        <Edit fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => handleOpenDelete(donation)} color="error">
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </Box>
                   </Box>
-                  <Box>
-                    <IconButton size="small" onClick={() => handleViewDetails(donation)}>
-                      <Visibility fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleEdit(donation)}>
-                      <Edit fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleOpenDelete(donation)} color="error">
-                      <Delete fontSize="small" />
-                    </IconButton>
-                  </Box>
-                </Box>
-              </Paper>
-            ))
+                </Paper>
+              );
+            })
           )}
         </Box>
       ) : (
-        // תצוגת דסקטופ - טבלה
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell>סוג</TableCell>
                 <TableCell>מספר אסמכתא</TableCell>
-                <TableCell>רוכב</TableCell>
+                <TableCell>רוכב / תיאור</TableCell>
                 <TableCell>סכום</TableCell>
-                <TableCell>אמצעי תשלום</TableCell>
+                <TableCell>אמצעי תשלום / קטגוריה</TableCell>
                 <TableCell>תאריך</TableCell>
                 <TableCell>הערות</TableCell>
                 <TableCell align="center">פעולות</TableCell>
@@ -436,74 +511,96 @@ export default function Donations() {
             <TableBody>
               {filteredDonations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                     <Typography color="text.secondary">
-                      {donations.length === 0 ? 'אין תרומות במערכת' : 'לא נמצאו תרומות מתאימות'}
+                      {donations.length === 0 ? 'אין רשומות במערכת' : 'לא נמצאו רשומות מתאימות'}
                     </Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredDonations.map((donation) => (
-                  <TableRow key={donation.id} hover>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        {donation.donationNumber || '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Person fontSize="small" sx={{ color: '#64748b' }} />
-                        <Typography variant="body2">
-                          {donation.riderName || 'לא ידוע'}
+                filteredDonations.map((donation) => {
+                  const isExp = donation.type === 'expense';
+                  return (
+                    <TableRow key={donation.id} hover>
+                      <TableCell>
+                        <Chip
+                          label={isExp ? 'הוצאה' : 'תרומה'}
+                          size="small"
+                          sx={{
+                            bgcolor: isExp ? '#fef2f2' : '#f0fdf4',
+                            color: isExp ? '#ef4444' : '#10b981',
+                            fontWeight: 600,
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {donation.donationNumber || '-'}
                         </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 700, color: '#10b981' }}>
-                        {formatCurrency(donation.amount)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={paymentMethodLabels[donation.paymentMethod] || donation.paymentMethod}
-                        size="small"
-                        sx={{
-                          bgcolor: `${paymentMethodColors[donation.paymentMethod] || '#64748b'}20`,
-                          color: paymentMethodColors[donation.paymentMethod] || '#64748b',
-                          fontWeight: 600,
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>{formatDate(donation.donationDate)}</TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{
-                        maxWidth: 200,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        {donation.notes || '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="center">
-                      <Tooltip title="צפייה">
-                        <IconButton size="small" onClick={() => handleViewDetails(donation)}>
-                          <Visibility fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="עריכה">
-                        <IconButton size="small" onClick={() => handleEdit(donation)}>
-                          <Edit fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="מחיקה">
-                        <IconButton size="small" onClick={() => handleOpenDelete(donation)} color="error">
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Person fontSize="small" sx={{ color: '#64748b' }} />
+                          <Typography variant="body2">
+                            {donation.riderName || (isExp ? (expenseCategoryLabels[donation.category] || '-') : 'לא ידוע')}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: isExp ? '#ef4444' : '#10b981' }}>
+                          {isExp ? '-' : '+'}{formatCurrency(donation.amount)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {isExp ? (
+                          <Chip
+                            label={expenseCategoryLabels[donation.category] || 'אחר'}
+                            size="small"
+                            sx={{ bgcolor: '#fef2f2', color: '#ef4444', fontWeight: 600 }}
+                          />
+                        ) : (
+                          <Chip
+                            label={paymentMethodLabels[donation.paymentMethod] || donation.paymentMethod}
+                            size="small"
+                            sx={{
+                              bgcolor: `${paymentMethodColors[donation.paymentMethod] || '#64748b'}20`,
+                              color: paymentMethodColors[donation.paymentMethod] || '#64748b',
+                              fontWeight: 600,
+                            }}
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell>{formatDate(donation.donationDate)}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{
+                          maxWidth: 200,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {donation.notes || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Tooltip title="צפייה">
+                          <IconButton size="small" onClick={() => handleViewDetails(donation)}>
+                            <Visibility fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="עריכה">
+                          <IconButton size="small" onClick={() => handleEdit(donation)}>
+                            <Edit fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="מחיקה">
+                          <IconButton size="small" onClick={() => handleOpenDelete(donation)} color="error">
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -517,6 +614,7 @@ export default function Donations() {
         donation={editingDonation}
         riders={riders}
         onSave={loadData}
+        type={editingType}
       />
 
       {/* דיאלוג אישור מחיקה */}
@@ -525,10 +623,10 @@ export default function Donations() {
         onClose={() => setDeleteDialogOpen(false)}
         dir="rtl"
       >
-        <DialogTitle>מחיקת תרומה</DialogTitle>
+        <DialogTitle>מחיקת {deletingDonation?.type === 'expense' ? 'הוצאה' : 'תרומה'}</DialogTitle>
         <DialogContent>
           <Typography>
-            האם למחוק את התרומה {deletingDonation?.donationNumber}
+            האם למחוק את ה{deletingDonation?.type === 'expense' ? 'הוצאה' : 'תרומה'} {deletingDonation?.donationNumber}
             {deletingDonation?.riderName ? ` של ${deletingDonation.riderName}` : ''}
             {deletingDonation?.amount ? ` בסך ${formatCurrency(deletingDonation.amount)}` : ''}?
           </Typography>
@@ -557,9 +655,12 @@ export default function Donations() {
           borderColor: 'divider',
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <VolunteerActivism sx={{ color: '#6366f1' }} />
+            {selectedDonation?.type === 'expense'
+              ? <RemoveCircleOutline sx={{ color: '#ef4444' }} />
+              : <VolunteerActivism sx={{ color: '#6366f1' }} />
+            }
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              פרטי תרומה
+              פרטי {selectedDonation?.type === 'expense' ? 'הוצאה' : 'תרומה'}
             </Typography>
           </Box>
           <Typography variant="body2" color="text.secondary">
@@ -569,32 +670,49 @@ export default function Donations() {
         <DialogContent sx={{ pt: 3 }}>
           {selectedDonation && (
             <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" color="text.secondary">רוכב</Typography>
-                <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                  {selectedDonation.riderName || 'לא ידוע'}
-                </Typography>
-              </Grid>
+              {selectedDonation.riderName && (
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" color="text.secondary">רוכב</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    {selectedDonation.riderName}
+                  </Typography>
+                </Grid>
+              )}
               <Grid item xs={6}>
                 <Typography variant="subtitle2" color="text.secondary">סכום</Typography>
-                <Typography variant="h5" sx={{ fontWeight: 700, color: '#10b981' }}>
-                  {formatCurrency(selectedDonation.amount)}
+                <Typography variant="h5" sx={{
+                  fontWeight: 700,
+                  color: selectedDonation.type === 'expense' ? '#ef4444' : '#10b981'
+                }}>
+                  {selectedDonation.type === 'expense' ? '-' : '+'}{formatCurrency(selectedDonation.amount)}
                 </Typography>
               </Grid>
               <Grid item xs={6}>
-                <Typography variant="subtitle2" color="text.secondary">אמצעי תשלום</Typography>
-                <Chip
-                  label={paymentMethodLabels[selectedDonation.paymentMethod] || selectedDonation.paymentMethod}
-                  sx={{
-                    bgcolor: `${paymentMethodColors[selectedDonation.paymentMethod] || '#64748b'}20`,
-                    color: paymentMethodColors[selectedDonation.paymentMethod] || '#64748b',
-                    fontWeight: 600,
-                    mt: 0.5,
-                  }}
-                />
+                {selectedDonation.type === 'expense' ? (
+                  <>
+                    <Typography variant="subtitle2" color="text.secondary">קטגוריה</Typography>
+                    <Chip
+                      label={expenseCategoryLabels[selectedDonation.category] || 'אחר'}
+                      sx={{ bgcolor: '#fef2f2', color: '#ef4444', fontWeight: 600, mt: 0.5 }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Typography variant="subtitle2" color="text.secondary">אמצעי תשלום</Typography>
+                    <Chip
+                      label={paymentMethodLabels[selectedDonation.paymentMethod] || selectedDonation.paymentMethod}
+                      sx={{
+                        bgcolor: `${paymentMethodColors[selectedDonation.paymentMethod] || '#64748b'}20`,
+                        color: paymentMethodColors[selectedDonation.paymentMethod] || '#64748b',
+                        fontWeight: 600,
+                        mt: 0.5,
+                      }}
+                    />
+                  </>
+                )}
               </Grid>
               <Grid item xs={6}>
-                <Typography variant="subtitle2" color="text.secondary">תאריך תרומה</Typography>
+                <Typography variant="subtitle2" color="text.secondary">תאריך</Typography>
                 <Typography variant="body1">
                   {formatDate(selectedDonation.donationDate)}
                 </Typography>
@@ -608,7 +726,9 @@ export default function Donations() {
               {selectedDonation.notes && (
                 <Grid item xs={12}>
                   <Divider sx={{ my: 1 }} />
-                  <Typography variant="subtitle2" color="text.secondary">הערות</Typography>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    {selectedDonation.type === 'expense' ? 'תיאור' : 'הערות'}
+                  </Typography>
                   <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
                     {selectedDonation.notes}
                   </Typography>

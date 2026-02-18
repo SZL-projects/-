@@ -6,48 +6,36 @@ class DonationModel {
     this.collection = db.collection(COLLECTIONS.DONATIONS);
   }
 
-  // יצירת מספר תרומה אוטומטי
-  async generateDonationNumber() {
+  // יצירת מספר אוטומטי
+  async generateDonationNumber(type = 'donation') {
     const year = new Date().getFullYear();
+    const prefix = type === 'expense' ? 'E' : 'D';
     const snapshot = await this.collection
       .where('createdAt', '>=', new Date(year, 0, 1))
       .where('createdAt', '<', new Date(year + 1, 0, 1))
       .get();
 
     const count = snapshot.size + 1;
-    return `D-${year}-${String(count).padStart(5, '0')}`;
+    return `${prefix}-${year}-${String(count).padStart(5, '0')}`;
   }
 
-  // יצירת תרומה חדשה
+  // יצירת רשומה חדשה (תרומה או הוצאה)
   async create(donationData, createdByUserId) {
     try {
-      // שימוש במספר אסמכתא שהוזן, או מספר אוטומטי אם לא הוזן
-      const donationNumber = donationData.donationNumber || await this.generateDonationNumber();
+      const entryType = donationData.type || 'donation';
+      const donationNumber = donationData.donationNumber || await this.generateDonationNumber(entryType);
 
       const donationDoc = {
         donationNumber,
-        riderId: donationData.riderId,
+        type: entryType,
+        riderId: donationData.riderId || '',
         riderName: donationData.riderName || null,
-
         amount: donationData.amount || 0,
-
-        // אמצעי תשלום
-        paymentMethod: donationData.paymentMethod || 'credit_card',
-        // credit_card = אשראי
-        // bit = ביט
-        // nedarim_plus = נדרים פלוס
-        // other = אחר
-
-        // תאריך תרומה
+        paymentMethod: donationData.paymentMethod || (entryType === 'expense' ? 'other' : 'credit_card'),
+        category: donationData.category || '',
         donationDate: donationData.donationDate ? new Date(donationData.donationDate) : new Date(),
-
-        // הערות
         notes: donationData.notes || '',
-
-        // קבצים (קבלות, אישורים)
         documents: donationData.documents || [],
-
-        // מטאדאטה
         createdAt: new Date(),
         createdBy: createdByUserId,
         updatedAt: new Date(),
@@ -61,7 +49,6 @@ class DonationModel {
     }
   }
 
-  // חיפוש לפי ID
   async findById(donationId) {
     try {
       const doc = await this.collection.doc(donationId).get();
@@ -74,7 +61,6 @@ class DonationModel {
     }
   }
 
-  // עדכון תרומה
   async update(donationId, updateData, updatedByUserId) {
     try {
       const updates = {
@@ -83,12 +69,10 @@ class DonationModel {
         updatedBy: updatedByUserId
       };
 
-      // הסרת שדות שלא צריך לעדכן
       delete updates.id;
       delete updates.createdAt;
       delete updates.createdBy;
 
-      // המרת תאריך אם קיים
       if (updates.donationDate) {
         updates.donationDate = new Date(updates.donationDate);
       }
@@ -100,7 +84,6 @@ class DonationModel {
     }
   }
 
-  // מחיקת תרומה
   async delete(donationId) {
     try {
       await this.collection.doc(donationId).delete();
@@ -109,11 +92,13 @@ class DonationModel {
     }
   }
 
-  // קבלת כל התרומות
   async getAll(filters = {}, limit = 100) {
     try {
       let query = this.collection;
 
+      if (filters.type) {
+        query = query.where('type', '==', filters.type);
+      }
       if (filters.paymentMethod) {
         query = query.where('paymentMethod', '==', filters.paymentMethod);
       }
@@ -127,10 +112,7 @@ class DonationModel {
       const donations = [];
 
       snapshot.forEach(doc => {
-        donations.push({
-          id: doc.id,
-          ...doc.data()
-        });
+        donations.push({ id: doc.id, ...doc.data() });
       });
 
       return donations;
@@ -139,7 +121,6 @@ class DonationModel {
     }
   }
 
-  // חיפוש תרומות
   async search(searchTerm, filters = {}, limit = 100) {
     try {
       const allDonations = await this.getAll(filters, 1000);
@@ -150,6 +131,7 @@ class DonationModel {
           donation.donationNumber?.toLowerCase().includes(searchLower) ||
           donation.riderName?.toLowerCase().includes(searchLower) ||
           donation.notes?.toLowerCase().includes(searchLower) ||
+          donation.category?.toLowerCase().includes(searchLower) ||
           String(donation.amount).includes(searchLower)
         );
       });
@@ -160,7 +142,6 @@ class DonationModel {
     }
   }
 
-  // קבלת תרומות לפי רוכב
   async getByRider(riderId, limit = 50) {
     try {
       const snapshot = await this.collection
@@ -180,24 +161,36 @@ class DonationModel {
     }
   }
 
-  // סטטיסטיקות תרומות
   async getStatistics() {
     try {
       const snapshot = await this.collection.get();
 
-      let totalAmount = 0;
+      let totalDonations = 0;
+      let totalExpenses = 0;
+      let donationsCount = 0;
+      let expensesCount = 0;
       let countByPaymentMethod = {};
 
       snapshot.forEach(doc => {
         const data = doc.data();
-        totalAmount += data.amount || 0;
-
-        countByPaymentMethod[data.paymentMethod] = (countByPaymentMethod[data.paymentMethod] || 0) + 1;
+        const type = data.type || 'donation';
+        if (type === 'expense') {
+          totalExpenses += data.amount || 0;
+          expensesCount++;
+        } else {
+          totalDonations += data.amount || 0;
+          donationsCount++;
+          countByPaymentMethod[data.paymentMethod] = (countByPaymentMethod[data.paymentMethod] || 0) + 1;
+        }
       });
 
       return {
         totalCount: snapshot.size,
-        totalAmount,
+        donationsCount,
+        expensesCount,
+        totalDonations,
+        totalExpenses,
+        balance: totalDonations - totalExpenses,
         countByPaymentMethod
       };
     } catch (error) {

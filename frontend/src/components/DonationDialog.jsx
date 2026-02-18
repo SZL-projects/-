@@ -34,6 +34,7 @@ import {
   Edit,
   Check,
   VolunteerActivism,
+  RemoveCircleOutline,
 } from '@mui/icons-material';
 import { donationsAPI } from '../services/api';
 
@@ -43,6 +44,14 @@ const paymentMethodLabels = {
   nedarim_plus: 'נדרים פלוס',
   other: 'אחר',
 };
+
+const expenseCategories = [
+  { value: 'retreat', label: 'גיבוש' },
+  { value: 'equipment', label: 'ציוד' },
+  { value: 'food', label: 'אוכל' },
+  { value: 'transport', label: 'הסעות' },
+  { value: 'other', label: 'אחר' },
+];
 
 // פונקציה לפרסור תאריך מפורמטים שונים
 const parseDate = (timestamp) => {
@@ -63,23 +72,26 @@ const parseDate = (timestamp) => {
   }
 };
 
-export default function DonationDialog({ open, onClose, donation, riders, onSave }) {
+export default function DonationDialog({ open, onClose, donation, riders, onSave, type = 'donation' }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  const isExpense = type === 'expense';
 
   const [formData, setFormData] = useState({
     riderId: '',
     riderName: '',
     amount: '',
-    paymentMethod: 'credit_card',
+    paymentMethod: isExpense ? 'other' : 'credit_card',
     donationDate: new Date().toISOString().split('T')[0],
     referenceNumber: '',
+    category: '',
     notes: '',
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState([]); // [{ file, customName, editingName }]
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
   const isEditing = !!donation;
@@ -91,9 +103,10 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
         riderId: donation.riderId || '',
         riderName: donation.riderName || '',
         amount: donation.amount || '',
-        paymentMethod: donation.paymentMethod || 'credit_card',
+        paymentMethod: donation.paymentMethod || (isExpense ? 'other' : 'credit_card'),
         donationDate: parseDate(donation.donationDate),
         referenceNumber: donation.donationNumber || '',
+        category: donation.category || '',
         notes: donation.notes || '',
       });
     } else {
@@ -101,15 +114,16 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
         riderId: '',
         riderName: '',
         amount: '',
-        paymentMethod: 'credit_card',
+        paymentMethod: isExpense ? 'other' : 'credit_card',
         donationDate: new Date().toISOString().split('T')[0],
         referenceNumber: '',
+        category: '',
         notes: '',
       });
     }
     setSelectedFiles([]);
     setError('');
-  }, [donation, open]);
+  }, [donation, open, isExpense]);
 
   // מציאת הרוכב הנבחר
   const selectedRider = riders?.find(r => r.id === formData.riderId) || null;
@@ -132,7 +146,6 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
 
   const handleReferenceNumberChange = (value) => {
     setFormData(prev => ({ ...prev, referenceNumber: value }));
-    // שינוי אוטומטי של שמות הקבצים למספר האסמכתא
     if (value.trim()) {
       setSelectedFiles(prev => prev.map((f, i) => ({
         ...f,
@@ -148,7 +161,6 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
       const lastDot = file.name.lastIndexOf('.');
       const nameWithoutExt = lastDot > 0 ? file.name.substring(0, lastDot) : file.name;
       const ext = lastDot > 0 ? file.name.substring(lastDot) : '';
-      // אם יש מספר אסמכתא, שם הקובץ יהיה המספר
       let customName = nameWithoutExt;
       if (formData.referenceNumber.trim()) {
         const totalFiles = currentCount + files.length;
@@ -158,7 +170,6 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
     });
     setSelectedFiles(prev => {
       const updated = [...prev, ...newFiles];
-      // עדכון מספור אם יש יותר מקובץ אחד ויש מספר אסמכתא
       if (formData.referenceNumber.trim() && updated.length > 1) {
         return updated.map((f, idx) => ({ ...f, customName: `${formData.referenceNumber}_${idx + 1}` }));
       }
@@ -179,8 +190,8 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
   };
 
   const handleSubmit = async () => {
-    // ולידציה
-    if (!formData.riderId) {
+    // ולידציה - רוכב חובה רק בתרומות
+    if (!isExpense && !formData.riderId) {
       setError('יש לבחור רוכב');
       return;
     }
@@ -203,6 +214,7 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
         ...formData,
         amount: Number(formData.amount),
         donationNumber: formData.referenceNumber.trim(),
+        type,
       };
       delete dataToSend.referenceNumber;
 
@@ -219,14 +231,10 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
         setUploadingFiles(true);
         for (const fileEntry of selectedFiles) {
           const finalName = (fileEntry.customName || 'file') + fileEntry.ext;
-          // יצירת קובץ חדש עם השם המותאם
           const renamedFile = new File([fileEntry.file], finalName, { type: fileEntry.file.type });
           const formDataUpload = new FormData();
           formDataUpload.append('file', renamedFile);
           formDataUpload.append('donationId', result.id);
-          if (selectedRider?.driveFolderId) {
-            formDataUpload.append('folderId', selectedRider.driveFolderId);
-          }
           try {
             await donationsAPI.uploadFile(formDataUpload);
           } catch (err) {
@@ -239,11 +247,17 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
       if (onSave) onSave();
       onClose();
     } catch (err) {
-      setError(err.response?.data?.message || 'שגיאה בשמירת התרומה');
+      setError(err.response?.data?.message || 'שגיאה בשמירה');
     } finally {
       setLoading(false);
     }
   };
+
+  const titleText = isEditing
+    ? (isExpense ? 'עריכת הוצאה' : 'עריכת תרומה')
+    : (isExpense ? 'הוצאה חדשה' : 'תרומה חדשה');
+
+  const titleColor = isExpense ? '#ef4444' : '#6366f1';
 
   return (
     <Dialog
@@ -263,9 +277,12 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
         pb: 2,
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <VolunteerActivism sx={{ color: '#6366f1' }} />
+          {isExpense
+            ? <RemoveCircleOutline sx={{ color: titleColor }} />
+            : <VolunteerActivism sx={{ color: titleColor }} />
+          }
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            {isEditing ? 'עריכת תרומה' : 'תרומה חדשה'}
+            {titleText}
           </Typography>
         </Box>
         <IconButton onClick={onClose} size="small">
@@ -281,7 +298,7 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
         )}
 
         <Grid container spacing={2}>
-          {/* בחירת רוכב */}
+          {/* בחירת רוכב - חובה בתרומות, אופציונלי בהוצאות */}
           <Grid item xs={12}>
             <Autocomplete
               value={selectedRider}
@@ -291,7 +308,7 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
               renderInput={(params) => (
                 <TextField
                   {...params}
-                  label="רוכב *"
+                  label={isExpense ? 'רוכב (אופציונלי)' : 'רוכב *'}
                   placeholder="חפש רוכב..."
                 />
               )}
@@ -326,28 +343,48 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
             />
           </Grid>
 
-          {/* אמצעי תשלום */}
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
-              <InputLabel>אמצעי תשלום *</InputLabel>
-              <Select
-                value={formData.paymentMethod}
-                onChange={(e) => setFormData(prev => ({ ...prev, paymentMethod: e.target.value }))}
-                label="אמצעי תשלום *"
-              >
-                <MenuItem value="credit_card">אשראי</MenuItem>
-                <MenuItem value="bit">ביט</MenuItem>
-                <MenuItem value="nedarim_plus">נדרים פלוס</MenuItem>
-                <MenuItem value="other">אחר</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
+          {/* קטגוריה - רק בהוצאות */}
+          {isExpense && (
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>קטגוריה</InputLabel>
+                <Select
+                  value={formData.category}
+                  onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                  label="קטגוריה"
+                >
+                  {expenseCategories.map(cat => (
+                    <MenuItem key={cat.value} value={cat.value}>{cat.label}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          )}
+
+          {/* אמצעי תשלום - רק בתרומות */}
+          {!isExpense && (
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>אמצעי תשלום *</InputLabel>
+                <Select
+                  value={formData.paymentMethod}
+                  onChange={(e) => setFormData(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                  label="אמצעי תשלום *"
+                >
+                  <MenuItem value="credit_card">אשראי</MenuItem>
+                  <MenuItem value="bit">ביט</MenuItem>
+                  <MenuItem value="nedarim_plus">נדרים פלוס</MenuItem>
+                  <MenuItem value="other">אחר</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          )}
 
           {/* תאריך */}
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
-              label="תאריך תרומה"
+              label={isExpense ? 'תאריך הוצאה' : 'תאריך תרומה'}
               type="date"
               value={formData.donationDate}
               onChange={(e) => setFormData(prev => ({ ...prev, donationDate: e.target.value }))}
@@ -359,12 +396,12 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
           <Grid item xs={12}>
             <TextField
               fullWidth
-              label="הערות"
+              label={isExpense ? 'תיאור ההוצאה' : 'הערות'}
               multiline
               rows={3}
               value={formData.notes}
               onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-              placeholder="הערות נוספות..."
+              placeholder={isExpense ? 'תיאור ההוצאה...' : 'הערות נוספות...'}
             />
           </Grid>
 
@@ -464,7 +501,8 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
           onClick={handleSubmit}
           variant="contained"
           disabled={loading || uploadingFiles}
-          startIcon={loading || uploadingFiles ? <CircularProgress size={20} /> : <VolunteerActivism />}
+          sx={isExpense ? { bgcolor: '#ef4444', '&:hover': { bgcolor: '#dc2626' } } : {}}
+          startIcon={loading || uploadingFiles ? <CircularProgress size={20} /> : (isExpense ? <RemoveCircleOutline /> : <VolunteerActivism />)}
         >
           {loading ? 'שומר...' : uploadingFiles ? 'מעלה קבצים...' : isEditing ? 'עדכון' : 'שמירה'}
         </Button>

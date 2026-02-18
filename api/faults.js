@@ -80,7 +80,6 @@ async function handleDonationsRequest(req, res, db, user, url) {
         let fileName = '';
         let mimeType = '';
         let donationIdField = '';
-        let folderId = '';
         let fileReceived = false;
 
         busboy.on('file', (fieldname, file, info) => {
@@ -101,7 +100,6 @@ async function handleDonationsRequest(req, res, db, user, url) {
 
         busboy.on('field', (fieldname, value) => {
           if (fieldname === 'donationId') donationIdField = value;
-          if (fieldname === 'folderId') folderId = value;
         });
 
         busboy.on('finish', async () => {
@@ -111,8 +109,9 @@ async function handleDonationsRequest(req, res, db, user, url) {
               return resolve();
             }
 
-            // אם אין folderId, ננסה להשתמש בתיקיית ברירת מחדל של דונציות
-            const targetFolderId = folderId || process.env.GOOGLE_DRIVE_DEFAULT_FOLDER_ID || null;
+            // תמיד להעלות לתיקיית "תרומות" קבועה ב-Drive
+            const donationsFolder = await googleDriveService.findOrCreateFolder('תרומות', googleDriveService.rootFolderId);
+            const targetFolderId = donationsFolder.id;
 
             const fileData = await googleDriveService.uploadFile(
               fileName, fileBuffer, targetFolderId, mimeType
@@ -163,18 +162,36 @@ async function handleDonationsRequest(req, res, db, user, url) {
   // GET /api/donations/statistics
   if (url.endsWith('/statistics') && req.method === 'GET') {
     const snapshot = await db.collection('donations').get();
-    let totalAmount = 0;
+    let totalDonations = 0;
+    let totalExpenses = 0;
+    let donationsCount = 0;
+    let expensesCount = 0;
     let countByPaymentMethod = {};
 
     snapshot.forEach(doc => {
       const data = doc.data();
-      totalAmount += data.amount || 0;
-      countByPaymentMethod[data.paymentMethod] = (countByPaymentMethod[data.paymentMethod] || 0) + 1;
+      const type = data.type || 'donation';
+      if (type === 'expense') {
+        totalExpenses += data.amount || 0;
+        expensesCount++;
+      } else {
+        totalDonations += data.amount || 0;
+        donationsCount++;
+        countByPaymentMethod[data.paymentMethod] = (countByPaymentMethod[data.paymentMethod] || 0) + 1;
+      }
     });
 
     return res.json({
       success: true,
-      statistics: { totalCount: snapshot.size, totalAmount, countByPaymentMethod }
+      statistics: {
+        totalCount: snapshot.size,
+        donationsCount,
+        expensesCount,
+        totalDonations,
+        totalExpenses,
+        balance: totalDonations - totalExpenses,
+        countByPaymentMethod
+      }
     });
   }
 
@@ -234,10 +251,11 @@ async function handleDonationsRequest(req, res, db, user, url) {
 
   // Collection operations
   if (req.method === 'GET') {
-    const { search, paymentMethod, riderId, limit = 100 } = req.query;
+    const { search, paymentMethod, riderId, type, limit = 100 } = req.query;
     const limitNum = Math.min(parseInt(limit), 500);
 
     let query = db.collection('donations');
+    if (type) query = query.where('type', '==', type);
     if (paymentMethod) query = query.where('paymentMethod', '==', paymentMethod);
     if (riderId) query = query.where('riderId', '==', riderId);
 
@@ -264,13 +282,19 @@ async function handleDonationsRequest(req, res, db, user, url) {
   }
 
   if (req.method === 'POST') {
-    if (!req.body.riderId) return res.status(400).json({ success: false, message: 'רוכב הוא שדה חובה' });
-    if (!req.body.amount || req.body.amount <= 0) return res.status(400).json({ success: false, message: 'סכום תרומה חייב להיות גדול מאפס' });
+    const entryType = req.body.type || 'donation';
 
-    // מספר תרומה - מספר אסמכתא שהוזן, או אוטומטי
+    // ולידציה - רוכב חובה רק בתרומות
+    if (entryType === 'donation' && !req.body.riderId) {
+      return res.status(400).json({ success: false, message: 'רוכב הוא שדה חובה' });
+    }
+    if (!req.body.amount || req.body.amount <= 0) return res.status(400).json({ success: false, message: 'סכום חייב להיות גדול מאפס' });
+
+    // מספר אסמכתא שהוזן, או אוטומטי
     let donationNumber = req.body.donationNumber;
     if (!donationNumber) {
       const year = new Date().getFullYear();
+      const prefix = entryType === 'expense' ? 'E' : 'D';
       let count = 1;
       try {
         const countSnapshot = await db.collection('donations')
@@ -281,15 +305,17 @@ async function handleDonationsRequest(req, res, db, user, url) {
         const allSnapshot = await db.collection('donations').get();
         count = allSnapshot.size + 1;
       }
-      donationNumber = `D-${year}-${String(count).padStart(5, '0')}`;
+      donationNumber = `${prefix}-${year}-${String(count).padStart(5, '0')}`;
     }
 
     const donationData = {
       donationNumber,
-      riderId: req.body.riderId,
+      type: entryType,
+      riderId: req.body.riderId || '',
       riderName: req.body.riderName || '',
       amount: Number(req.body.amount),
-      paymentMethod: req.body.paymentMethod || 'credit_card',
+      paymentMethod: req.body.paymentMethod || (entryType === 'expense' ? 'other' : 'credit_card'),
+      category: req.body.category || '',
       donationDate: req.body.donationDate ? new Date(req.body.donationDate) : new Date(),
       notes: req.body.notes || '',
       documents: req.body.documents || [],

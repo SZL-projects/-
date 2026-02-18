@@ -40,7 +40,7 @@ import {
   Search,
   Lock,
   Settings,
-  VolunteerActivism,
+  AccountBalance,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import ChangePasswordDialog from './ChangePasswordDialog';
@@ -68,7 +68,7 @@ const managementMenuItems = [
   { text: 'תקלות', icon: <Warning />, path: '/faults', permission: 'faults' },
   { text: 'טיפולים', icon: <Build />, path: '/maintenance', permission: 'maintenance' },
   { text: 'תביעות ביטוח', icon: <Assignment />, path: '/insurance-claims', permission: 'insurance_claims' },
-  { text: 'תרומות', icon: <VolunteerActivism />, path: '/donations', permission: 'donations' },
+  { text: 'קופה', icon: <AccountBalance />, path: '/donations', permission: 'donations' },
   { text: 'הגדרות', icon: <Settings />, path: '/settings', permission: 'settings' },
 ];
 
