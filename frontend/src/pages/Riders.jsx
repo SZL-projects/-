@@ -41,6 +41,7 @@ import {
   Phone as PhoneIcon,
   Badge as BadgeIcon,
   LocationOn as LocationIcon,
+  School as SchoolIcon,
 } from '@mui/icons-material';
 import { ridersAPI, vehiclesAPI } from '../services/api';
 import RiderDialog from '../components/RiderDialog';
@@ -388,6 +389,13 @@ export default function Riders() {
                       </Typography>
                     </Box>
                   )}
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <SchoolIcon sx={{ fontSize: 18, color: rider.ridingTraining?.completed ? '#059669' : '#dc2626' }} />
+                    <Typography variant="body2" sx={{ color: rider.ridingTraining?.completed ? '#059669' : '#dc2626', fontWeight: 600 }}>
+                      הדרכת רכיבה: {rider.ridingTraining?.completed ? 'עבר' : 'לא עבר'}
+                    </Typography>
+                  </Box>
                 </Stack>
               </CardContent>
 
@@ -456,6 +464,7 @@ export default function Riders() {
                 <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>מחוז</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>סטטוס רוכב</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>סטטוס שיוך</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>הדרכת רכיבה</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 600, color: '#475569', py: 2 }}>פעולות</TableCell>
               </TableRow>
             </TableHead>
@@ -483,6 +492,22 @@ export default function Riders() {
                   <TableCell sx={{ color: '#64748b' }}>{rider.region?.district || '-'}</TableCell>
                   <TableCell>{getStatusChip(rider.riderStatus)}</TableCell>
                   <TableCell>{getAssignmentChip(rider.assignmentStatus)}</TableCell>
+                  <TableCell>
+                    <Chip
+                      icon={<SchoolIcon sx={{ fontSize: 16 }} />}
+                      label={rider.ridingTraining?.completed ? 'עבר' : 'לא עבר'}
+                      size="small"
+                      sx={{
+                        bgcolor: rider.ridingTraining?.completed ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        color: rider.ridingTraining?.completed ? '#059669' : '#dc2626',
+                        fontWeight: 600,
+                        fontSize: '0.75rem',
+                        border: 'none',
+                        '& .MuiChip-icon': { color: 'inherit' },
+                        '& .MuiChip-label': { px: 1 },
+                      }}
+                    />
+                  </TableCell>
                   <TableCell align="center">
                     <IconButton
                       size="small"

@@ -118,6 +118,32 @@ const riderSchema = new mongoose.Schema({
     }]
   }],
 
+  // הדרכת רכיבה
+  ridingTraining: {
+    completed: {
+      type: Boolean,
+      default: false
+    },
+    completionDate: Date,
+    instructor: String,
+    certificateNumber: String,
+    notes: String,
+    // היסטוריית ריענונים
+    refreshers: [{
+      date: Date,
+      instructor: String,
+      notes: String,
+      addedAt: {
+        type: Date,
+        default: Date.now
+      },
+      addedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      }
+    }]
+  },
+
   // שיוך למשתמש (User)
   userId: {
     type: mongoose.Schema.Types.ObjectId,

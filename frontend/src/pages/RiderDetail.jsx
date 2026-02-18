@@ -34,6 +34,10 @@ import {
   Home,
   CalendarMonth,
   CreditCard,
+  School,
+  CheckCircle,
+  Cancel,
+  Refresh,
 } from '@mui/icons-material';
 import { ridersAPI, authAPI, vehiclesAPI } from '../services/api';
 import RiderDialog from '../components/RiderDialog';
@@ -575,6 +579,131 @@ export default function RiderDetail() {
                   </>
                 )}
               </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* הדרכת רכיבה */}
+        <Grid item xs={12}>
+          <Card sx={{
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Box sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '10px',
+                  bgcolor: rider.ridingTraining?.completed ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <School sx={{ color: rider.ridingTraining?.completed ? '#059669' : '#dc2626', fontSize: 20 }} />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                  הדרכת רכיבה
+                </Typography>
+                <Chip
+                  icon={rider.ridingTraining?.completed ? <CheckCircle /> : <Cancel />}
+                  label={rider.ridingTraining?.completed ? 'עבר הדרכה' : 'לא עבר הדרכה'}
+                  size="small"
+                  sx={{
+                    bgcolor: rider.ridingTraining?.completed ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    color: rider.ridingTraining?.completed ? '#059669' : '#dc2626',
+                    fontWeight: 600,
+                    fontSize: '0.75rem',
+                    '& .MuiChip-icon': {
+                      color: 'inherit',
+                      fontSize: 16,
+                    },
+                  }}
+                />
+              </Box>
+              <Divider sx={{ mb: 3, borderColor: '#e2e8f0' }} />
+
+              {rider.ridingTraining?.completed ? (
+                <>
+                  <Grid container spacing={2}>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>תאריך הדרכה</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                        {rider.ridingTraining.completionDate
+                          ? new Date(rider.ridingTraining.completionDate).toLocaleDateString('he-IL')
+                          : '-'}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>שם המדריך</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                        {rider.ridingTraining.instructor || '-'}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>מספר תעודה</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                        {rider.ridingTraining.certificateNumber || '-'}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>הערות</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                        {rider.ridingTraining.notes || '-'}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+
+                  {/* ריענונים */}
+                  {rider.ridingTraining.refreshers && rider.ridingTraining.refreshers.length > 0 && (
+                    <Box sx={{ mt: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                        <Refresh sx={{ color: '#6366f1', fontSize: 18 }} />
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                          היסטוריית ריענונים ({rider.ridingTraining.refreshers.length})
+                        </Typography>
+                      </Box>
+                      {rider.ridingTraining.refreshers.map((refresher, index) => (
+                        <Box key={index} sx={{
+                          p: 2,
+                          mb: 1,
+                          bgcolor: '#f8fafc',
+                          borderRadius: '10px',
+                          border: '1px solid #e2e8f0',
+                        }}>
+                          <Grid container spacing={2}>
+                            <Grid item xs={4}>
+                              <Typography variant="caption" sx={{ color: '#94a3b8' }}>תאריך ריענון</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                                {refresher.date
+                                  ? new Date(refresher.date).toLocaleDateString('he-IL')
+                                  : '-'}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={4}>
+                              <Typography variant="caption" sx={{ color: '#94a3b8' }}>מדריך</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                                {refresher.instructor || '-'}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={4}>
+                              <Typography variant="caption" sx={{ color: '#94a3b8' }}>הערות</Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                                {refresher.notes || '-'}
+                              </Typography>
+                            </Grid>
+                          </Grid>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                </>
+              ) : (
+                <Typography variant="body1" sx={{ color: '#94a3b8', textAlign: 'center', py: 2 }}>
+                  הרוכב טרם עבר הדרכת רכיבה
+                </Typography>
+              )}
             </CardContent>
           </Card>
         </Grid>

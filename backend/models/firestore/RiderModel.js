@@ -34,6 +34,14 @@ class RiderModel {
         drivingLicense: riderData.drivingLicense || {},
         licenseHistory: [],
         trainings: riderData.trainings || [],
+        ridingTraining: riderData.ridingTraining || {
+          completed: false,
+          completionDate: null,
+          instructor: '',
+          certificateNumber: '',
+          notes: '',
+          refreshers: []
+        },
         userId: riderData.userId || null,
         personalEquipment: riderData.personalEquipment || [],
         notes: riderData.notes || '',

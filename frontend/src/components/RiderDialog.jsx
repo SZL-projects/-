@@ -18,8 +18,13 @@ import {
   IconButton,
   AppBar,
   Toolbar,
+  Switch,
+  FormControlLabel,
+  Box,
+  Chip,
+  Divider,
 } from '@mui/material';
-import { Close } from '@mui/icons-material';
+import { Close, Add, Delete } from '@mui/icons-material';
 import { vehiclesAPI } from '../services/api';
 
 const riderStatuses = [
@@ -65,6 +70,14 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
       city: '',
       postalCode: '',
     },
+    ridingTraining: {
+      completed: false,
+      completionDate: '',
+      instructor: '',
+      certificateNumber: '',
+      notes: '',
+      refreshers: [],
+    },
   });
 
   const [errors, setErrors] = useState({});
@@ -103,6 +116,7 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
 
   useEffect(() => {
     if (rider) {
+      const rt = rider.ridingTraining || {};
       setFormData({
         firstName: rider.firstName || '',
         lastName: rider.lastName || '',
@@ -114,6 +128,18 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
         assignmentStatus: rider.assignmentStatus || 'unassigned',
         assignedVehicleId: rider.assignedVehicleId || '',
         address: rider.address || { street: '', city: '', postalCode: '' },
+        ridingTraining: {
+          completed: rt.completed || false,
+          completionDate: rt.completionDate ? rt.completionDate.split('T')[0] : '',
+          instructor: rt.instructor || '',
+          certificateNumber: rt.certificateNumber || '',
+          notes: rt.notes || '',
+          refreshers: (rt.refreshers || []).map(r => ({
+            date: r.date ? r.date.split('T')[0] : '',
+            instructor: r.instructor || '',
+            notes: r.notes || '',
+          })),
+        },
       });
     } else {
       setFormData({
@@ -133,6 +159,14 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
           street: '',
           city: '',
           postalCode: '',
+        },
+        ridingTraining: {
+          completed: false,
+          completionDate: '',
+          instructor: '',
+          certificateNumber: '',
+          notes: '',
+          refreshers: [],
         },
       });
     }
@@ -437,6 +471,228 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
                 noOptionsText="לא נמצאו כלים זמינים"
               />
             </Grid>
+          )}
+
+          {/* הדרכת רכיבה */}
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" fontWeight="bold" color="primary" sx={{ mt: 2 }}>
+              הדרכת רכיבה
+            </Typography>
+          </Grid>
+
+          <Grid item xs={12}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={formData.ridingTraining.completed}
+                  onChange={(e) => {
+                    setFormData({
+                      ...formData,
+                      ridingTraining: {
+                        ...formData.ridingTraining,
+                        completed: e.target.checked,
+                      },
+                    });
+                  }}
+                  color="success"
+                />
+              }
+              label="עבר הדרכת רכיבה"
+            />
+          </Grid>
+
+          {formData.ridingTraining.completed && (
+            <>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="תאריך הדרכה"
+                  type="date"
+                  value={formData.ridingTraining.completionDate}
+                  onChange={(e) => {
+                    setFormData({
+                      ...formData,
+                      ridingTraining: {
+                        ...formData.ridingTraining,
+                        completionDate: e.target.value,
+                      },
+                    });
+                  }}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="שם המדריך"
+                  value={formData.ridingTraining.instructor}
+                  onChange={(e) => {
+                    setFormData({
+                      ...formData,
+                      ridingTraining: {
+                        ...formData.ridingTraining,
+                        instructor: e.target.value,
+                      },
+                    });
+                  }}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="מספר תעודה"
+                  value={formData.ridingTraining.certificateNumber}
+                  onChange={(e) => {
+                    setFormData({
+                      ...formData,
+                      ridingTraining: {
+                        ...formData.ridingTraining,
+                        certificateNumber: e.target.value,
+                      },
+                    });
+                  }}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="הערות הדרכה"
+                  value={formData.ridingTraining.notes}
+                  onChange={(e) => {
+                    setFormData({
+                      ...formData,
+                      ridingTraining: {
+                        ...formData.ridingTraining,
+                        notes: e.target.value,
+                      },
+                    });
+                  }}
+                />
+              </Grid>
+
+              {/* ריענונים */}
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
+                  <Typography variant="subtitle2" fontWeight="bold" color="text.secondary">
+                    ריענונים
+                  </Typography>
+                  <Button
+                    size="small"
+                    startIcon={<Add />}
+                    onClick={() => {
+                      setFormData({
+                        ...formData,
+                        ridingTraining: {
+                          ...formData.ridingTraining,
+                          refreshers: [
+                            ...formData.ridingTraining.refreshers,
+                            { date: '', instructor: '', notes: '' },
+                          ],
+                        },
+                      });
+                    }}
+                  >
+                    הוסף ריענון
+                  </Button>
+                </Box>
+              </Grid>
+
+              {formData.ridingTraining.refreshers.map((refresher, index) => (
+                <Grid item xs={12} key={index}>
+                  <Box sx={{
+                    p: 2,
+                    border: '1px solid #e0e0e0',
+                    borderRadius: 2,
+                    position: 'relative',
+                    bgcolor: '#fafafa',
+                  }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                      <Chip label={`ריענון ${index + 1}`} size="small" color="info" variant="outlined" />
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => {
+                          const newRefreshers = formData.ridingTraining.refreshers.filter((_, i) => i !== index);
+                          setFormData({
+                            ...formData,
+                            ridingTraining: {
+                              ...formData.ridingTraining,
+                              refreshers: newRefreshers,
+                            },
+                          });
+                        }}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </Box>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={4}>
+                        <TextField
+                          fullWidth
+                          label="תאריך ריענון"
+                          type="date"
+                          size="small"
+                          value={refresher.date}
+                          onChange={(e) => {
+                            const newRefreshers = [...formData.ridingTraining.refreshers];
+                            newRefreshers[index] = { ...newRefreshers[index], date: e.target.value };
+                            setFormData({
+                              ...formData,
+                              ridingTraining: {
+                                ...formData.ridingTraining,
+                                refreshers: newRefreshers,
+                              },
+                            });
+                          }}
+                          InputLabelProps={{ shrink: true }}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={4}>
+                        <TextField
+                          fullWidth
+                          label="שם המדריך"
+                          size="small"
+                          value={refresher.instructor}
+                          onChange={(e) => {
+                            const newRefreshers = [...formData.ridingTraining.refreshers];
+                            newRefreshers[index] = { ...newRefreshers[index], instructor: e.target.value };
+                            setFormData({
+                              ...formData,
+                              ridingTraining: {
+                                ...formData.ridingTraining,
+                                refreshers: newRefreshers,
+                              },
+                            });
+                          }}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={4}>
+                        <TextField
+                          fullWidth
+                          label="הערות"
+                          size="small"
+                          value={refresher.notes}
+                          onChange={(e) => {
+                            const newRefreshers = [...formData.ridingTraining.refreshers];
+                            newRefreshers[index] = { ...newRefreshers[index], notes: e.target.value };
+                            setFormData({
+                              ...formData,
+                              ridingTraining: {
+                                ...formData.ridingTraining,
+                                refreshers: newRefreshers,
+                              },
+                            });
+                          }}
+                        />
+                      </Grid>
+                    </Grid>
+                  </Box>
+                </Grid>
+              ))}
+            </>
           )}
         </Grid>
       </DialogContent>
