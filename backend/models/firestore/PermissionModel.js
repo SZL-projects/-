@@ -161,9 +161,22 @@ class PermissionModel {
       }
 
       const data = doc.data();
-      permissionsCache = data.roles;
+      // מיזוג entities חדשים שלא קיימים ב-Firestore עם ברירת מחדל
+      const merged = { ...data.roles };
+      for (const [role, defaults] of Object.entries(DEFAULT_PERMISSIONS)) {
+        if (!merged[role]) {
+          merged[role] = defaults;
+        } else {
+          for (const [entity, level] of Object.entries(defaults)) {
+            if (merged[role][entity] === undefined) {
+              merged[role][entity] = level;
+            }
+          }
+        }
+      }
+      permissionsCache = merged;
       cacheTimestamp = Date.now();
-      return data.roles;
+      return merged;
     } catch (error) {
       console.error('שגיאה בטעינת הרשאות:', error);
       // במקרה של שגיאה - משתמשים בברירת מחדל
