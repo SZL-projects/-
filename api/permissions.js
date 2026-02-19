@@ -19,6 +19,7 @@ const ENTITIES = [
   { key: 'reports', label: 'דוחות' },
   { key: 'settings', label: 'הגדרות' },
   { key: 'audit_logs', label: 'לוג פעולות' },
+  { key: 'donations', label: 'קופה / תרומות' },
 ];
 
 // כל התפקידים במערכת
@@ -37,39 +38,56 @@ const DEFAULT_PERMISSIONS = {
     riders: 'edit', vehicles: 'edit', tasks: 'edit', faults: 'edit',
     monthly_checks: 'edit', maintenance: 'edit', garages: 'edit',
     insurance_claims: 'edit', users: 'edit', reports: 'edit',
-    settings: 'edit', audit_logs: 'view',
+    settings: 'edit', audit_logs: 'view', donations: 'edit',
   },
   manager: {
     riders: 'edit', vehicles: 'edit', tasks: 'edit', faults: 'edit',
     monthly_checks: 'edit', maintenance: 'edit', garages: 'edit',
     insurance_claims: 'edit', users: 'edit', reports: 'edit',
-    settings: 'edit', audit_logs: 'view',
+    settings: 'edit', audit_logs: 'view', donations: 'edit',
   },
   secretary: {
     riders: 'edit', vehicles: 'edit', tasks: 'edit', faults: 'edit',
     monthly_checks: 'edit', maintenance: 'view', garages: 'view',
     insurance_claims: 'edit', users: 'none', reports: 'view',
-    settings: 'none', audit_logs: 'none',
+    settings: 'none', audit_logs: 'none', donations: 'none',
   },
   logistics: {
     riders: 'view', vehicles: 'view', tasks: 'edit', faults: 'edit',
     monthly_checks: 'view', maintenance: 'edit', garages: 'edit',
     insurance_claims: 'view', users: 'none', reports: 'view',
-    settings: 'none', audit_logs: 'none',
+    settings: 'none', audit_logs: 'none', donations: 'none',
   },
   rider: {
     riders: 'self', vehicles: 'self', tasks: 'self', faults: 'self',
     monthly_checks: 'self', maintenance: 'self', garages: 'none',
     insurance_claims: 'none', users: 'none', reports: 'none',
-    settings: 'none', audit_logs: 'none',
+    settings: 'none', audit_logs: 'none', donations: 'none',
   },
   regional_manager: {
     riders: 'edit', vehicles: 'edit', tasks: 'edit', faults: 'edit',
     monthly_checks: 'edit', maintenance: 'edit', garages: 'view',
     insurance_claims: 'view', users: 'none', reports: 'view',
-    settings: 'none', audit_logs: 'none',
+    settings: 'none', audit_logs: 'none', donations: 'none',
   },
 };
+
+// מיזוג entities חדשים שלא קיימים ב-Firestore עם ברירת מחדל
+function mergeWithDefaults(storedPermissions) {
+  const merged = { ...storedPermissions };
+  for (const [role, defaults] of Object.entries(DEFAULT_PERMISSIONS)) {
+    if (!merged[role]) {
+      merged[role] = defaults;
+    } else {
+      for (const [entity, level] of Object.entries(defaults)) {
+        if (merged[role][entity] === undefined) {
+          merged[role][entity] = level;
+        }
+      }
+    }
+  }
+  return merged;
+}
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -108,7 +126,7 @@ module.exports = async (req, res) => {
     // GET /api/permissions/my - הרשאות המשתמש המחובר
     if (req.method === 'GET' && isMyRoute) {
       const doc = await permissionsRef.get();
-      const permissions = doc.exists ? doc.data().roles : DEFAULT_PERMISSIONS;
+      const permissions = doc.exists ? mergeWithDefaults(doc.data().roles) : DEFAULT_PERMISSIONS;
 
       // חישוב הרשאות אפקטיביות
       const levelPriority = { none: 0, self: 1, view: 2, edit: 3 };
@@ -166,7 +184,7 @@ module.exports = async (req, res) => {
       }
 
       const doc = await permissionsRef.get();
-      const permissions = doc.exists ? doc.data().roles : DEFAULT_PERMISSIONS;
+      const permissions = doc.exists ? mergeWithDefaults(doc.data().roles) : DEFAULT_PERMISSIONS;
 
       return res.status(200).json({
         success: true,
