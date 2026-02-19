@@ -18,6 +18,7 @@ const ENTITIES = [
   { key: 'reports', label: 'דוחות' },
   { key: 'settings', label: 'הגדרות' },
   { key: 'audit_logs', label: 'לוג פעולות' },
+  { key: 'donations', label: 'קופה / תרומות' },
 ];
 
 // כל התפקידים במערכת
@@ -45,6 +46,7 @@ const DEFAULT_PERMISSIONS = {
     reports: 'edit',
     settings: 'edit',
     audit_logs: 'view',
+    donations: 'edit',
   },
   manager: {
     riders: 'edit',
@@ -59,6 +61,7 @@ const DEFAULT_PERMISSIONS = {
     reports: 'edit',
     settings: 'edit',
     audit_logs: 'view',
+    donations: 'edit',
   },
   secretary: {
     riders: 'edit',
@@ -73,6 +76,7 @@ const DEFAULT_PERMISSIONS = {
     reports: 'view',
     settings: 'none',
     audit_logs: 'none',
+    donations: 'none',
   },
   logistics: {
     riders: 'view',
@@ -87,6 +91,7 @@ const DEFAULT_PERMISSIONS = {
     reports: 'view',
     settings: 'none',
     audit_logs: 'none',
+    donations: 'none',
   },
   rider: {
     riders: 'self',
@@ -101,6 +106,7 @@ const DEFAULT_PERMISSIONS = {
     reports: 'none',
     settings: 'none',
     audit_logs: 'none',
+    donations: 'none',
   },
   regional_manager: {
     riders: 'edit',
@@ -115,6 +121,7 @@ const DEFAULT_PERMISSIONS = {
     reports: 'view',
     settings: 'none',
     audit_logs: 'none',
+    donations: 'none',
   },
 };
 

@@ -21,7 +21,7 @@ router.use(protect);
 // @route   GET /api/donations
 // @desc    קבלת רשימת תרומות
 // @access  Private
-router.get('/', async (req, res) => {
+router.get('/', checkPermission('donations', 'view'), async (req, res) => {
   try {
     const { search, paymentMethod, riderId, type, limit = 100 } = req.query;
 
@@ -60,7 +60,7 @@ router.get('/', async (req, res) => {
 // @route   GET /api/donations/statistics
 // @desc    קבלת סטטיסטיקות תרומות
 // @access  Private
-router.get('/statistics', async (req, res) => {
+router.get('/statistics', checkPermission('donations', 'view'), async (req, res) => {
   try {
     const statistics = await DonationModel.getStatistics();
 
@@ -79,7 +79,7 @@ router.get('/statistics', async (req, res) => {
 // @route   GET /api/donations/rider/:riderId
 // @desc    קבלת תרומות לפי רוכב
 // @access  Private
-router.get('/rider/:riderId', async (req, res) => {
+router.get('/rider/:riderId', checkPermission('donations', 'view'), async (req, res) => {
   try {
     const { limit = 50 } = req.query;
     const donations = await DonationModel.getByRider(req.params.riderId, parseInt(limit));
@@ -100,7 +100,7 @@ router.get('/rider/:riderId', async (req, res) => {
 // @route   GET /api/donations/:id
 // @desc    קבלת תרומה לפי ID
 // @access  Private
-router.get('/:id', async (req, res) => {
+router.get('/:id', checkPermission('donations', 'view'), async (req, res) => {
   try {
     const donation = await DonationModel.findById(req.params.id);
 
@@ -126,7 +126,7 @@ router.get('/:id', async (req, res) => {
 // @route   POST /api/donations
 // @desc    יצירת תרומה חדשה
 // @access  Private
-router.post('/', async (req, res) => {
+router.post('/', checkPermission('donations', 'edit'), async (req, res) => {
   try {
     const entryType = req.body.type || 'donation';
     if (entryType === 'donation' && !req.body.riderId) {
@@ -168,7 +168,7 @@ router.post('/', async (req, res) => {
 // @route   PUT /api/donations/:id
 // @desc    עדכון תרומה
 // @access  Private
-router.put('/:id', async (req, res) => {
+router.put('/:id', checkPermission('donations', 'edit'), async (req, res) => {
   try {
     const donation = await DonationModel.update(req.params.id, req.body, req.user.id);
 
@@ -203,7 +203,7 @@ router.put('/:id', async (req, res) => {
 // @route   DELETE /api/donations/:id
 // @desc    מחיקת תרומה
 // @access  Private
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', checkPermission('donations', 'edit'), async (req, res) => {
   try {
     const donation = await DonationModel.findById(req.params.id);
 
@@ -239,7 +239,7 @@ router.delete('/:id', async (req, res) => {
 // @route   POST /api/donations/upload-file
 // @desc    העלאת קובץ לתרומה (קבלה/אישור)
 // @access  Private
-router.post('/upload-file', upload.single('file'), async (req, res) => {
+router.post('/upload-file', checkPermission('donations', 'edit'), upload.single('file'), async (req, res) => {
   try {
     const { donationId } = req.body;
 
