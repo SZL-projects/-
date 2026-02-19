@@ -51,6 +51,7 @@ import {
   LocalShipping,
   SportsMotorsports,
   ManageAccounts,
+  AccountBalance,
 } from '@mui/icons-material';
 import { permissionsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -69,6 +70,7 @@ const entityIcons = {
   reports: <Assessment sx={{ fontSize: 20 }} />,
   settings: <Settings sx={{ fontSize: 20 }} />,
   audit_logs: <History sx={{ fontSize: 20 }} />,
+  donations: <AccountBalance sx={{ fontSize: 20 }} />,
 };
 
 // אייקונים לתפקידים
