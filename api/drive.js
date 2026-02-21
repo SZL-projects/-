@@ -3,6 +3,7 @@ const { google } = require('googleapis');
 const { initFirebase } = require('./_utils/firebase');
 const { authenticateToken, checkPermission } = require('./_utils/auth');
 const googleDriveService = require('./_services/googleDriveService');
+const { setCorsHeaders } = require('./_utils/cors');
 
 // OAuth2 client configuration
 const getOAuth2Client = () => {
@@ -15,10 +16,7 @@ const getOAuth2Client = () => {
 
 module.exports = async (req, res) => {
   // CORS Headers
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+  setCorsHeaders(req, res);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();

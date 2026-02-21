@@ -6,6 +6,10 @@ node_modules/
 .env.local
 .env.production
 
+# Firebase credentials - לעולם לא ל-Git!
+serviceAccountKey.json
+*serviceAccount*.json
+
 # Logs
 logs
 *.log

@@ -63,10 +63,11 @@ exports.protect = async (req, res, next) => {
 // בדיקת הרשאות לפי תפקיד
 exports.authorize = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    const userRoles = Array.isArray(req.user.roles) ? req.user.roles : [req.user.role];
+    if (!userRoles.some(r => roles.includes(r))) {
       return res.status(403).json({
         success: false,
-        message: `התפקיד ${req.user.role} אינו מורשה לבצע פעולה זו`
+        message: 'אין הרשאה לבצע פעולה זו'
       });
     }
     next();

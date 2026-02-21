@@ -1,15 +1,43 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const UserModel = require('../models/firestore/UserModel');
 const { getSignedJwtToken, protect } = require('../middleware/auth-firebase');
 const { checkPermission } = require('../middleware/checkPermission');
 const { logAudit } = require('../middleware/auditLogger');
 
+// Rate limiting - הגבלת ניסיונות כניסה
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 דקות
+  max: 10, // מקסימום 10 ניסיונות ב-15 דקות
+  message: { success: false, message: 'יותר מדי ניסיונות כניסה, נסה שוב בעוד 15 דקות' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // שעה
+  max: 5, // מקסימום 5 בקשות לשעה
+  message: { success: false, message: 'יותר מדי בקשות איפוס סיסמה, נסה שוב בעוד שעה' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // @route   POST /api/auth/register
-// @desc    רישום משתמש חדש
-// @access  Public (ייתכן שנרצה להגביל למנהלים בלבד)
-router.post('/register', async (req, res) => {
+// @desc    רישום משתמש חדש - מנהלים בלבד
+// @access  Private (super_admin, manager)
+const ALLOWED_ROLES = ['rider', 'secretary', 'logistics', 'regional_manager', 'manager'];
+router.post('/register', protect, async (req, res) => {
   try {
+    // רק super_admin ו-manager יכולים ליצור משתמשים
+    const userRoles = Array.isArray(req.user.roles) ? req.user.roles : [req.user.role];
+    if (!userRoles.some(r => ['super_admin', 'manager'].includes(r))) {
+      return res.status(403).json({
+        success: false,
+        message: 'אין הרשאה ליצור משתמשים'
+      });
+    }
+
     const { username, email, password, firstName, lastName, phone, role } = req.body;
 
     // ולידציות בסיסיות
@@ -20,6 +48,9 @@ router.post('/register', async (req, res) => {
       });
     }
 
+    // מניעת הגדרת תפקיד לא מורשה
+    const assignedRole = ALLOWED_ROLES.includes(role) ? role : 'rider';
+
     // יצירת משתמש
     const user = await UserModel.create({
       username,
@@ -28,22 +59,19 @@ router.post('/register', async (req, res) => {
       firstName,
       lastName,
       phone,
-      role: role || 'rider'
+      roles: [assignedRole],
+      createdBy: req.user.id
     });
-
-    // יצירת token
-    const token = getSignedJwtToken(user.id);
 
     res.status(201).json({
       success: true,
-      token,
       user: {
         id: user.id,
         username: user.username,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role
+        roles: user.roles
       }
     });
   } catch (error) {
@@ -57,7 +85,7 @@ router.post('/register', async (req, res) => {
 // @route   POST /api/auth/login
 // @desc    התחברות משתמש
 // @access  Public
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -315,7 +343,7 @@ router.delete('/users/:id', protect, checkPermission('users', 'edit'), async (re
 // @route   POST /api/auth/forgot-password
 // @desc    שליחת מייל לאיפוס סיסמה
 // @access  Public
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -373,10 +401,10 @@ router.put('/reset-password/:resetToken', async (req, res) => {
   try {
     const { password } = req.body;
 
-    if (!password || password.length < 6) {
+    if (!password || password.length < 8) {
       return res.status(400).json({
         success: false,
-        message: 'סיסמה חייבת להיות לפחות 6 תווים'
+        message: 'סיסמה חייבת להיות לפחות 8 תווים'
       });
     }
 
@@ -384,15 +412,30 @@ router.put('/reset-password/:resetToken', async (req, res) => {
     const crypto = require('crypto');
     const resetPasswordToken = crypto.createHash('sha256').update(req.params.resetToken).digest('hex');
 
-    // חיפוש משתמש עם הטוקן ובדיקה שלא פג תוקפו
-    const users = await UserModel.getAll({}, 1000);
-    const user = users.find(u =>
-      u.resetPasswordToken === resetPasswordToken &&
-      u.resetPasswordExpire &&
-      new Date(u.resetPasswordExpire) > new Date()
-    );
+    // חיפוש ישיר לפי הטוקן המוצפן (במקום סריקת כל המשתמשים)
+    const { db } = require('../config/firebase');
+    const snapshot = await db.collection('users')
+      .where('resetPasswordToken', '==', resetPasswordToken)
+      .limit(1)
+      .get();
 
-    if (!user) {
+    if (snapshot.empty) {
+      return res.status(400).json({
+        success: false,
+        message: 'טוקן לא תקין או שפג תוקפו'
+      });
+    }
+
+    const doc = snapshot.docs[0];
+    const rawUser = doc.data();
+    const user = { id: doc.id, ...rawUser };
+
+    // בדיקת תוקף
+    const expireDate = rawUser.resetPasswordExpire?.toDate
+      ? rawUser.resetPasswordExpire.toDate()
+      : new Date(rawUser.resetPasswordExpire);
+
+    if (!expireDate || expireDate < new Date()) {
       return res.status(400).json({
         success: false,
         message: 'טוקן לא תקין או שפג תוקפו'

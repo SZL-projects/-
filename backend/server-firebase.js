@@ -34,7 +34,21 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Middleware בסיסי
 app.use(helmet()); // אבטחה
-app.use(cors()); // CORS
+
+// CORS - רק origins מורשים
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(',').map(o => o.trim())
+  : ['http://localhost:5173'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // אפשר בקשות ללא origin (כמו Postman בפיתוח)
+    if (!origin && process.env.NODE_ENV !== 'production') return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error('CORS: Origin not allowed'));
+  },
+  credentials: true,
+}));
 app.use(compression()); // דחיסה
 app.use(express.json()); // Body parser
 app.use(express.urlencoded({ extended: true }));
@@ -60,53 +74,45 @@ app.use('/api/reports', require('./routes/reports-firebase'));
 app.use('/api/audit-logs', require('./routes/audit-log-firebase'));
 app.use('/api/donations', require('./routes/donations-firebase'));
 
-// נתיבים להרצה ידנית של משימות (למנהלי על בלבד)
+// נתיבים להרצה ידנית של משימות (למנהלי על בלבד - דורש אימות)
 if (process.env.NODE_ENV !== 'production') {
-  app.post('/api/admin/trigger-monthly-checks', async (req, res) => {
+  const { protect } = require('./middleware/auth-firebase');
+
+  const requireSuperAdmin = (req, res, next) => {
+    const userRoles = Array.isArray(req.user.roles) ? req.user.roles : [req.user.role];
+    if (!userRoles.includes('super_admin')) {
+      return res.status(403).json({ success: false, message: 'נדרשת הרשאת מנהל-על' });
+    }
+    next();
+  };
+
+  app.post('/api/admin/trigger-monthly-checks', protect, requireSuperAdmin, async (req, res) => {
     try {
       const monthlyCheckScheduler = require('./schedulers/monthlyCheckScheduler');
       await monthlyCheckScheduler.runNow();
-      res.json({
-        success: true,
-        message: 'בקרות חודשיות נפתחו בהצלחה'
-      });
+      res.json({ success: true, message: 'בקרות חודשיות נפתחו בהצלחה' });
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message
-      });
+      res.status(500).json({ success: false, message: error.message });
     }
   });
 
-  app.post('/api/admin/trigger-daily-reminders', async (req, res) => {
+  app.post('/api/admin/trigger-daily-reminders', protect, requireSuperAdmin, async (req, res) => {
     try {
       const dailyReminderScheduler = require('./schedulers/dailyReminderScheduler');
       await dailyReminderScheduler.runNow();
-      res.json({
-        success: true,
-        message: 'תזכורות יומיות נשלחו בהצלחה'
-      });
+      res.json({ success: true, message: 'תזכורות יומיות נשלחו בהצלחה' });
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message
-      });
+      res.status(500).json({ success: false, message: error.message });
     }
   });
 
-  app.post('/api/admin/trigger-expiry-reminders', async (req, res) => {
+  app.post('/api/admin/trigger-expiry-reminders', protect, requireSuperAdmin, async (req, res) => {
     try {
       const expiryReminderScheduler = require('./schedulers/expiryReminderScheduler');
       await expiryReminderScheduler.runNow();
-      res.json({
-        success: true,
-        message: 'התראות תוקף ביטוח ורשיון נשלחו בהצלחה'
-      });
+      res.json({ success: true, message: 'התראות תוקף ביטוח ורשיון נשלחו בהצלחה' });
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message
-      });
+      res.status(500).json({ success: false, message: error.message });
     }
   });
 }

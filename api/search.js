@@ -1,6 +1,7 @@
 // Vercel Serverless Function - /api/search
 const { initFirebase } = require('./_utils/firebase');
 const { authenticateToken, checkPermission } = require('./_utils/auth');
+const { setCorsHeaders } = require('./_utils/cors');
 
 // הגדרות ישויות לחיפוש
 const ENTITY_CONFIGS = [
@@ -226,10 +227,7 @@ const SEARCH_FUNCTIONS = {
 
 module.exports = async (req, res) => {
   // CORS Headers
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+  setCorsHeaders(req, res);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();

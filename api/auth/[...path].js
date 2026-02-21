@@ -6,13 +6,11 @@ const { getSignedJwtToken, authenticateToken } = require('../_utils/auth');
 // שימוש ב-SMTP כרגע - לשימוש ב-Gmail API צריך Domain-Wide Delegation
 // כשתהיה גישת אדמין, החלף ל: const { sendPasswordResetEmail } = require('../_utils/gmailService');
 const { sendPasswordResetEmail } = require('../_utils/emailService');
+const { setCorsHeaders } = require('../_utils/cors');
 
 module.exports = async (req, res) => {
   // CORS Headers
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+  setCorsHeaders(req, res);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -296,10 +294,10 @@ module.exports = async (req, res) => {
         });
       }
 
-      if (password.length < 6) {
+      if (password.length < 8) {
         return res.status(400).json({
           success: false,
-          message: 'הסיסמה חייבת להיות לפחות 6 תווים'
+          message: 'הסיסמה חייבת להיות לפחות 8 תווים'
         });
       }
 
