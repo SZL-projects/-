@@ -122,6 +122,17 @@ export default function VehicleDialog({ open, onClose, onSave, vehicle }) {
     });
   };
 
+  // שדה ביטוח אחד מעדכן גם חובה וגם מקיף
+  const handleInsuranceChange = (event) => {
+    setFormData({
+      ...formData,
+      insurance: {
+        mandatory: { expiryDate: event.target.value },
+        comprehensive: { expiryDate: event.target.value },
+      },
+    });
+  };
+
   const handleVehicleLicenseChange = (field) => (event) => {
     setFormData({
       ...formData,
@@ -293,20 +304,10 @@ export default function VehicleDialog({ open, onClose, onSave, vehicle }) {
           <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
-              label="תוקף ביטוח חובה"
+              label="תוקף ביטוח"
               type="date"
-              value={formData.insurance?.mandatory?.expiryDate || ''}
-              onChange={handleNestedChange('insurance', 'mandatory', 'expiryDate')}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="תוקף ביטוח מקיף"
-              type="date"
-              value={formData.insurance?.comprehensive?.expiryDate || ''}
-              onChange={handleNestedChange('insurance', 'comprehensive', 'expiryDate')}
+              value={formData.insurance?.mandatory?.expiryDate || formData.insurance?.comprehensive?.expiryDate || ''}
+              onChange={handleInsuranceChange}
               InputLabelProps={{ shrink: true }}
             />
           </Grid>
