@@ -257,7 +257,7 @@ module.exports = async (req, res) => {
         role: req.body?.role
       });
 
-      const { username, email, password, firstName, lastName, phone, role } = req.body;
+      const { username, email, password, firstName, lastName, phone, role, roles, vehicleAccess, riderId, isActive } = req.body;
 
       // Validation
       if (!username || !email || !password) {
@@ -299,6 +299,12 @@ module.exports = async (req, res) => {
       const hashedPassword = await bcrypt.hash(password, salt);
       console.log('✅ Password hashed successfully');
 
+      // חישוב תפקידים - תמיכה גם ב-role וגם ב-roles
+      const assignedRoles = Array.isArray(roles) && roles.length > 0
+        ? roles
+        : [role || 'rider'];
+      const primaryRole = assignedRoles[0];
+
       console.log('📦 Creating user object...');
       const newUser = {
         username,
@@ -307,9 +313,11 @@ module.exports = async (req, res) => {
         firstName: firstName || '',
         lastName: lastName || '',
         phone: phone || null,
-        role: role || 'rider',
-        roles: [role || 'rider'],
-        isActive: true,
+        role: primaryRole,
+        roles: assignedRoles,
+        vehicleAccess: Array.isArray(vehicleAccess) ? vehicleAccess : [],
+        riderId: riderId || null,
+        isActive: isActive !== undefined ? isActive : true,
         isLocked: false,
         createdBy: user.id,
         createdAt: new Date(),
@@ -323,6 +331,23 @@ module.exports = async (req, res) => {
       const userDoc = await userRef.get();
       const userData = userDoc.data();
       delete userData.password;
+
+      // שליחת מייל ברוכים הבאים עם פרטי התחברות
+      try {
+        await sendLoginCredentials(
+          {
+            email: email.toLowerCase(),
+            firstName: firstName || '',
+            lastName: lastName || '',
+            username
+          },
+          password // הסיסמה המקורית לפני הצפנה
+        );
+        console.log('✅ Welcome email sent to:', email);
+      } catch (emailError) {
+        console.error('❌ Failed to send welcome email:', emailError);
+        // לא נכשל את הבקשה כולה אם המייל נכשל
+      }
 
       console.log('🎉 User creation successful!');
       return res.status(201).json({
