@@ -21,9 +21,10 @@ import {
   Autocomplete,
   Tabs,
   Tab,
+  Alert,
 } from '@mui/material';
-import { Person, Shield, TwoWheeler } from '@mui/icons-material';
-import { ridersAPI } from '../services/api';
+import { Person, Shield, TwoWheeler, LockOpen, Lock } from '@mui/icons-material';
+import { ridersAPI, authAPI } from '../services/api';
 import VehicleAccessDialog from './VehicleAccessDialog';
 import RiderAccessDialog from './RiderAccessDialog';
 
@@ -58,6 +59,7 @@ export default function UserDialog({ open, onClose, onSave, user }) {
   const [riders, setRiders] = useState([]);
   const [vehicleAccessDialogOpen, setVehicleAccessDialogOpen] = useState(false);
   const [riderAccessDialogOpen, setRiderAccessDialogOpen] = useState(false);
+  const [unlockLoading, setUnlockLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -101,6 +103,19 @@ export default function UserDialog({ open, onClose, onSave, user }) {
     }
     setErrors({});
   }, [user, open]);
+
+  const handleUnlock = async () => {
+    if (!user?.id) return;
+    setUnlockLoading(true);
+    try {
+      await authAPI.unlockUser(user.id);
+      onClose();
+    } catch (err) {
+      console.error('Error unlocking user:', err);
+    } finally {
+      setUnlockLoading(false);
+    }
+  };
 
   const handleChange = (field) => (event) => {
     const value = field === 'isActive' ? event.target.checked : event.target.value;
@@ -304,6 +319,31 @@ export default function UserDialog({ open, onClose, onSave, user }) {
                   />
                 </Grid>
               </>
+            )}
+
+            {/* סטטוס נעילה - מוצג רק בעריכת משתמש נעול */}
+            {user?.isLocked && (
+              <Grid item xs={12}>
+                <Alert
+                  severity="error"
+                  icon={<Lock fontSize="small" />}
+                  action={
+                    <Button
+                      color="inherit"
+                      size="small"
+                      startIcon={<LockOpen fontSize="small" />}
+                      onClick={handleUnlock}
+                      disabled={unlockLoading}
+                      sx={{ fontWeight: 600 }}
+                    >
+                      בטל נעילה
+                    </Button>
+                  }
+                >
+                  חשבון זה נעול
+                  {user.lockReason && ` — ${user.lockReason}`}
+                </Alert>
+              </Grid>
             )}
 
             {/* סטטוס */}
