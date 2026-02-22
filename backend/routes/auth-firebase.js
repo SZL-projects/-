@@ -269,6 +269,15 @@ router.post('/users', protect, checkPermission('users', 'edit'), async (req, res
       createdBy: req.user.id
     });
 
+    // שליחת מייל ברוכים הבאים עם הסיסמה הזמנית
+    try {
+      const emailService = require('../services/emailService');
+      await emailService.sendNewUserWelcomeEmail(user, password);
+    } catch (emailError) {
+      console.error('Error sending welcome email:', emailError);
+      // לא נכשל את הבקשה כולה אם המייל נכשל
+    }
+
     // הסרת סיסמה מהתשובה
     const { password: _, ...userWithoutPassword } = user;
 
@@ -277,6 +286,47 @@ router.post('/users', protect, checkPermission('users', 'edit'), async (req, res
       user: userWithoutPassword
     });
   } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// @route   POST /api/auth/users/:id/send-credentials
+// @desc    שליחת אישורים מחדש למשתמש (סיסמה זמנית חדשה)
+// @access  Private (מנהלים בלבד)
+router.post('/users/:id/send-credentials', protect, checkPermission('users', 'edit'), async (req, res) => {
+  try {
+    const user = await UserModel.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'משתמש לא נמצא'
+      });
+    }
+
+    // יצירת סיסמה זמנית חדשה
+    const temporaryPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase();
+
+    // עדכון הסיסמה
+    const bcrypt = require('bcryptjs');
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(temporaryPassword, salt);
+
+    await UserModel.update(req.params.id, { password: hashedPassword });
+
+    // שליחת מייל עם הסיסמה החדשה
+    const emailService = require('../services/emailService');
+    await emailService.sendNewUserWelcomeEmail(user, temporaryPassword);
+
+    res.json({
+      success: true,
+      message: 'פרטי הגישה נשלחו בהצלחה למייל המשתמש'
+    });
+  } catch (error) {
+    console.error('Error sending credentials:', error);
     res.status(500).json({
       success: false,
       message: error.message

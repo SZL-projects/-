@@ -344,7 +344,7 @@ exports.sendNewUserWelcomeEmail = async (user, temporaryPassword) => {
           <p><strong>פרטי התחברות:</strong></p>
           <p>שם משתמש: <strong>${user.username}</strong></p>
           <p>סיסמה זמנית: <strong>${temporaryPassword}</strong></p>
-          <p>תפקיד: <strong>${getRoleLabel(user.role)}</strong></p>
+          <p>תפקיד: <strong>${getRoleLabel(Array.isArray(user.roles) ? user.roles[0] : user.role)}</strong></p>
         </div>
         <p><strong>חשוב!</strong> אנא התחבר למערכת ושנה את סיסמתך הזמנית בהקדם האפשרי.</p>
         <center>

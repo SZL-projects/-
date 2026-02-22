@@ -39,17 +39,19 @@ export const AuthProvider = ({ children }) => {
       try {
         const parsedUser = JSON.parse(savedUser);
         setUser(parsedUser);
-        // תמיד רענן מהשרת בטעינה - כדי לקבל תפקידים עדכניים
-        refreshUserFromServer();
+        // רענן מהשרת ורק אז הצג את הדף - כדי למנוע הצגת נתונים ישנים
+        refreshUserFromServer().finally(() => setLoading(false));
       } catch (error) {
         console.error('Error parsing saved user:', error);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('user');
+        setLoading(false);
       }
+    } else {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   const login = async (credentials, rememberMe = false) => {
@@ -124,11 +126,11 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (user) {
       loadPermissions();
-      // רענון אוטומטי של הרשאות ומידע משתמש כל 2 דקות
+      // רענון אוטומטי של הרשאות ומידע משתמש כל 30 שניות
       refreshTimerRef.current = setInterval(() => {
         refreshUserFromServer();
         loadPermissions();
-      }, 2 * 60 * 1000);
+      }, 30 * 1000);
     } else {
       setUserPermissions(null);
     }

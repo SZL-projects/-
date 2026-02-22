@@ -119,6 +119,7 @@ export default function RiderDetail() {
         password: temporaryPassword,
         firstName: rider.firstName,
         lastName: rider.lastName,
+        phone: rider.phone || '',
         roles: ['rider'],
         riderId: id,
         vehicleAccess: vehicleAccessArray,
