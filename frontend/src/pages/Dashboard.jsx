@@ -182,35 +182,25 @@ export default function Dashboard() {
         const riderName = rider ? `${rider.firstName || ''} ${rider.lastName || ''}`.trim() : '';
         const vehicleModel = [v.manufacturer, v.model].filter(Boolean).join(' ');
 
-        if (mandatoryExpiry) {
-          const expiryDate = mandatoryExpiry.toDate ? mandatoryExpiry.toDate() : new Date(mandatoryExpiry);
-          if (expiryDate >= now && expiryDate <= fourteenDaysFromNow) {
-            expiringInsurance++;
-            insuranceExpiringList.push({
-              id: `${v.id}-mandatory`,
-              licensePlate: v.licensePlate,
-              internalNumber: v.internalNumber,
-              vehicleModel,
-              insuranceType: 'ביטוח חובה',
-              expiryDate,
-              riderName,
-            });
-          }
-        }
-        if (comprehensiveExpiry) {
-          const expiryDate = comprehensiveExpiry.toDate ? comprehensiveExpiry.toDate() : new Date(comprehensiveExpiry);
-          if (expiryDate >= now && expiryDate <= fourteenDaysFromNow) {
-            expiringInsurance++;
-            insuranceExpiringList.push({
-              id: `${v.id}-comprehensive`,
-              licensePlate: v.licensePlate,
-              internalNumber: v.internalNumber,
-              vehicleModel,
-              insuranceType: 'ביטוח מקיף',
-              expiryDate,
-              riderName,
-            });
-          }
+        // ביטוח - כלי אחד = כרטיס אחד, תוקף הקרוב ביותר
+        const mandatoryDate = mandatoryExpiry ? (mandatoryExpiry.toDate ? mandatoryExpiry.toDate() : new Date(mandatoryExpiry)) : null;
+        const comprehensiveDate = comprehensiveExpiry ? (comprehensiveExpiry.toDate ? comprehensiveExpiry.toDate() : new Date(comprehensiveExpiry)) : null;
+        const mandatoryExpiring = mandatoryDate && mandatoryDate >= now && mandatoryDate <= fourteenDaysFromNow;
+        const comprehensiveExpiring = comprehensiveDate && comprehensiveDate >= now && comprehensiveDate <= fourteenDaysFromNow;
+
+        if (mandatoryExpiring || comprehensiveExpiring) {
+          expiringInsurance++;
+          // תוקף = התאריך הקרוב ביותר מבין מה שפוקע
+          const expiryDate = mandatoryExpiring && comprehensiveExpiring
+            ? (mandatoryDate < comprehensiveDate ? mandatoryDate : comprehensiveDate)
+            : mandatoryExpiring ? mandatoryDate : comprehensiveDate;
+          insuranceExpiringList.push({
+            id: v.id,
+            licensePlate: v.licensePlate,
+            internalNumber: v.internalNumber,
+            expiryDate,
+            riderName,
+          });
         }
 
         // בדיקת רשיון רכב - 30 יום
@@ -691,11 +681,9 @@ export default function Dashboard() {
                   const lines = expiringInsuranceVehicles.map((v, i) =>
                     `${i + 1}. *רוכב:* ${v.riderName || 'לא משויך'}` +
                     `\n   *מספר רכב:* ${v.licensePlate || v.internalNumber || 'לא ידוע'}` +
-                    (v.vehicleModel ? `\n   *דגם:* ${v.vehicleModel}` : '') +
-                    `\n   *סוג ביטוח:* ${v.insuranceType}` +
-                    `\n   *פוקע:* ${v.expiryDate.toLocaleDateString('he-IL')}`
+                    `\n   *תוקף ביטוח:* ${v.expiryDate.toLocaleDateString('he-IL')}`
                   ).join('\n\n');
-                  const text = `📋 *התראת ביטוח*\n${expiringInsuranceVehicles.length} ביטוחים שפוקעים בתוך 14 יום:\n\n${lines}\n\nאנא טפל בחידוש הביטוחים בהקדם האפשרי.`;
+                  const text = `📋 *התראת ביטוח*\n${expiringInsuranceVehicles.length} כלים שביטוחם פוקע בתוך 14 יום:\n\n${lines}\n\nאנא טפל בחידוש הביטוחים בהקדם האפשרי.`;
                   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
                 }}
                 sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.6)', '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.1)' } }}
@@ -728,20 +716,13 @@ export default function Dashboard() {
                   }}
                     onClick={() => navigate('/vehicles?filter=expiringInsurance')}
                   >
-                    {/* סדר כמו תבנית המייל: שם הרוכב → מספר רכב → דגם → סוג ביטוח → תאריך */}
                     <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>שם הרוכב</Typography>
                     <Typography sx={{ fontWeight: 700, color: '#1e293b', mb: 1 }}>{v.riderName || 'לא משויך'}</Typography>
 
                     <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>מספר רכב</Typography>
                     <Typography sx={{ fontWeight: 700, color: '#1e293b', mb: 1 }}>{v.licensePlate || v.internalNumber || 'לא ידוע'}</Typography>
 
-                    <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>דגם</Typography>
-                    <Typography sx={{ fontWeight: 600, color: '#374151', mb: 1 }}>{v.vehicleModel || 'לא ידוע'}</Typography>
-
-                    <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>סוג ביטוח</Typography>
-                    <Typography sx={{ fontWeight: 600, color: '#374151', mb: 1 }}>{v.insuranceType}</Typography>
-
-                    <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>תאריך תפוגת הביטוח</Typography>
+                    <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>תוקף ביטוח</Typography>
                     <Typography sx={{ fontWeight: 700, color: '#dc2626' }}>
                       {v.expiryDate.toLocaleDateString('he-IL')}
                     </Typography>
@@ -787,7 +768,6 @@ export default function Dashboard() {
                     `${i + 1}. *מספר רכב:* ${v.licensePlate || v.internalNumber || 'לא ידוע'}` +
                     `\n   *רוכב:* ${v.riderName || 'לא משויך'}` +
                     (v.riderIdNumber ? `\n   *ת"ז:* ${v.riderIdNumber}` : '') +
-                    (v.vehicleModel ? `\n   *דגם:* ${v.vehicleModel}` : '') +
                     `\n   *פוקע:* ${v.expiryDate.toLocaleDateString('he-IL')}`
                   ).join('\n\n');
                   const text = `🚗 *התראת טסט / רשיון רכב*\n${expiringLicenseVehicles.length} כלים שרשיונם פוקע בתוך 30 יום:\n\n${lines}\n\nאנא דאג לחידוש בהקדם האפשרי.`;
@@ -824,7 +804,6 @@ export default function Dashboard() {
                   }}
                     onClick={() => navigate('/vehicles?filter=expiringLicense')}
                   >
-                    {/* סדר כמו תבנית המייל: מספר רכב → שם הרוכב → ת"ז → דגם → תאריך */}
                     <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>מספר רכב</Typography>
                     <Typography sx={{ fontWeight: 700, color: '#1e293b', mb: 1 }}>{v.licensePlate || v.internalNumber || 'לא ידוע'}</Typography>
 
@@ -837,9 +816,6 @@ export default function Dashboard() {
                         <Typography sx={{ fontWeight: 600, color: '#374151', mb: 1 }}>{v.riderIdNumber}</Typography>
                       </>
                     )}
-
-                    <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>דגם</Typography>
-                    <Typography sx={{ fontWeight: 600, color: '#374151', mb: 1 }}>{v.vehicleModel || 'לא ידוע'}</Typography>
 
                     <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>תאריך תפוגת הרישיון</Typography>
                     <Typography sx={{ fontWeight: 700, color: '#dc2626' }}>
