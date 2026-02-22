@@ -42,6 +42,28 @@ module.exports = async (req, res) => {
 
     console.log('📍 User ID extracted:', userId, 'Action:', action);
 
+    // POST /api/users/:id/unlock - Unlock user account
+    if (userId && action === 'unlock' && req.method === 'POST') {
+      await checkPermission(user, db, 'users', 'edit');
+
+      const userRef = db.collection('users').doc(userId);
+      const doc = await userRef.get();
+
+      if (!doc.exists) {
+        return res.status(404).json({ success: false, message: 'משתמש לא נמצא' });
+      }
+
+      await userRef.update({
+        isLocked: false,
+        lockReason: null,
+        lockedAt: null,
+        loginAttempts: 0,
+        updatedAt: new Date()
+      });
+
+      return res.status(200).json({ success: true, message: 'הנעילה בוטלה בהצלחה' });
+    }
+
     // POST /api/users/:id/send-credentials - Send login credentials to user
     if (userId && action === 'send-credentials' && req.method === 'POST') {
       await checkPermission(user, db, 'users', 'edit');

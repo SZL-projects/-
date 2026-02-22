@@ -89,15 +89,6 @@ module.exports = async (req, res) => {
       const userData = userDoc.data();
       const userId = userDoc.id;
 
-      const isMatch = await bcrypt.compare(password, userData.password);
-
-      if (!isMatch) {
-        return res.status(401).json({
-          success: false,
-          message: 'שם משתמש או סיסמה שגויים'
-        });
-      }
-
       if (!userData.isActive) {
         return res.status(403).json({
           success: false,
@@ -112,8 +103,32 @@ module.exports = async (req, res) => {
         });
       }
 
+      const isMatch = await bcrypt.compare(password, userData.password);
+
+      if (!isMatch) {
+        const currentAttempts = (userData.loginAttempts || 0) + 1;
+        if (currentAttempts >= 5) {
+          await db.collection('users').doc(userId).update({
+            loginAttempts: currentAttempts,
+            isLocked: true,
+            lockReason: 'נעילה אוטומטית לאחר 5 ניסיונות כניסה כושלים',
+            lockedAt: new Date()
+          });
+          return res.status(403).json({
+            success: false,
+            message: 'החשבון ננעל לאחר 5 ניסיונות כניסה כושלים. אנא פנה למנהל המערכת'
+          });
+        }
+        await db.collection('users').doc(userId).update({ loginAttempts: currentAttempts });
+        return res.status(401).json({
+          success: false,
+          message: 'שם משתמש או סיסמה שגויים'
+        });
+      }
+
       await db.collection('users').doc(userId).update({
-        lastLogin: new Date()
+        lastLogin: new Date(),
+        loginAttempts: 0
       });
 
       const token = getSignedJwtToken(userId);
