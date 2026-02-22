@@ -305,8 +305,8 @@ export default function UserDialog({ open, onClose, onSave, user }) {
               </Grid>
             )}
 
-            {/* הרשאות צפייה בכלים */}
-            <Grid item xs={12}>
+            {/* הרשאות צפייה בכלים - רק אם יש תפקיד נוסף מעבר לרוכב */}
+            {formData.roles.some(r => r !== 'rider') && <Grid item xs={12}>
               <Box
                 sx={{
                   border: '1px solid #e2e8f0',
@@ -353,7 +353,7 @@ export default function UserDialog({ open, onClose, onSave, user }) {
                   ערוך הרשאות
                 </Button>
               </Box>
-            </Grid>
+            </Grid>}
 
             {/* סטטוס */}
             <Grid item xs={12}>
