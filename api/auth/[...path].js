@@ -128,8 +128,9 @@ module.exports = async (req, res) => {
           firstName: userData.firstName,
           lastName: userData.lastName,
           role: userData.role,
-          roles: userData.roles || [userData.role], // תמיכה במערך תפקידים
-          riderId: userData.riderId // מזהה רוכב אם קיים
+          roles: userData.roles || [userData.role],
+          riderId: userData.riderId,
+          vehicleAccess: userData.vehicleAccess || []
         }
       });
     }
@@ -206,8 +207,9 @@ module.exports = async (req, res) => {
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
-          roles: user.roles || [user.role], // תמיכה במערך תפקידים
-          riderId: user.riderId, // מזהה רוכב אם קיים
+          roles: user.roles || [user.role],
+          riderId: user.riderId,
+          vehicleAccess: user.vehicleAccess || [],
           isActive: user.isActive
         }
       });
