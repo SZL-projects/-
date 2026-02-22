@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -41,6 +41,7 @@ import {
   Send as SendIcon,
   Warning as WarningIcon,
   LockOpen as LockOpenIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { authAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -72,6 +73,10 @@ export default function Users() {
 
   useEffect(() => {
     loadUsers();
+    // רענון אוטומטי כשהטאב/חלון מקבל פוקוס מחדש
+    const handleFocus = () => loadUsers();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   const loadUsers = async () => {
@@ -378,6 +383,19 @@ export default function Users() {
           </Box>
         </Box>
 
+        <Box sx={{ display: 'flex', gap: 1 }}>
+        <IconButton
+          onClick={loadUsers}
+          disabled={loading}
+          title="רענן רשימה"
+          sx={{
+            color: '#6366f1',
+            bgcolor: 'rgba(99, 102, 241, 0.08)',
+            '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.15)' },
+          }}
+        >
+          <RefreshIcon sx={{ fontSize: 22, ...(loading && { animation: 'spin 1s linear infinite' }) }} />
+        </IconButton>
         {hasPermission('users', 'edit') && (
           <Button
             variant="contained"
@@ -401,6 +419,7 @@ export default function Users() {
             משתמש חדש
           </Button>
         )}
+        </Box>
       </Box>
 
       {error && (
