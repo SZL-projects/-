@@ -585,7 +585,13 @@ module.exports = async (req, res) => {
 
       // GET single rider
       if (req.method === 'GET') {
-        await checkPermission(user, db, 'riders', 'view');
+        const singlePermLevel = await checkPermission(user, db, 'riders', 'view');
+        if (singlePermLevel === 'self' && user.riderId !== riderId) {
+          return res.status(403).json({
+            success: false,
+            message: 'אין הרשאה לצפות ברוכב זה'
+          });
+        }
 
         return res.status(200).json({
           success: true,
@@ -738,8 +744,11 @@ module.exports = async (req, res) => {
         query = query.where('region.district', '==', region);
       }
 
-      // סינון לפי הרשאות - בדיקה אם המשתמש רואה רק את עצמו
-      await checkPermission(user, db, 'riders', 'view');
+      // סינון לפי הרשאות
+      const permLevel = await checkPermission(user, db, 'riders', 'view');
+      if (permLevel === 'self' && user.riderId) {
+        query = query.where('__name__', '==', user.riderId);
+      }
 
       // אופטימיזציה: אם אין חיפוש, השתמש ב-Firestore pagination אמיתי
       if (!search) {
