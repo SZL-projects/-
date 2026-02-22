@@ -138,9 +138,11 @@ export default function Dashboard() {
       const licenseExpiringList = [];
       const insuranceExpiringList = [];
 
-      // מפת רוכבים לחיפוש מהיר
-      const ridersMap = {};
-      riders.forEach(r => { ridersMap[r.id] = r; });
+      // מפת רוכבים לפי הכלי המשויך (הקשר נשמר על הרוכב)
+      const riderByVehicleMap = {};
+      riders.forEach(r => {
+        if (r.assignedVehicleId) riderByVehicleMap[r.assignedVehicleId] = r;
+      });
 
       // ספירת סטטוסי כלים לגרף
       const vehicleStatusCounts = {
@@ -176,19 +178,22 @@ export default function Dashboard() {
         const mandatoryExpiry = v.insurance?.mandatory?.expiryDate;
         const comprehensiveExpiry = v.insurance?.comprehensive?.expiryDate;
 
+        const rider = riderByVehicleMap[v.id];
+        const riderName = rider ? `${rider.firstName || ''} ${rider.lastName || ''}`.trim() : '';
+        const vehicleModel = [v.manufacturer, v.model].filter(Boolean).join(' ');
+
         if (mandatoryExpiry) {
           const expiryDate = mandatoryExpiry.toDate ? mandatoryExpiry.toDate() : new Date(mandatoryExpiry);
           if (expiryDate >= now && expiryDate <= fourteenDaysFromNow) {
             expiringInsurance++;
-            const rider = ridersMap[v.riderId] || ridersMap[v.assignedRiderId];
             insuranceExpiringList.push({
               id: `${v.id}-mandatory`,
               licensePlate: v.licensePlate,
               internalNumber: v.internalNumber,
-              vehicleModel: v.model || v.vehicleModel,
+              vehicleModel,
               insuranceType: 'ביטוח חובה',
               expiryDate,
-              riderName: rider ? `${rider.firstName || ''} ${rider.lastName || ''}`.trim() : '',
+              riderName,
             });
           }
         }
@@ -196,15 +201,14 @@ export default function Dashboard() {
           const expiryDate = comprehensiveExpiry.toDate ? comprehensiveExpiry.toDate() : new Date(comprehensiveExpiry);
           if (expiryDate >= now && expiryDate <= fourteenDaysFromNow) {
             expiringInsurance++;
-            const rider = ridersMap[v.riderId] || ridersMap[v.assignedRiderId];
             insuranceExpiringList.push({
               id: `${v.id}-comprehensive`,
               licensePlate: v.licensePlate,
               internalNumber: v.internalNumber,
-              vehicleModel: v.model || v.vehicleModel,
+              vehicleModel,
               insuranceType: 'ביטוח מקיף',
               expiryDate,
-              riderName: rider ? `${rider.firstName || ''} ${rider.lastName || ''}`.trim() : '',
+              riderName,
             });
           }
         }
@@ -215,14 +219,13 @@ export default function Dashboard() {
           const expiryDate = licenseExpiry.toDate ? licenseExpiry.toDate() : new Date(licenseExpiry);
           if (expiryDate >= now && expiryDate <= thirtyDaysFromNow) {
             expiringLicense++;
-            const rider = ridersMap[v.riderId] || ridersMap[v.assignedRiderId];
             licenseExpiringList.push({
               id: v.id,
               licensePlate: v.licensePlate,
               internalNumber: v.internalNumber,
-              vehicleModel: v.model || v.vehicleModel,
+              vehicleModel,
               expiryDate,
-              riderName: rider ? `${rider.firstName || ''} ${rider.lastName || ''}`.trim() : '',
+              riderName,
               riderIdNumber: rider?.idNumber || '',
             });
           }
@@ -686,11 +689,11 @@ export default function Dashboard() {
                 startIcon={<WhatsApp />}
                 onClick={() => {
                   const lines = expiringInsuranceVehicles.map((v, i) =>
-                    `${i + 1}. *${v.licensePlate || v.internalNumber || 'לא ידוע'}*` +
-                    (v.vehicleModel ? ` – ${v.vehicleModel}` : '') +
-                    `\n   סוג: ${v.insuranceType}` +
-                    (v.riderName ? `\n   רוכב: ${v.riderName}` : '') +
-                    `\n   פוקע: ${v.expiryDate.toLocaleDateString('he-IL')}`
+                    `${i + 1}. *רוכב:* ${v.riderName || 'לא משויך'}` +
+                    `\n   *מספר רכב:* ${v.licensePlate || v.internalNumber || 'לא ידוע'}` +
+                    (v.vehicleModel ? `\n   *דגם:* ${v.vehicleModel}` : '') +
+                    `\n   *סוג ביטוח:* ${v.insuranceType}` +
+                    `\n   *פוקע:* ${v.expiryDate.toLocaleDateString('he-IL')}`
                   ).join('\n\n');
                   const text = `📋 *התראת ביטוח*\n${expiringInsuranceVehicles.length} ביטוחים שפוקעים בתוך 14 יום:\n\n${lines}\n\nאנא טפל בחידוש הביטוחים בהקדם האפשרי.`;
                   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
@@ -725,15 +728,12 @@ export default function Dashboard() {
                   }}
                     onClick={() => navigate('/vehicles?filter=expiringInsurance')}
                   >
+                    {/* סדר כמו תבנית המייל: שם הרוכב → מספר רכב → דגם → סוג ביטוח → תאריך */}
+                    <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>שם הרוכב</Typography>
+                    <Typography sx={{ fontWeight: 700, color: '#1e293b', mb: 1 }}>{v.riderName || 'לא משויך'}</Typography>
+
                     <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>מספר רכב</Typography>
                     <Typography sx={{ fontWeight: 700, color: '#1e293b', mb: 1 }}>{v.licensePlate || v.internalNumber || 'לא ידוע'}</Typography>
-
-                    {v.riderName && (
-                      <>
-                        <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>שם הרוכב</Typography>
-                        <Typography sx={{ fontWeight: 600, color: '#374151', mb: 1 }}>{v.riderName}</Typography>
-                      </>
-                    )}
 
                     <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>דגם</Typography>
                     <Typography sx={{ fontWeight: 600, color: '#374151', mb: 1 }}>{v.vehicleModel || 'לא ידוע'}</Typography>
@@ -784,10 +784,11 @@ export default function Dashboard() {
                 startIcon={<WhatsApp />}
                 onClick={() => {
                   const lines = expiringLicenseVehicles.map((v, i) =>
-                    `${i + 1}. *${v.licensePlate || v.internalNumber || 'לא ידוע'}*` +
-                    (v.vehicleModel ? ` – ${v.vehicleModel}` : '') +
-                    (v.riderName ? `\n   רוכב: ${v.riderName}` : '') +
-                    `\n   פוקע: ${v.expiryDate.toLocaleDateString('he-IL')}`
+                    `${i + 1}. *מספר רכב:* ${v.licensePlate || v.internalNumber || 'לא ידוע'}` +
+                    `\n   *רוכב:* ${v.riderName || 'לא משויך'}` +
+                    (v.riderIdNumber ? `\n   *ת"ז:* ${v.riderIdNumber}` : '') +
+                    (v.vehicleModel ? `\n   *דגם:* ${v.vehicleModel}` : '') +
+                    `\n   *פוקע:* ${v.expiryDate.toLocaleDateString('he-IL')}`
                   ).join('\n\n');
                   const text = `🚗 *התראת טסט / רשיון רכב*\n${expiringLicenseVehicles.length} כלים שרשיונם פוקע בתוך 30 יום:\n\n${lines}\n\nאנא דאג לחידוש בהקדם האפשרי.`;
                   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
@@ -823,13 +824,17 @@ export default function Dashboard() {
                   }}
                     onClick={() => navigate('/vehicles?filter=expiringLicense')}
                   >
+                    {/* סדר כמו תבנית המייל: מספר רכב → שם הרוכב → ת"ז → דגם → תאריך */}
                     <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>מספר רכב</Typography>
                     <Typography sx={{ fontWeight: 700, color: '#1e293b', mb: 1 }}>{v.licensePlate || v.internalNumber || 'לא ידוע'}</Typography>
 
-                    {v.riderName && (
+                    <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>שם הרוכב</Typography>
+                    <Typography sx={{ fontWeight: 700, color: '#1e293b', mb: 1 }}>{v.riderName || 'לא משויך'}</Typography>
+
+                    {v.riderIdNumber && (
                       <>
-                        <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>שם הרוכב</Typography>
-                        <Typography sx={{ fontWeight: 600, color: '#374151', mb: 1 }}>{v.riderName}</Typography>
+                        <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>תעודת זהות</Typography>
+                        <Typography sx={{ fontWeight: 600, color: '#374151', mb: 1 }}>{v.riderIdNumber}</Typography>
                       </>
                     )}
 
