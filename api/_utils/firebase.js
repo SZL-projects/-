@@ -1,3 +1,6 @@
+// Set timezone to Israel - must be set before any date operations
+process.env.TZ = 'Asia/Jerusalem';
+
 // Firebase Admin SDK initialization for Vercel Serverless Functions
 const admin = require('firebase-admin');
 const { getFirestore } = require('firebase-admin/firestore');

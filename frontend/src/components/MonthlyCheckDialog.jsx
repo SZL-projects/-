@@ -67,7 +67,7 @@ export default function MonthlyCheckDialog({ open, onClose, onSave, check }) {
         vehiclePlate: '',
         riderId: '',
         riderName: '',
-        checkDate: new Date().toISOString().split('T')[0],
+        checkDate: new Date().toLocaleDateString('en-CA'),
         kilometers: 0,
         status: 'pending',
         notes: '',
@@ -87,7 +87,7 @@ export default function MonthlyCheckDialog({ open, onClose, onSave, check }) {
   const formatDateForInput = (timestamp) => {
     if (!timestamp) return '';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toISOString().split('T')[0];
+    return date.toLocaleDateString('en-CA');
   };
 
   const handleChange = (field) => (event) => {

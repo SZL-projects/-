@@ -53,7 +53,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
     vehiclePlate: '',
     riderId: '',
     riderName: '',
-    maintenanceDate: new Date().toISOString().split('T')[0],
+    maintenanceDate: new Date().toLocaleDateString('en-CA'),
     kilometersAtMaintenance: '',
     maintenanceType: 'routine',
     description: '',
@@ -108,7 +108,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
 
   // פונקציה לפרסור תאריך מפורמטים שונים
   const parseDate = (timestamp) => {
-    if (!timestamp) return new Date().toISOString().split('T')[0];
+    if (!timestamp) return new Date().toLocaleDateString('en-CA');
     try {
       let date;
       if (timestamp.toDate) {
@@ -118,10 +118,10 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
       } else {
         date = new Date(timestamp);
       }
-      if (isNaN(date.getTime())) return new Date().toISOString().split('T')[0];
-      return date.toISOString().split('T')[0];
+      if (isNaN(date.getTime())) return new Date().toLocaleDateString('en-CA');
+      return date.toLocaleDateString('en-CA');
     } catch (e) {
-      return new Date().toISOString().split('T')[0];
+      return new Date().toLocaleDateString('en-CA');
     }
   };
 
@@ -180,7 +180,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
         vehiclePlate: prefilledVehicle?.licensePlate || '',
         riderId: prefilledRider?.id || '',
         riderName: prefilledRider ? `${prefilledRider.firstName} ${prefilledRider.lastName}` : '',
-        maintenanceDate: new Date().toISOString().split('T')[0],
+        maintenanceDate: new Date().toLocaleDateString('en-CA'),
         kilometersAtMaintenance: prefilledVehicle?.currentKilometers || '',
         maintenanceType: 'routine',
         description: '',
