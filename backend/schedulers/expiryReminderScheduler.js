@@ -1,14 +1,14 @@
 const cron = require('node-cron');
 const Vehicle = require('../models/Vehicle');
-const emailService = require('../services/emailService');
+const { sendInsuranceExpiryEmail, sendLicenseExpiryEmail } = require('../services/emailService');
 
 /**
- * Scheduler לשליחת התראות שבועיות על תוקף ביטוח ורשיון רכב
+ * Scheduler לשליחת התראות יומיות על תוקף ביטוח ורשיון רכב
  *
- * פועל כל יום ראשון בשעה 09:00 (שעון ישראל)
+ * פועל כל יום בשעה 09:00 (שעון ישראל)
  * בודק:
- * - ביטוחים (חובה/מקיף) שפוקעים תוך 14 יום
- * - רשיונות רכב שפוקעים תוך 30 יום
+ * - ביטוחים (חובה/מקיף) שפוקעים בדיוק עוד 14 יום (התראה פעם אחת)
+ * - רשיונות רכב/טסט שפוקעים בדיוק עוד 30 יום (התראה פעם אחת)
  * שולח מייל מרוכז למייל המערכת
  */
 
@@ -22,8 +22,20 @@ class ExpiryReminderScheduler {
    */
   async collectExpiringItems() {
     const now = new Date();
-    const fourteenDaysFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-    const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    // תאריך יעד: בדיוק 14 ימים מהיום (לביטוחים)
+    const target14 = new Date(now);
+    target14.setDate(target14.getDate() + 14);
+    target14.setHours(0, 0, 0, 0);
+    const target14End = new Date(target14);
+    target14End.setHours(23, 59, 59, 999);
+
+    // תאריך יעד: בדיוק 30 ימים מהיום (לטסט/רשיון)
+    const target30 = new Date(now);
+    target30.setDate(target30.getDate() + 30);
+    target30.setHours(0, 0, 0, 0);
+    const target30End = new Date(target30);
+    target30End.setHours(23, 59, 59, 999);
 
     const expiringItems = [];
 
@@ -34,49 +46,46 @@ class ExpiryReminderScheduler {
       }).lean();
 
       for (const vehicle of vehicles) {
-        // בדיקת ביטוח חובה
+        // בדיקת ביטוח חובה - התראה בדיוק 14 יום לפני הפקיעה
         if (vehicle.insurance?.mandatory?.expiryDate) {
           const expiryDate = new Date(vehicle.insurance.mandatory.expiryDate);
-          if (expiryDate >= now && expiryDate <= fourteenDaysFromNow) {
-            const daysLeft = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+          if (expiryDate >= target14 && expiryDate <= target14End) {
             expiringItems.push({
               type: 'insurance',
               insuranceType: 'mandatory',
               licensePlate: vehicle.licensePlate,
               vehicleId: vehicle._id,
               expiryDate: expiryDate,
-              daysLeft: daysLeft
+              daysLeft: 14
             });
           }
         }
 
-        // בדיקת ביטוח מקיף
+        // בדיקת ביטוח מקיף - התראה בדיוק 14 יום לפני הפקיעה
         if (vehicle.insurance?.comprehensive?.expiryDate) {
           const expiryDate = new Date(vehicle.insurance.comprehensive.expiryDate);
-          if (expiryDate >= now && expiryDate <= fourteenDaysFromNow) {
-            const daysLeft = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+          if (expiryDate >= target14 && expiryDate <= target14End) {
             expiringItems.push({
               type: 'insurance',
               insuranceType: 'comprehensive',
               licensePlate: vehicle.licensePlate,
               vehicleId: vehicle._id,
               expiryDate: expiryDate,
-              daysLeft: daysLeft
+              daysLeft: 14
             });
           }
         }
 
-        // בדיקת רשיון רכב
+        // בדיקת רשיון רכב/טסט - התראה בדיוק 30 יום לפני הפקיעה
         if (vehicle.vehicleLicense?.expiryDate) {
           const expiryDate = new Date(vehicle.vehicleLicense.expiryDate);
-          if (expiryDate >= now && expiryDate <= thirtyDaysFromNow) {
-            const daysLeft = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+          if (expiryDate >= target30 && expiryDate <= target30End) {
             expiringItems.push({
               type: 'license',
               licensePlate: vehicle.licensePlate,
               vehicleId: vehicle._id,
               expiryDate: expiryDate,
-              daysLeft: daysLeft
+              daysLeft: 30
             });
           }
         }
@@ -93,31 +102,39 @@ class ExpiryReminderScheduler {
   }
 
   /**
-   * ביצוע שליחת התראות שבועיות
+   * ביצוע שליחת התראות יומיות
    */
-  async sendWeeklyReminders() {
+  async sendDailyReminders() {
     try {
       const now = new Date();
-      console.log(`\n📅 מתחיל בדיקת תוקף שבועית...`);
+      console.log(`\n📅 מתחיל בדיקת תוקף יומית...`);
       console.log(`   תאריך: ${now.toLocaleDateString('he-IL')}`);
 
       const expiringItems = await this.collectExpiringItems();
 
-      if (expiringItems.length === 0) {
-        console.log('✅ אין ביטוחים או רשיונות שעומדים לפוג בקרוב');
+      const insuranceItems = expiringItems.filter(i => i.type === 'insurance');
+      const licenseItems = expiringItems.filter(i => i.type === 'license');
+
+      if (insuranceItems.length === 0 && licenseItems.length === 0) {
+        console.log('✅ אין ביטוחים או רשיונות שעומדים לפוג היום (14/30 ימים)');
         return;
       }
 
-      const insuranceCount = expiringItems.filter(i => i.type === 'insurance').length;
-      const licenseCount = expiringItems.filter(i => i.type === 'license').length;
+      console.log(`⚠️ נמצאו ${expiringItems.length} פריטים הדורשים התראה היום:`);
+      console.log(`   - ביטוחים (14 יום): ${insuranceItems.length}`);
+      console.log(`   - רשיונות/טסט (30 יום): ${licenseItems.length}`);
 
-      console.log(`⚠️ נמצאו ${expiringItems.length} פריטים שעומדים לפוג:`);
-      console.log(`   - ביטוחים: ${insuranceCount}`);
-      console.log(`   - רשיונות רכב: ${licenseCount}`);
+      // מייל נפרד לביטוחים
+      if (insuranceItems.length > 0) {
+        await sendInsuranceExpiryEmail(insuranceItems);
+        console.log(`📧 מייל ביטוחים נשלח (${insuranceItems.length} כלים)`);
+      }
 
-      // שליחת מייל
-      await emailService.sendExpiryReminderEmail(expiringItems);
-      console.log(`📧 מייל התראה נשלח בהצלחה למייל המערכת`);
+      // מייל נפרד לטסט/רשיון
+      if (licenseItems.length > 0) {
+        await sendLicenseExpiryEmail(licenseItems);
+        console.log(`📧 מייל טסט/רשיון נשלח (${licenseItems.length} כלים)`);
+      }
 
     } catch (error) {
       console.error('❌ שגיאה בשליחת התראות תוקף:', error);
@@ -126,24 +143,24 @@ class ExpiryReminderScheduler {
 
   /**
    * הפעלת ה-Scheduler
-   * רץ כל יום ראשון בשעה 09:00
+   * רץ כל יום בשעה 09:00
    */
   start() {
-    // Cron expression: '0 9 * * 0' = דקה 0, שעה 9, כל יום ראשון
-    this.job = cron.schedule('0 9 * * 0', () => {
-      console.log('⏰ Weekly Expiry Reminder Cron job triggered...');
-      this.sendWeeklyReminders();
+    // Cron expression: '0 9 * * *' = דקה 0, שעה 9, כל יום
+    this.job = cron.schedule('0 9 * * *', () => {
+      console.log('⏰ Daily Expiry Reminder Cron job triggered...');
+      this.sendDailyReminders();
     }, {
       scheduled: true,
       timezone: "Asia/Jerusalem"
     });
 
-    console.log('✅ Expiry Reminder Scheduler started - יפעל כל יום ראשון בשעה 09:00 בבוקר');
+    console.log('✅ Expiry Reminder Scheduler started - יפעל כל יום בשעה 09:00 בבוקר');
 
     // אם NODE_ENV=development, אפשר להריץ מייד לבדיקה
     if (process.env.ENABLE_EXPIRY_SCHEDULER_ON_START === 'true') {
       console.log('🔧 Development mode - מריץ בדיקת תוקף מיידית...');
-      this.sendWeeklyReminders();
+      this.sendDailyReminders();
     }
   }
 
@@ -162,7 +179,7 @@ class ExpiryReminderScheduler {
    */
   async runNow() {
     console.log('🚀 הרצה ידנית של בדיקת תוקף...');
-    await this.sendWeeklyReminders();
+    await this.sendDailyReminders();
   }
 }
 

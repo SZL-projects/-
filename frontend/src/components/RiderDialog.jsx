@@ -213,7 +213,7 @@ export default function RiderDialog({ open, onClose, onSave, rider }) {
 
     if (!formData.phone.trim()) {
       newErrors.phone = 'שדה חובה';
-    } else if (!/^0\d{1,2}-?\d{7}$/.test(formData.phone)) {
+    } else if (!/^05\d{8}$/.test(formData.phone.trim())) {
       newErrors.phone = 'מספר טלפון לא תקין';
     }
 
