@@ -37,6 +37,7 @@ import {
   EventAvailable,
   MoneyOff,
   ErrorOutline,
+  WhatsApp,
 } from '@mui/icons-material';
 import { ridersAPI, vehiclesAPI, tasksAPI, faultsAPI } from '../services/api';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -640,6 +641,8 @@ export default function Dashboard() {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 1.5,
           }}>
             <Box>
               <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '1.1rem' }}>
@@ -649,15 +652,35 @@ export default function Dashboard() {
                 {expiringLicenseVehicles.length} כלים שרשיונם פוקע בתוך 30 יום הקרובים
               </Typography>
             </Box>
-            <Button
-              variant="outlined"
-              size="small"
-              endIcon={<ArrowForward />}
-              onClick={() => navigate('/vehicles?filter=expiringLicense')}
-              sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.6)', '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.1)' } }}
-            >
-              לרשימה המלאה
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<WhatsApp />}
+                onClick={() => {
+                  const lines = expiringLicenseVehicles.map((v, i) =>
+                    `${i + 1}. *${v.licensePlate || v.internalNumber || 'לא ידוע'}*` +
+                    (v.vehicleModel ? ` – ${v.vehicleModel}` : '') +
+                    (v.riderName ? `\n   רוכב: ${v.riderName}` : '') +
+                    `\n   פוקע: ${v.expiryDate.toLocaleDateString('he-IL')}`
+                  ).join('\n\n');
+                  const text = `🚗 *התראת טסט / רשיון רכב*\n${expiringLicenseVehicles.length} כלים שרשיונם פוקע בתוך 30 יום:\n\n${lines}\n\nאנא דאג לחידוש בהקדם האפשרי.`;
+                  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                }}
+                sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.6)', '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.1)' } }}
+              >
+                שלח בוואטסאפ
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                endIcon={<ArrowForward />}
+                onClick={() => navigate('/vehicles?filter=expiringLicense')}
+                sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.6)', '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.1)' } }}
+              >
+                לרשימה המלאה
+              </Button>
+            </Box>
           </Box>
           {/* כרטיסיות כלים */}
           <Box sx={{ p: 3 }}>
