@@ -17,6 +17,6 @@
     { "source": "/api/reports/:path*", "destination": "/api/reports" },
     { "source": "/api/audit-logs/:path*", "destination": "/api/reports" },
     { "source": "/api/donations/:path*", "destination": "/api/faults" },
-    { "source": "/api/notifications/:path*", "destination": "/api/notifications" }
+    { "source": "/api/notifications/:path*", "destination": "/api/reports" }
   ]
 }

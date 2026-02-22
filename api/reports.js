@@ -124,6 +124,68 @@ module.exports = async (req, res) => {
 
     const urlWithoutQuery = req.url.split('?')[0];
 
+    // ========== Notifications Routes ==========
+    if (urlWithoutQuery.includes('notifications')) {
+      const now = new Date();
+      const in14Days = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+      const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+      const [activeSnap, waitingSnap] = await Promise.all([
+        db.collection('vehicles').where('status', '==', 'active').get(),
+        db.collection('vehicles').where('status', '==', 'waiting_for_rider').get(),
+      ]);
+
+      const allVehicles = [
+        ...activeSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+        ...waitingSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+      ];
+
+      const alerts = [];
+      for (const vehicle of allVehicles) {
+        if (vehicle.insurance?.mandatory?.expiryDate) {
+          const expiry = new Date(vehicle.insurance.mandatory.expiryDate);
+          if (expiry >= now && expiry <= in14Days) {
+            alerts.push({
+              id: `ins-mandatory-${vehicle.id}`,
+              type: 'insurance', subType: 'mandatory',
+              vehicleId: vehicle.id, licensePlate: vehicle.licensePlate,
+              expiryDate: vehicle.insurance.mandatory.expiryDate,
+              daysLeft: Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)),
+              label: `ביטוח חובה - ${vehicle.licensePlate}`,
+            });
+          }
+        }
+        if (vehicle.insurance?.comprehensive?.expiryDate) {
+          const expiry = new Date(vehicle.insurance.comprehensive.expiryDate);
+          if (expiry >= now && expiry <= in14Days) {
+            alerts.push({
+              id: `ins-comprehensive-${vehicle.id}`,
+              type: 'insurance', subType: 'comprehensive',
+              vehicleId: vehicle.id, licensePlate: vehicle.licensePlate,
+              expiryDate: vehicle.insurance.comprehensive.expiryDate,
+              daysLeft: Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)),
+              label: `ביטוח מקיף - ${vehicle.licensePlate}`,
+            });
+          }
+        }
+        if (vehicle.vehicleLicense?.expiryDate) {
+          const expiry = new Date(vehicle.vehicleLicense.expiryDate);
+          if (expiry >= now && expiry <= in30Days) {
+            alerts.push({
+              id: `license-${vehicle.id}`,
+              type: 'license',
+              vehicleId: vehicle.id, licensePlate: vehicle.licensePlate,
+              expiryDate: vehicle.vehicleLicense.expiryDate,
+              daysLeft: Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)),
+              label: `טסט/רשיון - ${vehicle.licensePlate}`,
+            });
+          }
+        }
+      }
+      alerts.sort((a, b) => a.daysLeft - b.daysLeft);
+      return res.status(200).json({ success: true, alerts, count: alerts.length });
+    }
+
     // ========== Audit Logs Routes ==========
     if (urlWithoutQuery.includes('audit-logs')) {
       await checkPermission(user, db, 'audit_logs', 'view');

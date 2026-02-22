@@ -20,7 +20,9 @@ import {
   Box,
   Autocomplete,
 } from '@mui/material';
-import { vehiclesAPI, ridersAPI } from '../services/api';
+import { TwoWheeler } from '@mui/icons-material';
+import { ridersAPI } from '../services/api';
+import VehicleAccessDialog from './VehicleAccessDialog';
 
 const userRoles = [
   { value: 'super_admin', label: 'מנהל על' },
@@ -46,18 +48,14 @@ export default function UserDialog({ open, onClose, onSave, user }) {
   });
 
   const [errors, setErrors] = useState({});
-  const [vehicles, setVehicles] = useState([]);
   const [riders, setRiders] = useState([]);
+  const [vehicleAccessDialogOpen, setVehicleAccessDialogOpen] = useState(false);
 
-  // טעינת רשימת כלים ורוכבים
+  // טעינת רשימת רוכבים
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [vehiclesResponse, ridersResponse] = await Promise.all([
-          vehiclesAPI.getAll(),
-          ridersAPI.getAll()
-        ]);
-        setVehicles(vehiclesResponse.data.vehicles || []);
+        const ridersResponse = await ridersAPI.getAll();
         setRiders(ridersResponse.data.riders || ridersResponse.data || []);
       } catch (err) {
         console.error('Error loading data:', err);
@@ -308,40 +306,52 @@ export default function UserDialog({ open, onClose, onSave, user }) {
           )}
 
           <Grid item xs={12}>
-            <Autocomplete
-              multiple
-              options={vehicles}
-              getOptionLabel={(option) => {
-                const licensePlate = option.licensePlate || 'ללא ל"ז';
-                const internalNumber = option.internalNumber || 'ללא מספר פנימי';
-                return `ל"ז: ${licensePlate} | מספר פנימי: ${internalNumber}`;
+            <Box
+              sx={{
+                border: '1px solid #e2e8f0',
+                borderRadius: '10px',
+                p: 2,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                bgcolor: '#f8fafc',
               }}
-              value={vehicles.filter(v => formData.vehicleAccess.includes(v._id || v.id))}
-              onChange={(event, newValue) => {
-                setFormData({
-                  ...formData,
-                  vehicleAccess: newValue.map(v => v._id || v.id),
-                });
-              }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="הרשאות צפייה בכלים"
-                  helperText={`נבחרו ${formData.vehicleAccess.length} כלים`}
-                />
-              )}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <TwoWheeler sx={{ color: '#6366f1', fontSize: 22 }} />
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                    הרשאות צפייה בכלים
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#64748b' }}>
+                    {formData.vehicleAccess.length > 0
+                      ? `${formData.vehicleAccess.length} כלים נבחרו`
+                      : 'לא נבחרו כלים'}
+                  </Typography>
+                </Box>
+                {formData.vehicleAccess.length > 0 && (
                   <Chip
-                    key={option._id || option.id}
-                    label={option.internalNumber || option.licensePlate || 'כלי'}
-                    {...getTagProps({ index })}
+                    label={formData.vehicleAccess.length}
                     size="small"
+                    sx={{ bgcolor: 'rgba(99,102,241,0.1)', color: '#6366f1', fontWeight: 700 }}
                   />
-                ))
-              }
-              noOptionsText="לא נמצאו כלים"
-            />
+                )}
+              </Box>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => setVehicleAccessDialogOpen(true)}
+                sx={{
+                  borderRadius: '8px',
+                  borderColor: '#6366f1',
+                  color: '#6366f1',
+                  fontWeight: 600,
+                  '&:hover': { bgcolor: 'rgba(99,102,241,0.06)' },
+                }}
+              >
+                ערוך הרשאות
+              </Button>
+            </Box>
           </Grid>
 
           <Grid item xs={12}>
@@ -364,6 +374,17 @@ export default function UserDialog({ open, onClose, onSave, user }) {
           {user ? 'עדכן' : 'הוסף'}
         </Button>
       </DialogActions>
+
+      <VehicleAccessDialog
+        open={vehicleAccessDialogOpen}
+        onClose={() => setVehicleAccessDialogOpen(false)}
+        onSave={(ids) => {
+          setFormData(prev => ({ ...prev, vehicleAccess: ids }));
+          setVehicleAccessDialogOpen(false);
+        }}
+        userName={formData.firstName ? `${formData.firstName} ${formData.lastName}` : ''}
+        selectedIds={formData.vehicleAccess}
+      />
     </Dialog>
   );
 }
