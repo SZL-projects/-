@@ -107,16 +107,6 @@ router.post('/login', loginLimiter, async (req, res) => {
       });
     }
 
-    // בדיקת סיסמה
-    const isMatch = await UserModel.comparePassword(password, user.password);
-
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'שם משתמש או סיסמה שגויים'
-      });
-    }
-
     // בדיקה אם החשבון פעיל
     if (!user.isActive) {
       return res.status(403).json({
@@ -125,6 +115,7 @@ router.post('/login', loginLimiter, async (req, res) => {
       });
     }
 
+    // בדיקה אם החשבון נעול
     if (user.isLocked) {
       return res.status(403).json({
         success: false,
@@ -132,8 +123,28 @@ router.post('/login', loginLimiter, async (req, res) => {
       });
     }
 
-    // עדכון זמן כניסה אחרון
+    // בדיקת סיסמה
+    const isMatch = await UserModel.comparePassword(password, user.password);
+
+    if (!isMatch) {
+      // ספירת ניסיונות כושלים ונעילה אוטומטית אחרי 5 ניסיונות
+      const newAttempts = await UserModel.incrementLoginAttempts(user.id);
+      if (newAttempts >= 5) {
+        await UserModel.lockUser(user.id, 'נעילה אוטומטית לאחר 5 ניסיונות כניסה כושלים', null);
+        return res.status(403).json({
+          success: false,
+          message: 'החשבון ננעל לאחר 5 ניסיונות כניסה כושלים. אנא פנה למנהל המערכת'
+        });
+      }
+      return res.status(401).json({
+        success: false,
+        message: 'שם משתמש או סיסמה שגויים'
+      });
+    }
+
+    // עדכון זמן כניסה אחרון ואיפוס ניסיונות
     await UserModel.updateLastLogin(user.id);
+    await UserModel.resetLoginAttempts(user.id);
 
     // יצירת token
     const token = getSignedJwtToken(user.id);
@@ -290,6 +301,22 @@ router.post('/users', protect, checkPermission('users', 'edit'), async (req, res
       success: false,
       message: error.message
     });
+  }
+});
+
+// @route   POST /api/auth/users/:id/unlock
+// @desc    ביטול נעילת משתמש
+// @access  Private (מנהלים בלבד)
+router.post('/users/:id/unlock', protect, checkPermission('users', 'edit'), async (req, res) => {
+  try {
+    const user = await UserModel.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'משתמש לא נמצא' });
+    }
+    await UserModel.unlockUser(req.params.id);
+    res.json({ success: true, message: 'הנעילה בוטלה בהצלחה' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

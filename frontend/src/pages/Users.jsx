@@ -40,6 +40,7 @@ import {
   AdminPanelSettings,
   Send as SendIcon,
   Warning as WarningIcon,
+  LockOpen as LockOpenIcon,
 } from '@mui/icons-material';
 import { authAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -142,6 +143,17 @@ export default function Users() {
     setSnackbar({ open: true, message, severity });
   };
 
+  const handleUnlock = async (user) => {
+    try {
+      await authAPI.unlockUser(user.id);
+      showSnackbar('הנעילה בוטלה בהצלחה', 'success');
+      loadUsers();
+    } catch (err) {
+      console.error('Error unlocking user:', err);
+      showSnackbar(err.response?.data?.message || 'שגיאה בביטול הנעילה', 'error');
+    }
+  };
+
   const handleSendCredentials = async (user) => {
     if (!user.email) {
       showSnackbar('למשתמש אין כתובת אימייל במערכת', 'warning');
@@ -182,7 +194,21 @@ export default function Users() {
     );
   };
 
-  const getStatusChip = (isActive) => {
+  const getStatusChip = (isActive, isLocked) => {
+    if (isLocked) {
+      return (
+        <Chip
+          label="נעול"
+          size="small"
+          sx={{
+            bgcolor: 'rgba(239, 68, 68, 0.1)',
+            color: '#dc2626',
+            fontWeight: 600,
+            fontSize: '0.75rem',
+          }}
+        />
+      );
+    }
     return isActive ? (
       <Chip
         label="פעיל"
@@ -229,7 +255,7 @@ export default function Users() {
           <Typography variant="h6" sx={{ fontWeight: 600, color: '#1e293b' }}>
             {user.firstName} {user.lastName}
           </Typography>
-          {getStatusChip(user.isActive)}
+          {getStatusChip(user.isActive, user.isLocked)}
         </Box>
 
         <Stack spacing={1.5}>
@@ -254,6 +280,20 @@ export default function Users() {
       <Divider />
 
       <CardActions sx={{ justifyContent: 'flex-end', px: 2, py: 1.5, gap: 1 }}>
+        {hasPermission('users', 'edit') && user.isLocked && (
+          <IconButton
+            size="small"
+            onClick={() => handleUnlock(user)}
+            title="בטל נעילה"
+            sx={{
+              color: '#f59e0b',
+              bgcolor: 'rgba(245, 158, 11, 0.1)',
+              '&:hover': { bgcolor: 'rgba(245, 158, 11, 0.2)' },
+            }}
+          >
+            <LockOpenIcon fontSize="small" />
+          </IconButton>
+        )}
         {hasPermission('users', 'edit') && (
           <IconButton
             size="small"
@@ -522,13 +562,26 @@ export default function Users() {
                       {getRoleChips(user)}
                     </TableCell>
                     <TableCell sx={{ borderBottom: '1px solid #f1f5f9' }}>
-                      {getStatusChip(user.isActive)}
+                      {getStatusChip(user.isActive, user.isLocked)}
                     </TableCell>
                     <TableCell sx={{ borderBottom: '1px solid #f1f5f9', color: '#64748b' }}>
                       {user.createdAt ? new Date(user.createdAt).toLocaleDateString('he-IL') : '-'}
                     </TableCell>
                     <TableCell align="center" sx={{ borderBottom: '1px solid #f1f5f9' }}>
                       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
+                        {hasPermission('users', 'edit') && user.isLocked && (
+                          <IconButton
+                            size="small"
+                            onClick={() => handleUnlock(user)}
+                            title="בטל נעילה"
+                            sx={{
+                              color: '#f59e0b',
+                              '&:hover': { bgcolor: 'rgba(245, 158, 11, 0.1)' },
+                            }}
+                          >
+                            <LockOpenIcon fontSize="small" />
+                          </IconButton>
+                        )}
                         {hasPermission('users', 'edit') && (
                           <IconButton
                             size="small"

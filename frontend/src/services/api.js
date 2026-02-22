@@ -116,6 +116,7 @@ export const authAPI = {
   updateUser: (id, userData) => api.put(`/users/${id}`, userData),
   deleteUser: (id) => api.delete(`/users/${id}`),
   sendCredentials: (userId) => api.post(`/users/${userId}/send-credentials`),
+  unlockUser: (userId) => api.post(`/users/${userId}/unlock`),
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
   resetPassword: (token, password) => api.put(`/auth/reset-password/${token}`, { password }),
   changePassword: (oldPassword, newPassword) => api.put('/auth/change-password', { oldPassword, newPassword }),

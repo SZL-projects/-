@@ -1,4 +1,4 @@
-const { db } = require('../../config/firebase');
+const { db, admin } = require('../../config/firebase');
 const COLLECTIONS = require('../../config/collections');
 const bcrypt = require('bcryptjs');
 
@@ -30,6 +30,7 @@ class UserModel {
         phone: userData.phone || null,
         isActive: userData.isActive !== undefined ? userData.isActive : true,
         isLocked: false,
+        loginAttempts: 0,
         lockReason: null,
         lockedAt: null,
         lockedBy: null,
@@ -186,6 +187,34 @@ class UserModel {
         lockReason: null,
         lockedAt: null,
         lockedBy: null,
+        loginAttempts: 0,
+        updatedAt: new Date()
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // הגדלת מספר ניסיונות כניסה כושלים - מחזיר את המספר החדש
+  async incrementLoginAttempts(userId) {
+    try {
+      const ref = this.collection.doc(userId);
+      await ref.update({
+        loginAttempts: admin.firestore.FieldValue.increment(1),
+        updatedAt: new Date()
+      });
+      const updated = await ref.get();
+      return updated.data().loginAttempts || 0;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // איפוס מספר ניסיונות כניסה כושלים
+  async resetLoginAttempts(userId) {
+    try {
+      await this.collection.doc(userId).update({
+        loginAttempts: 0,
         updatedAt: new Date()
       });
     } catch (error) {
