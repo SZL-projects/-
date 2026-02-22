@@ -139,14 +139,25 @@ export default function Vehicles() {
 
   // סינון client-side לפי פרמטר URL
   const displayedVehicles = useMemo(() => {
+    const now = new Date();
     if (activeFilter === 'expiringLicense') {
-      const now = new Date();
       const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
       return vehicles.filter(v => {
         const licenseExpiry = v.vehicleLicense?.expiryDate;
         if (!licenseExpiry) return false;
         const expiryDate = licenseExpiry.toDate ? licenseExpiry.toDate() : new Date(licenseExpiry);
         return expiryDate >= now && expiryDate <= thirtyDaysFromNow;
+      });
+    }
+    if (activeFilter === 'expiringInsurance') {
+      const fourteenDaysFromNow = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+      return vehicles.filter(v => {
+        const check = (d) => {
+          if (!d) return false;
+          const exp = d.toDate ? d.toDate() : new Date(d);
+          return exp >= now && exp <= fourteenDaysFromNow;
+        };
+        return check(v.insurance?.mandatory?.expiryDate) || check(v.insurance?.comprehensive?.expiryDate);
       });
     }
     return vehicles;
@@ -220,7 +231,11 @@ export default function Vehicles() {
               ניהול כלים
             </Typography>
             <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5 }}>
-              {activeFilter === 'expiringLicense' ? `${displayedVehicles.length} כלים עם רשיון פוקע` : `${vehicles.length} כלים במערכת`}
+              {activeFilter === 'expiringLicense'
+                ? `${displayedVehicles.length} כלים עם רשיון פוקע`
+                : activeFilter === 'expiringInsurance'
+                  ? `${displayedVehicles.length} כלים עם ביטוח פוקע`
+                  : `${vehicles.length} כלים במערכת`}
             </Typography>
           </Box>
         </Box>
@@ -264,7 +279,7 @@ export default function Vehicles() {
       )}
 
       {/* באנר סינון פעיל */}
-      {activeFilter === 'expiringLicense' && (
+      {(activeFilter === 'expiringLicense' || activeFilter === 'expiringInsurance') && (
         <Alert
           severity="warning"
           icon={<FilterListIcon />}
@@ -275,7 +290,10 @@ export default function Vehicles() {
             </IconButton>
           }
         >
-          מציג {displayedVehicles.length} כלים עם רשיון רכב שפוקע בתוך 30 יום — לחץ על X להסרת הסינון
+          {activeFilter === 'expiringLicense'
+            ? `מציג ${displayedVehicles.length} כלים עם רשיון רכב שפוקע בתוך 30 יום`
+            : `מציג ${displayedVehicles.length} כלים עם ביטוח שפוקע בתוך 14 יום`
+          } — לחץ על X להסרת הסינון
         </Alert>
       )}
 

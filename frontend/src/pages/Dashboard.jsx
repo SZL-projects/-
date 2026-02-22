@@ -101,6 +101,7 @@ export default function Dashboard() {
   const [vehicleStatusData, setVehicleStatusData] = useState([]);
   const [monthlyTrendData, setMonthlyTrendData] = useState([]);
   const [expiringLicenseVehicles, setExpiringLicenseVehicles] = useState([]);
+  const [expiringInsuranceVehicles, setExpiringInsuranceVehicles] = useState([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -135,6 +136,7 @@ export default function Dashboard() {
       let openFaults = 0;
       const criticalFaults = [];
       const licenseExpiringList = [];
+      const insuranceExpiringList = [];
 
       // מפת רוכבים לחיפוש מהיר
       const ridersMap = {};
@@ -176,11 +178,35 @@ export default function Dashboard() {
 
         if (mandatoryExpiry) {
           const expiryDate = mandatoryExpiry.toDate ? mandatoryExpiry.toDate() : new Date(mandatoryExpiry);
-          if (expiryDate >= now && expiryDate <= fourteenDaysFromNow) expiringInsurance++;
+          if (expiryDate >= now && expiryDate <= fourteenDaysFromNow) {
+            expiringInsurance++;
+            const rider = ridersMap[v.riderId] || ridersMap[v.assignedRiderId];
+            insuranceExpiringList.push({
+              id: `${v.id}-mandatory`,
+              licensePlate: v.licensePlate,
+              internalNumber: v.internalNumber,
+              vehicleModel: v.model || v.vehicleModel,
+              insuranceType: 'ביטוח חובה',
+              expiryDate,
+              riderName: rider ? `${rider.firstName || ''} ${rider.lastName || ''}`.trim() : '',
+            });
+          }
         }
         if (comprehensiveExpiry) {
           const expiryDate = comprehensiveExpiry.toDate ? comprehensiveExpiry.toDate() : new Date(comprehensiveExpiry);
-          if (expiryDate >= now && expiryDate <= fourteenDaysFromNow) expiringInsurance++;
+          if (expiryDate >= now && expiryDate <= fourteenDaysFromNow) {
+            expiringInsurance++;
+            const rider = ridersMap[v.riderId] || ridersMap[v.assignedRiderId];
+            insuranceExpiringList.push({
+              id: `${v.id}-comprehensive`,
+              licensePlate: v.licensePlate,
+              internalNumber: v.internalNumber,
+              vehicleModel: v.model || v.vehicleModel,
+              insuranceType: 'ביטוח מקיף',
+              expiryDate,
+              riderName: rider ? `${rider.firstName || ''} ${rider.lastName || ''}`.trim() : '',
+            });
+          }
         }
 
         // בדיקת רשיון רכב - 30 יום
@@ -233,6 +259,7 @@ export default function Dashboard() {
 
       setCriticalFaultsList(criticalFaults.slice(0, 5));
       setExpiringLicenseVehicles(licenseExpiringList);
+      setExpiringInsuranceVehicles(insuranceExpiringList);
 
       // נתונים אמיתיים לגרף סטטוס כלים
       setVehicleStatusData([
@@ -368,7 +395,7 @@ export default function Dashboard() {
         newAlerts.push({
           severity: 'warning',
           message: `📋 ${expiringInsurance} ביטוחים שפוקעים ב-14 הימים הקרובים`,
-          action: 'vehicles'
+          action: 'vehicles?filter=expiringInsurance'
         });
       }
       if (expiringLicense > 0) {
@@ -614,6 +641,7 @@ export default function Dashboard() {
               value={stats.expiringInsurance}
               icon={EventAvailable}
               color="#ec4899"
+              onClick={() => navigate('/vehicles?filter=expiringInsurance')}
             />
           </Grid>
         )}
@@ -630,6 +658,103 @@ export default function Dashboard() {
           </Grid>
         )}
       </Grid>
+
+      {/* סיכום ביטוחים שפוקעים - כמו תבנית המייל */}
+      {expiringInsuranceVehicles.length > 0 && (
+        <Paper sx={{ mb: 4, borderRadius: '16px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+          <Box sx={{
+            background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+            px: 3, py: 2.5,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 1.5,
+          }}>
+            <Box>
+              <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '1.1rem' }}>
+                📋 התראת ביטוח
+              </Typography>
+              <Typography sx={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', mt: 0.5 }}>
+                {expiringInsuranceVehicles.length} ביטוחים שפוקעים בתוך 14 יום הקרובים
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<WhatsApp />}
+                onClick={() => {
+                  const lines = expiringInsuranceVehicles.map((v, i) =>
+                    `${i + 1}. *${v.licensePlate || v.internalNumber || 'לא ידוע'}*` +
+                    (v.vehicleModel ? ` – ${v.vehicleModel}` : '') +
+                    `\n   סוג: ${v.insuranceType}` +
+                    (v.riderName ? `\n   רוכב: ${v.riderName}` : '') +
+                    `\n   פוקע: ${v.expiryDate.toLocaleDateString('he-IL')}`
+                  ).join('\n\n');
+                  const text = `📋 *התראת ביטוח*\n${expiringInsuranceVehicles.length} ביטוחים שפוקעים בתוך 14 יום:\n\n${lines}\n\nאנא טפל בחידוש הביטוחים בהקדם האפשרי.`;
+                  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                }}
+                sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.6)', '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.1)' } }}
+              >
+                שלח בוואטסאפ
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                endIcon={<ArrowForward />}
+                onClick={() => navigate('/vehicles?filter=expiringInsurance')}
+                sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.6)', '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.1)' } }}
+              >
+                לרשימה המלאה
+              </Button>
+            </Box>
+          </Box>
+          <Box sx={{ p: 3 }}>
+            <Grid container spacing={2}>
+              {expiringInsuranceVehicles.map((v) => (
+                <Grid item xs={12} sm={6} md={4} key={v.id}>
+                  <Box sx={{
+                    border: '1px solid #e2e8f0',
+                    borderRight: '4px solid #f59e0b',
+                    borderRadius: '8px',
+                    p: 2,
+                    bgcolor: '#fff',
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: '#fffbf0' },
+                  }}
+                    onClick={() => navigate('/vehicles?filter=expiringInsurance')}
+                  >
+                    <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>מספר רכב</Typography>
+                    <Typography sx={{ fontWeight: 700, color: '#1e293b', mb: 1 }}>{v.licensePlate || v.internalNumber || 'לא ידוע'}</Typography>
+
+                    {v.riderName && (
+                      <>
+                        <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>שם הרוכב</Typography>
+                        <Typography sx={{ fontWeight: 600, color: '#374151', mb: 1 }}>{v.riderName}</Typography>
+                      </>
+                    )}
+
+                    <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>דגם</Typography>
+                    <Typography sx={{ fontWeight: 600, color: '#374151', mb: 1 }}>{v.vehicleModel || 'לא ידוע'}</Typography>
+
+                    <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>סוג ביטוח</Typography>
+                    <Typography sx={{ fontWeight: 600, color: '#374151', mb: 1 }}>{v.insuranceType}</Typography>
+
+                    <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>תאריך תפוגת הביטוח</Typography>
+                    <Typography sx={{ fontWeight: 700, color: '#dc2626' }}>
+                      {v.expiryDate.toLocaleDateString('he-IL')}
+                    </Typography>
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
+            <Typography sx={{ mt: 2, color: '#64748b', fontSize: '0.85rem', textAlign: 'center' }}>
+              אנא טפל בחידוש הביטוחים בהקדם האפשרי.
+            </Typography>
+          </Box>
+        </Paper>
+      )}
 
       {/* סיכום רשיונות שפוקעים - כמו תבנית המייל */}
       {expiringLicenseVehicles.length > 0 && (
