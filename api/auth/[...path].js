@@ -130,7 +130,8 @@ module.exports = async (req, res) => {
           role: userData.role,
           roles: userData.roles || [userData.role],
           riderId: userData.riderId,
-          vehicleAccess: userData.vehicleAccess || []
+          vehicleAccess: userData.vehicleAccess || [],
+          riderAccess: userData.riderAccess || []
         }
       });
     }
@@ -210,6 +211,7 @@ module.exports = async (req, res) => {
           roles: user.roles || [user.role],
           riderId: user.riderId,
           vehicleAccess: user.vehicleAccess || [],
+          riderAccess: user.riderAccess || [],
           isActive: user.isActive
         }
       });

@@ -25,6 +25,7 @@ import {
 import { Person, Shield, TwoWheeler } from '@mui/icons-material';
 import { ridersAPI } from '../services/api';
 import VehicleAccessDialog from './VehicleAccessDialog';
+import RiderAccessDialog from './RiderAccessDialog';
 
 const ROLES = [
   { value: 'super_admin', label: 'מנהל על' },
@@ -34,6 +35,8 @@ const ROLES = [
   { value: 'rider', label: 'רוכב' },
   { value: 'regional_manager', label: 'מנהל אזורי' },
 ];
+
+const hasExtraRole = (roles) => roles.some(r => r !== 'rider');
 
 export default function UserDialog({ open, onClose, onSave, user }) {
   const [tab, setTab] = useState(0);
@@ -47,12 +50,14 @@ export default function UserDialog({ open, onClose, onSave, user }) {
     roles: ['rider'],
     isActive: true,
     vehicleAccess: [],
+    riderAccess: [],
     riderId: null,
   });
 
   const [errors, setErrors] = useState({});
   const [riders, setRiders] = useState([]);
   const [vehicleAccessDialogOpen, setVehicleAccessDialogOpen] = useState(false);
+  const [riderAccessDialogOpen, setRiderAccessDialogOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -76,6 +81,7 @@ export default function UserDialog({ open, onClose, onSave, user }) {
         roles: userRoles,
         isActive: user.isActive !== undefined ? user.isActive : true,
         vehicleAccess: user.vehicleAccess || [],
+        riderAccess: user.riderAccess || [],
         riderId: user.riderId || null,
       });
     } else {
@@ -89,6 +95,7 @@ export default function UserDialog({ open, onClose, onSave, user }) {
         roles: ['rider'],
         isActive: true,
         vehicleAccess: [],
+        riderAccess: [],
         riderId: null,
       });
     }
@@ -119,12 +126,9 @@ export default function UserDialog({ open, onClose, onSave, user }) {
     if (!formData.roles || formData.roles.length === 0) newErrors.roles = 'חובה לבחור לפחות תפקיד אחד';
 
     setErrors(newErrors);
-
-    // אם יש שגיאות בפרטים אישיים - עבור לטאב הראשון
     const personalErrors = ['username', 'firstName', 'lastName', 'email', 'password'];
     if (personalErrors.some(f => newErrors[f])) setTab(0);
     else if (newErrors.roles) setTab(1);
-
     return Object.keys(newErrors).length === 0;
   };
 
@@ -135,6 +139,32 @@ export default function UserDialog({ open, onClose, onSave, user }) {
       onSave(dataToSave);
     }
   };
+
+  const AccessRow = ({ icon, color, title, count, unit, onEdit }) => (
+    <Box sx={{
+      border: '1px solid #e2e8f0', borderRadius: '10px', p: 2,
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#f8fafc',
+    }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Box sx={{ color, fontSize: 22 }}>{icon}</Box>
+        <Box>
+          <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>{title}</Typography>
+          <Typography variant="caption" sx={{ color: '#64748b' }}>
+            {count > 0 ? `${count} ${unit} נבחרו` : `לא נבחרו ${unit}`}
+          </Typography>
+        </Box>
+        {count > 0 && (
+          <Chip label={count} size="small"
+            sx={{ bgcolor: `${color}1a`, color, fontWeight: 700, fontSize: '0.75rem' }} />
+        )}
+      </Box>
+      <Button variant="outlined" size="small" onClick={onEdit}
+        sx={{ borderRadius: '8px', borderColor: color, color, fontWeight: 600,
+          '&:hover': { bgcolor: `${color}0d` } }}>
+        ערוך הרשאות
+      </Button>
+    </Box>
+  );
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth dir="rtl">
@@ -149,18 +179,10 @@ export default function UserDialog({ open, onClose, onSave, user }) {
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
         <Tabs value={tab} onChange={(_, v) => setTab(v)}>
-          <Tab
-            icon={<Person sx={{ fontSize: 18 }} />}
-            iconPosition="start"
-            label="פרטים אישיים"
-            sx={{ minHeight: 48, fontSize: '0.85rem' }}
-          />
-          <Tab
-            icon={<Shield sx={{ fontSize: 18 }} />}
-            iconPosition="start"
-            label="תפקידים והרשאות"
-            sx={{ minHeight: 48, fontSize: '0.85rem' }}
-          />
+          <Tab icon={<Person sx={{ fontSize: 18 }} />} iconPosition="start"
+            label="פרטים אישיים" sx={{ minHeight: 48, fontSize: '0.85rem' }} />
+          <Tab icon={<Shield sx={{ fontSize: 18 }} />} iconPosition="start"
+            label="תפקידים והרשאות" sx={{ minHeight: 48, fontSize: '0.85rem' }} />
         </Tabs>
       </Box>
 
@@ -169,75 +191,35 @@ export default function UserDialog({ open, onClose, onSave, user }) {
         {tab === 0 && (
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="שם משתמש"
-                value={formData.username}
-                onChange={handleChange('username')}
-                error={!!errors.username}
-                helperText={errors.username}
-                required
-              />
+              <TextField fullWidth label="שם משתמש" value={formData.username}
+                onChange={handleChange('username')} error={!!errors.username}
+                helperText={errors.username} required />
             </Grid>
-
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="שם פרטי"
-                value={formData.firstName}
-                onChange={handleChange('firstName')}
-                error={!!errors.firstName}
-                helperText={errors.firstName}
-                required
-              />
+              <TextField fullWidth label="שם פרטי" value={formData.firstName}
+                onChange={handleChange('firstName')} error={!!errors.firstName}
+                helperText={errors.firstName} required />
             </Grid>
-
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="שם משפחה"
-                value={formData.lastName}
-                onChange={handleChange('lastName')}
-                error={!!errors.lastName}
-                helperText={errors.lastName}
-                required
-              />
+              <TextField fullWidth label="שם משפחה" value={formData.lastName}
+                onChange={handleChange('lastName')} error={!!errors.lastName}
+                helperText={errors.lastName} required />
             </Grid>
-
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="אימייל"
-                type="email"
-                value={formData.email}
-                onChange={handleChange('email')}
-                error={!!errors.email}
-                helperText={errors.email}
-                required
-              />
+              <TextField fullWidth label="אימייל" type="email" value={formData.email}
+                onChange={handleChange('email')} error={!!errors.email}
+                helperText={errors.email} required />
             </Grid>
-
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="טלפון"
-                value={formData.phone}
-                onChange={handleChange('phone')}
-                helperText="אופציונלי"
-              />
+              <TextField fullWidth label="טלפון" value={formData.phone}
+                onChange={handleChange('phone')} helperText="אופציונלי" />
             </Grid>
-
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label={user ? 'סיסמה חדשה (השאר ריק לשמירה)' : 'סיסמה'}
-                type="password"
-                value={formData.password}
-                onChange={handleChange('password')}
+              <TextField fullWidth label={user ? 'סיסמה חדשה (השאר ריק לשמירה)' : 'סיסמה'}
+                type="password" value={formData.password} onChange={handleChange('password')}
                 error={!!errors.password}
                 helperText={errors.password || (user ? 'השאר ריק אם אין צורך לשנות' : '')}
-                required={!user}
-              />
+                required={!user} />
             </Grid>
           </Grid>
         )}
@@ -249,11 +231,7 @@ export default function UserDialog({ open, onClose, onSave, user }) {
             <Grid item xs={12}>
               <FormControl fullWidth error={!!errors.roles}>
                 <InputLabel>תפקידים</InputLabel>
-                <Select
-                  multiple
-                  value={formData.roles}
-                  onChange={handleRolesChange}
-                  label="תפקידים"
+                <Select multiple value={formData.roles} onChange={handleRolesChange} label="תפקידים"
                   renderValue={(selected) => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                       {selected.map((value) => {
@@ -291,11 +269,8 @@ export default function UserDialog({ open, onClose, onSave, user }) {
                     setFormData(prev => ({ ...prev, riderId: newValue ? (newValue._id || newValue.id) : null }));
                   }}
                   renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="שיוך לרוכב (אופציונלי)"
-                      helperText="חבר משתמש זה לפרופיל רוכב קיים במערכת"
-                    />
+                    <TextField {...params} label="שיוך לרוכב (אופציונלי)"
+                      helperText="חבר משתמש זה לפרופיל רוכב קיים במערכת" />
                   )}
                   noOptionsText="לא נמצאו רוכבים"
                   isOptionEqualToValue={(option, value) =>
@@ -305,66 +280,36 @@ export default function UserDialog({ open, onClose, onSave, user }) {
               </Grid>
             )}
 
-            {/* הרשאות צפייה בכלים - רק אם יש תפקיד נוסף מעבר לרוכב */}
-            {formData.roles.some(r => r !== 'rider') && <Grid item xs={12}>
-              <Box
-                sx={{
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '10px',
-                  p: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  bgcolor: '#f8fafc',
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <TwoWheeler sx={{ color: '#6366f1', fontSize: 22 }} />
-                  <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
-                      הרשאות צפייה בכלים
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: '#64748b' }}>
-                      {formData.vehicleAccess.length > 0
-                        ? `${formData.vehicleAccess.length} כלים נבחרו`
-                        : 'לא נבחרו כלים'}
-                    </Typography>
-                  </Box>
-                  {formData.vehicleAccess.length > 0 && (
-                    <Chip
-                      label={formData.vehicleAccess.length}
-                      size="small"
-                      sx={{ bgcolor: 'rgba(99,102,241,0.1)', color: '#6366f1', fontWeight: 700 }}
-                    />
-                  )}
-                </Box>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => setVehicleAccessDialogOpen(true)}
-                  sx={{
-                    borderRadius: '8px',
-                    borderColor: '#6366f1',
-                    color: '#6366f1',
-                    fontWeight: 600,
-                    '&:hover': { bgcolor: 'rgba(99,102,241,0.06)' },
-                  }}
-                >
-                  ערוך הרשאות
-                </Button>
-              </Box>
-            </Grid>}
+            {/* הרשאות גישה - רק אם יש תפקיד נוסף מעבר לרוכב */}
+            {hasExtraRole(formData.roles) && (
+              <>
+                <Grid item xs={12}>
+                  <AccessRow
+                    icon={<TwoWheeler />}
+                    color="#6366f1"
+                    title="הרשאות צפייה בכלים"
+                    count={formData.vehicleAccess.length}
+                    unit="כלים"
+                    onEdit={() => setVehicleAccessDialogOpen(true)}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <AccessRow
+                    icon={<Person />}
+                    color="#10b981"
+                    title="הרשאות צפייה ברוכבים"
+                    count={formData.riderAccess.length}
+                    unit="רוכבים"
+                    onEdit={() => setRiderAccessDialogOpen(true)}
+                  />
+                </Grid>
+              </>
+            )}
 
             {/* סטטוס */}
             <Grid item xs={12}>
               <FormControlLabel
-                control={
-                  <Switch
-                    checked={formData.isActive}
-                    onChange={handleChange('isActive')}
-                    color="primary"
-                  />
-                }
+                control={<Switch checked={formData.isActive} onChange={handleChange('isActive')} color="primary" />}
                 label="משתמש פעיל"
               />
             </Grid>
@@ -382,12 +327,17 @@ export default function UserDialog({ open, onClose, onSave, user }) {
       <VehicleAccessDialog
         open={vehicleAccessDialogOpen}
         onClose={() => setVehicleAccessDialogOpen(false)}
-        onSave={(ids) => {
-          setFormData(prev => ({ ...prev, vehicleAccess: ids }));
-          setVehicleAccessDialogOpen(false);
-        }}
+        onSave={(ids) => { setFormData(prev => ({ ...prev, vehicleAccess: ids })); setVehicleAccessDialogOpen(false); }}
         userName={formData.firstName ? `${formData.firstName} ${formData.lastName}` : ''}
         selectedIds={formData.vehicleAccess}
+      />
+
+      <RiderAccessDialog
+        open={riderAccessDialogOpen}
+        onClose={() => setRiderAccessDialogOpen(false)}
+        onSave={(ids) => { setFormData(prev => ({ ...prev, riderAccess: ids })); setRiderAccessDialogOpen(false); }}
+        userName={formData.firstName ? `${formData.firstName} ${formData.lastName}` : ''}
+        selectedIds={formData.riderAccess}
       />
     </Dialog>
   );

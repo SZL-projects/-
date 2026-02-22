@@ -586,11 +586,12 @@ module.exports = async (req, res) => {
       // GET single rider
       if (req.method === 'GET') {
         const singlePermLevel = await checkPermission(user, db, 'riders', 'view');
-        if (singlePermLevel === 'self' && user.riderId !== riderId) {
-          return res.status(403).json({
-            success: false,
-            message: 'אין הרשאה לצפות ברוכב זה'
-          });
+        if (singlePermLevel === 'self') {
+          const allowedIds = new Set(Array.isArray(user.riderAccess) ? user.riderAccess : []);
+          if (user.riderId) allowedIds.add(user.riderId);
+          if (!allowedIds.has(riderId)) {
+            return res.status(403).json({ success: false, message: 'אין הרשאה לצפות ברוכב זה' });
+          }
         }
 
         return res.status(200).json({
@@ -746,8 +747,32 @@ module.exports = async (req, res) => {
 
       // סינון לפי הרשאות
       const permLevel = await checkPermission(user, db, 'riders', 'view');
-      if (permLevel === 'self' && user.riderId) {
-        query = query.where('__name__', '==', user.riderId);
+      if (permLevel === 'self') {
+        // בנה רשימת IDs שהמשתמש מורשה לראות
+        const allowedIds = new Set(Array.isArray(user.riderAccess) ? user.riderAccess : []);
+        if (user.riderId) allowedIds.add(user.riderId);
+
+        if (allowedIds.size === 0) {
+          return res.status(200).json({ success: true, count: 0, totalPages: 0, currentPage: 1, riders: [] });
+        }
+
+        // טעינת רוכבים מורשים
+        const riderDocs = await Promise.all([...allowedIds].map(id => db.collection('riders').doc(id).get()));
+        let riders = riderDocs.filter(d => d.exists).map(d => ({ id: d.id, ...d.data() }));
+
+        // סינון לפי פרמטרים
+        if (riderStatus) riders = riders.filter(r => r.riderStatus === riderStatus);
+        if (assignmentStatus) riders = riders.filter(r => r.assignmentStatus === assignmentStatus);
+        if (region) riders = riders.filter(r => r.region?.district === region);
+        if (search) {
+          const s = search.toLowerCase();
+          riders = riders.filter(r =>
+            `${r.firstName} ${r.lastName}`.toLowerCase().includes(s) ||
+            (r.idNumber || '').includes(s) || (r.phone || '').includes(s)
+          );
+        }
+
+        return res.status(200).json({ success: true, count: riders.length, totalPages: 1, currentPage: 1, riders });
       }
 
       // אופטימיזציה: אם אין חיפוש, השתמש ב-Firestore pagination אמיתי

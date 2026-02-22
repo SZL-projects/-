@@ -261,7 +261,7 @@ module.exports = async (req, res) => {
         role: req.body?.role
       });
 
-      const { username, email, password, firstName, lastName, phone, role, roles, vehicleAccess, riderId, isActive } = req.body;
+      const { username, email, password, firstName, lastName, phone, role, roles, vehicleAccess, riderAccess, riderId, isActive } = req.body;
 
       // Validation
       if (!username || !email || !password) {
@@ -320,6 +320,7 @@ module.exports = async (req, res) => {
         role: primaryRole,
         roles: assignedRoles,
         vehicleAccess: Array.isArray(vehicleAccess) ? vehicleAccess : [],
+        riderAccess: Array.isArray(riderAccess) ? riderAccess : [],
         riderId: riderId || null,
         isActive: isActive !== undefined ? isActive : true,
         isLocked: false,
