@@ -1110,33 +1110,37 @@ module.exports = async (req, res) => {
       // סינון לפי הרשאות משתמש
       const permLevel = await checkPermission(user, db, 'vehicles', 'view');
 
-      // אם המשתמש עם הרשאת self - הצג רק את הכלי המשויך אליו
-      if (permLevel === 'self' && user.riderId) {
-        // נמצא את הרוכב כדי לקבל את assignedVehicleId
-        const riderSnapshot = await db.collection('riders').doc(user.riderId).get();
-        if (riderSnapshot.exists) {
-          const riderData = riderSnapshot.data();
-          if (riderData.assignedVehicleId) {
-            // רוכב עם כלי משויך - החזר רק את הכלי הזה
-            const vehicleDoc = await db.collection('vehicles').doc(riderData.assignedVehicleId).get();
-            if (vehicleDoc.exists) {
-              return res.status(200).json({
-                success: true,
-                count: 1,
-                totalPages: 1,
-                currentPage: 1,
-                vehicles: [{ id: vehicleDoc.id, ...vehicleDoc.data() }]
-              });
+      // אם המשתמש עם הרשאת self - הצג את הכלי המשויך + כלים מ-vehicleAccess
+      if (permLevel === 'self') {
+        const vehicleIds = new Set(Array.isArray(user.vehicleAccess) ? user.vehicleAccess : []);
+
+        // הוסף את הכלי המשויך לרוכב
+        if (user.riderId) {
+          const riderSnapshot = await db.collection('riders').doc(user.riderId).get();
+          if (riderSnapshot.exists) {
+            const riderData = riderSnapshot.data();
+            if (riderData.assignedVehicleId) {
+              vehicleIds.add(riderData.assignedVehicleId);
             }
           }
         }
-        // אין כלי משויך או רוכב לא נמצא - החזר מערך ריק
+
+        if (vehicleIds.size === 0) {
+          return res.status(200).json({
+            success: true, count: 0, totalPages: 0, currentPage: 1, vehicles: []
+          });
+        }
+
+        // טעינת כל הכלים הרלוונטיים
+        const vehicleDocs = await Promise.all(
+          [...vehicleIds].map(id => db.collection('vehicles').doc(id).get())
+        );
+        const vehicles = vehicleDocs
+          .filter(doc => doc.exists)
+          .map(doc => ({ id: doc.id, ...doc.data() }));
+
         return res.status(200).json({
-          success: true,
-          count: 0,
-          totalPages: 0,
-          currentPage: 1,
-          vehicles: []
+          success: true, count: vehicles.length, totalPages: 1, currentPage: 1, vehicles
         });
       }
 
