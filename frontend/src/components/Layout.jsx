@@ -45,6 +45,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import ChangePasswordDialog from './ChangePasswordDialog';
 import GlobalSearchResults from './GlobalSearchResults';
+import NotificationBell from './NotificationBell';
 import { useGlobalSearch } from '../hooks/useGlobalSearch';
 
 const drawerWidth = 280;
@@ -682,6 +683,9 @@ export default function Layout() {
             >
               <Search />
             </IconButton>
+
+            {/* פעמון התראות */}
+            <NotificationBell />
 
             {/* User Menu */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
