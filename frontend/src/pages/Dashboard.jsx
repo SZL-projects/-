@@ -99,6 +99,7 @@ export default function Dashboard() {
   const [criticalFaultsList, setCriticalFaultsList] = useState([]);
   const [vehicleStatusData, setVehicleStatusData] = useState([]);
   const [monthlyTrendData, setMonthlyTrendData] = useState([]);
+  const [expiringLicenseVehicles, setExpiringLicenseVehicles] = useState([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -132,6 +133,11 @@ export default function Dashboard() {
       let pendingTasks = 0;
       let openFaults = 0;
       const criticalFaults = [];
+      const licenseExpiringList = [];
+
+      // מפת רוכבים לחיפוש מהיר
+      const ridersMap = {};
+      riders.forEach(r => { ridersMap[r.id] = r; });
 
       // ספירת סטטוסי כלים לגרף
       const vehicleStatusCounts = {
@@ -180,7 +186,19 @@ export default function Dashboard() {
         const licenseExpiry = v.vehicleLicense?.expiryDate;
         if (licenseExpiry) {
           const expiryDate = licenseExpiry.toDate ? licenseExpiry.toDate() : new Date(licenseExpiry);
-          if (expiryDate >= now && expiryDate <= thirtyDaysFromNow) expiringLicense++;
+          if (expiryDate >= now && expiryDate <= thirtyDaysFromNow) {
+            expiringLicense++;
+            const rider = ridersMap[v.riderId] || ridersMap[v.assignedRiderId];
+            licenseExpiringList.push({
+              id: v.id,
+              licensePlate: v.licensePlate,
+              internalNumber: v.internalNumber,
+              vehicleModel: v.model || v.vehicleModel,
+              expiryDate,
+              riderName: rider ? `${rider.firstName || ''} ${rider.lastName || ''}`.trim() : '',
+              riderIdNumber: rider?.idNumber || '',
+            });
+          }
         }
       });
 
@@ -213,6 +231,7 @@ export default function Dashboard() {
       });
 
       setCriticalFaultsList(criticalFaults.slice(0, 5));
+      setExpiringLicenseVehicles(licenseExpiringList);
 
       // נתונים אמיתיים לגרף סטטוס כלים
       setVehicleStatusData([
@@ -355,7 +374,7 @@ export default function Dashboard() {
         newAlerts.push({
           severity: 'warning',
           message: `🚗 ${expiringLicense} רשיונות רכב שפוקעים ב-30 הימים הקרובים`,
-          action: 'vehicles'
+          action: 'vehicles?filter=expiringLicense'
         });
       }
       if (vehiclesWaitingForRider > 0) {
@@ -380,12 +399,15 @@ export default function Dashboard() {
     }
   };
 
-  const StatCard = ({ title, value, icon: Icon, color, trend }) => (
-    <Card sx={{
+  const StatCard = ({ title, value, icon: Icon, color, trend, onClick }) => (
+    <Card onClick={onClick} sx={{
       height: '100%',
       position: 'relative',
       overflow: 'hidden',
       border: 'none',
+      cursor: onClick ? 'pointer' : 'default',
+      transition: 'transform 0.15s, box-shadow 0.15s',
+      ...(onClick && { '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' } }),
       '&::before': {
         content: '""',
         position: 'absolute',
@@ -602,10 +624,84 @@ export default function Dashboard() {
               value={stats.expiringLicense}
               icon={EventAvailable}
               color="#f97316"
+              onClick={() => navigate('/vehicles?filter=expiringLicense')}
             />
           </Grid>
         )}
       </Grid>
+
+      {/* סיכום רשיונות שפוקעים - כמו תבנית המייל */}
+      {expiringLicenseVehicles.length > 0 && (
+        <Paper sx={{ mb: 4, borderRadius: '16px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+          {/* כותרת */}
+          <Box sx={{
+            background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+            px: 3, py: 2.5,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}>
+            <Box>
+              <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '1.1rem' }}>
+                🚗 התראת טסט / רשיון רכב
+              </Typography>
+              <Typography sx={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', mt: 0.5 }}>
+                {expiringLicenseVehicles.length} כלים שרשיונם פוקע בתוך 30 יום הקרובים
+              </Typography>
+            </Box>
+            <Button
+              variant="outlined"
+              size="small"
+              endIcon={<ArrowForward />}
+              onClick={() => navigate('/vehicles?filter=expiringLicense')}
+              sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.6)', '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.1)' } }}
+            >
+              לרשימה המלאה
+            </Button>
+          </Box>
+          {/* כרטיסיות כלים */}
+          <Box sx={{ p: 3 }}>
+            <Grid container spacing={2}>
+              {expiringLicenseVehicles.map((v) => (
+                <Grid item xs={12} sm={6} md={4} key={v.id}>
+                  <Box sx={{
+                    border: '1px solid #e2e8f0',
+                    borderRight: '4px solid #3b82f6',
+                    borderRadius: '8px',
+                    p: 2,
+                    bgcolor: '#fff',
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: '#f8faff' },
+                  }}
+                    onClick={() => navigate('/vehicles?filter=expiringLicense')}
+                  >
+                    <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>מספר רכב</Typography>
+                    <Typography sx={{ fontWeight: 700, color: '#1e293b', mb: 1 }}>{v.licensePlate || v.internalNumber || 'לא ידוע'}</Typography>
+
+                    {v.riderName && (
+                      <>
+                        <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>שם הרוכב</Typography>
+                        <Typography sx={{ fontWeight: 600, color: '#374151', mb: 1 }}>{v.riderName}</Typography>
+                      </>
+                    )}
+
+                    <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>דגם</Typography>
+                    <Typography sx={{ fontWeight: 600, color: '#374151', mb: 1 }}>{v.vehicleModel || 'לא ידוע'}</Typography>
+
+                    <Typography sx={{ color: '#6b7280', fontSize: '0.75rem', mb: 0.3 }}>תאריך תפוגת הרישיון</Typography>
+                    <Typography sx={{ fontWeight: 700, color: '#dc2626' }}>
+                      {v.expiryDate.toLocaleDateString('he-IL')}
+                    </Typography>
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
+            <Typography sx={{ mt: 2, color: '#64748b', fontSize: '0.85rem', textAlign: 'center' }}>
+              אנא דאג לחידוש הטסט / רשיון הרכב בהקדם האפשרי.
+            </Typography>
+          </Box>
+        </Paper>
+      )}
 
       {/* Charts and Activity */}
       <Grid container spacing={3}>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -42,6 +42,8 @@ import {
   DirectionsCar as CarIcon,
   CalendarToday as CalendarIcon,
   Speed as SpeedIcon,
+  FilterList as FilterListIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { vehiclesAPI } from '../services/api';
 import VehicleDialog from '../components/VehicleDialog';
@@ -50,6 +52,8 @@ import { useAuth } from '../contexts/AuthContext';
 
 export default function Vehicles() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeFilter = searchParams.get('filter'); // 'expiringLicense' | null
   const { hasPermission } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -133,6 +137,21 @@ export default function Vehicles() {
     setSnackbar({ open: true, message, severity });
   }, []);
 
+  // סינון client-side לפי פרמטר URL
+  const displayedVehicles = useMemo(() => {
+    if (activeFilter === 'expiringLicense') {
+      const now = new Date();
+      const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      return vehicles.filter(v => {
+        const licenseExpiry = v.vehicleLicense?.expiryDate;
+        if (!licenseExpiry) return false;
+        const expiryDate = licenseExpiry.toDate ? licenseExpiry.toDate() : new Date(licenseExpiry);
+        return expiryDate >= now && expiryDate <= thirtyDaysFromNow;
+      });
+    }
+    return vehicles;
+  }, [vehicles, activeFilter]);
+
   // מיפוי סטטוסים - עם צבעים מודרניים
   const statusMap = useMemo(() => ({
     active: { label: 'פעיל', bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#059669' },
@@ -201,7 +220,7 @@ export default function Vehicles() {
               ניהול כלים
             </Typography>
             <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5 }}>
-              {vehicles.length} כלים במערכת
+              {activeFilter === 'expiringLicense' ? `${displayedVehicles.length} כלים עם רשיון פוקע` : `${vehicles.length} כלים במערכת`}
             </Typography>
           </Box>
         </Box>
@@ -241,6 +260,22 @@ export default function Vehicles() {
           }}
         >
           {error}
+        </Alert>
+      )}
+
+      {/* באנר סינון פעיל */}
+      {activeFilter === 'expiringLicense' && (
+        <Alert
+          severity="warning"
+          icon={<FilterListIcon />}
+          sx={{ mb: 3, borderRadius: '12px', alignItems: 'center' }}
+          action={
+            <IconButton size="small" onClick={() => setSearchParams({})}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          }
+        >
+          מציג {displayedVehicles.length} כלים עם רשיון רכב שפוקע בתוך 30 יום — לחץ על X להסרת הסינון
         </Alert>
       )}
 
@@ -286,7 +321,7 @@ export default function Vehicles() {
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
           <CircularProgress sx={{ color: '#6366f1' }} />
         </Box>
-      ) : vehicles.length === 0 ? (
+      ) : displayedVehicles.length === 0 ? (
         <Paper
           elevation={0}
           sx={{
@@ -320,7 +355,7 @@ export default function Vehicles() {
       ) : isMobile ? (
         // Mobile View - Modern Cards
         <Stack spacing={2}>
-          {vehicles.map((vehicle, index) => (
+          {displayedVehicles.map((vehicle, index) => (
             <Card
               key={vehicle.id}
               elevation={0}
@@ -457,7 +492,7 @@ export default function Vehicles() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {vehicles.map((vehicle, index) => (
+              {displayedVehicles.map((vehicle, index) => (
                 <TableRow
                   key={vehicle.id}
                   sx={{
