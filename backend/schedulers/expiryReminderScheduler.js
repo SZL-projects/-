@@ -1,5 +1,6 @@
 const cron = require('node-cron');
-const Vehicle = require('../models/Vehicle');
+const { db } = require('../config/firebase');
+const COLLECTIONS = require('../config/collections');
 const { sendInsuranceExpiryEmail, sendLicenseExpiryEmail } = require('../services/emailService');
 
 /**
@@ -9,7 +10,7 @@ const { sendInsuranceExpiryEmail, sendLicenseExpiryEmail } = require('../service
  * בודק:
  * - ביטוחים (חובה/מקיף) שפוקעים בדיוק עוד 14 יום (התראה פעם אחת)
  * - רשיונות רכב/טסט שפוקעים בדיוק עוד 30 יום (התראה פעם אחת)
- * שולח מייל מרוכז למייל המערכת
+ * שולח מייל נפרד לכל סוג
  */
 
 class ExpiryReminderScheduler {
@@ -18,7 +19,25 @@ class ExpiryReminderScheduler {
   }
 
   /**
-   * איסוף כל הפריטים שעומדים לפוג
+   * בניית מפה של vehicleId -> rider מכל הרוכבים המשובצים
+   */
+  async buildRiderMap() {
+    const snapshot = await db.collection(COLLECTIONS.RIDERS)
+      .where('assignmentStatus', '==', 'assigned')
+      .get();
+
+    const map = {};
+    snapshot.forEach(doc => {
+      const rider = { id: doc.id, ...doc.data() };
+      if (rider.assignedVehicleId) {
+        map[rider.assignedVehicleId] = rider;
+      }
+    });
+    return map;
+  }
+
+  /**
+   * איסוף כל הפריטים שעומדים לפוג בדיוק ב-14/30 ימים
    */
   async collectExpiringItems() {
     const now = new Date();
@@ -40,13 +59,26 @@ class ExpiryReminderScheduler {
     const expiringItems = [];
 
     try {
-      // שליפת כל הכלים הפעילים
-      const vehicles = await Vehicle.find({
-        status: { $in: ['active', 'waiting_for_rider'] }
-      }).lean();
+      // שליפת כל הכלים הפעילים מ-Firestore
+      const activeSnap = await db.collection(COLLECTIONS.VEHICLES)
+        .where('status', 'in', ['active', 'waiting_for_rider'])
+        .get();
+
+      const vehicles = [];
+      activeSnap.forEach(doc => vehicles.push({ id: doc.id, ...doc.data() }));
+
+      // בניית מפת רוכבים
+      const riderMap = await this.buildRiderMap();
 
       for (const vehicle of vehicles) {
-        // בדיקת ביטוח חובה - התראה בדיוק 14 יום לפני הפקיעה
+        const rider = riderMap[vehicle.id] || null;
+        const riderName = rider
+          ? `${rider.firstName} ${rider.lastName}`
+          : 'לא משובץ';
+        const riderIdNumber = rider?.idNumber || '';
+        const vehicleModel = `${vehicle.manufacturer || ''} ${vehicle.model || ''}`.trim();
+
+        // ביטוח חובה - התראה בדיוק 14 יום לפני הפקיעה
         if (vehicle.insurance?.mandatory?.expiryDate) {
           const expiryDate = new Date(vehicle.insurance.mandatory.expiryDate);
           if (expiryDate >= target14 && expiryDate <= target14End) {
@@ -54,14 +86,17 @@ class ExpiryReminderScheduler {
               type: 'insurance',
               insuranceType: 'mandatory',
               licensePlate: vehicle.licensePlate,
-              vehicleId: vehicle._id,
-              expiryDate: expiryDate,
-              daysLeft: 14
+              vehicleId: vehicle.id,
+              vehicleModel,
+              expiryDate,
+              daysLeft: 14,
+              riderName,
+              riderIdNumber,
             });
           }
         }
 
-        // בדיקת ביטוח מקיף - התראה בדיוק 14 יום לפני הפקיעה
+        // ביטוח מקיף - התראה בדיוק 14 יום לפני הפקיעה
         if (vehicle.insurance?.comprehensive?.expiryDate) {
           const expiryDate = new Date(vehicle.insurance.comprehensive.expiryDate);
           if (expiryDate >= target14 && expiryDate <= target14End) {
@@ -69,30 +104,33 @@ class ExpiryReminderScheduler {
               type: 'insurance',
               insuranceType: 'comprehensive',
               licensePlate: vehicle.licensePlate,
-              vehicleId: vehicle._id,
-              expiryDate: expiryDate,
-              daysLeft: 14
+              vehicleId: vehicle.id,
+              vehicleModel,
+              expiryDate,
+              daysLeft: 14,
+              riderName,
+              riderIdNumber,
             });
           }
         }
 
-        // בדיקת רשיון רכב/טסט - התראה בדיוק 30 יום לפני הפקיעה
+        // רשיון רכב/טסט - התראה בדיוק 30 יום לפני הפקיעה
         if (vehicle.vehicleLicense?.expiryDate) {
           const expiryDate = new Date(vehicle.vehicleLicense.expiryDate);
           if (expiryDate >= target30 && expiryDate <= target30End) {
             expiringItems.push({
               type: 'license',
               licensePlate: vehicle.licensePlate,
-              vehicleId: vehicle._id,
-              expiryDate: expiryDate,
-              daysLeft: 30
+              vehicleId: vehicle.id,
+              vehicleModel,
+              expiryDate,
+              daysLeft: 30,
+              riderName,
+              riderIdNumber,
             });
           }
         }
       }
-
-      // מיון לפי ימים שנותרו (הדחוף ביותר קודם)
-      expiringItems.sort((a, b) => a.daysLeft - b.daysLeft);
 
       return expiringItems;
     } catch (error) {
