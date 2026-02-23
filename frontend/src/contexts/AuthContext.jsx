@@ -1,4 +1,5 @@
-import { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
+import { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { authAPI, permissionsAPI, setLogoutCallback } from '../services/api';
 
 const AuthContext = createContext(null);
@@ -7,7 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userPermissions, setUserPermissions] = useState(null);
-  const refreshTimerRef = useRef(null);
+  const location = useLocation();
 
   // רענון מידע משתמש מהשרת (תפקידים עדכניים)
   const refreshUserFromServer = useCallback(async () => {
@@ -122,25 +123,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // טעינת הרשאות כאשר המשתמש מתחבר + רענון כל 2 דקות
+  // טעינת הרשאות כאשר המשתמש מתחבר
   useEffect(() => {
     if (user) {
       loadPermissions();
-      // רענון אוטומטי של הרשאות ומידע משתמש כל 30 שניות
-      refreshTimerRef.current = setInterval(() => {
-        refreshUserFromServer();
-        loadPermissions();
-      }, 30 * 1000);
     } else {
       setUserPermissions(null);
     }
-    return () => {
-      if (refreshTimerRef.current) {
-        clearInterval(refreshTimerRef.current);
-        refreshTimerRef.current = null;
-      }
-    };
   }, [user?.id]);
+
+  // רענון הרשאות ומידע משתמש בעת ניווט בין מסכים
+  useEffect(() => {
+    if (user) {
+      refreshUserFromServer();
+      loadPermissions();
+    }
+  }, [location.pathname]);
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
