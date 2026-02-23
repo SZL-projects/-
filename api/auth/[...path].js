@@ -30,16 +30,20 @@ module.exports = async (req, res) => {
   try {
     const { db } = initFirebase();
 
-    // Extract the sub-path - handle multiple Vercel URL patterns
-    let path = req.url.split('?')[0]; // Remove query params first
-
-    // Try different patterns
-    if (path.includes('/auth/')) {
-      // Pattern: /api/auth/login or /auth/login
-      path = path.substring(path.indexOf('/auth/') + 5); // Everything after /auth
-    } else if (path.startsWith('/')) {
-      // Pattern: /login (Vercel stripped the prefix)
-      path = path;
+    // Extract the sub-path using Vercel's native query.path (most reliable)
+    let path;
+    if (req.query && req.query.path) {
+      const parts = Array.isArray(req.query.path) ? req.query.path : [req.query.path];
+      path = '/' + parts.join('/');
+    } else {
+      // Fallback: parse req.url manually
+      let rawPath = req.url.split('?')[0];
+      if (rawPath.includes('/auth/')) {
+        path = rawPath.substring(rawPath.indexOf('/auth/') + 6);
+        if (!path.startsWith('/')) path = '/' + path;
+      } else {
+        path = rawPath.startsWith('/') ? rawPath : '/' + rawPath;
+      }
     }
 
     console.log('🔐 Auth Request:', {
@@ -151,65 +155,6 @@ module.exports = async (req, res) => {
       });
     }
 
-    // POST /api/auth/register
-    if (path === '/register' && req.method === 'POST') {
-      const { username, email, password, firstName, lastName, phone, role } = req.body;
-
-      const usernameCheck = await db.collection('users')
-        .where('username', '==', username)
-        .limit(1)
-        .get();
-
-      const emailCheck = await db.collection('users')
-        .where('email', '==', email.toLowerCase())
-        .limit(1)
-        .get();
-
-      if (!usernameCheck.empty || !emailCheck.empty) {
-        return res.status(400).json({
-          success: false,
-          message: 'משתמש עם אימייל או שם משתמש זה כבר קיים'
-        });
-      }
-
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
-
-      const newUser = {
-        username,
-        email: email.toLowerCase(),
-        password: hashedPassword,
-        firstName,
-        lastName,
-        phone: phone || null,
-        role: role || 'rider',
-        isActive: true,
-        isLocked: false,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-
-      const userRef = await db.collection('users').add(newUser);
-      const userId = userRef.id;
-
-      const token = getSignedJwtToken(userId);
-
-      return res.status(201).json({
-        success: true,
-        token,
-        user: {
-          id: userId,
-          username,
-          email: email.toLowerCase(),
-          firstName,
-          lastName,
-          role: role || 'rider',
-          roles: [role || 'rider'], // תמיכה במערך תפקידים
-          riderId: null // משתמש חדש אין לו riderId עדיין
-        }
-      });
-    }
-
     // GET /api/auth/me
     if (path === '/me' && req.method === 'GET') {
       const user = await authenticateToken(req, db);
@@ -313,10 +258,10 @@ module.exports = async (req, res) => {
         });
       }
 
-      if (password.length < 8) {
+      if (password.length < 6) {
         return res.status(400).json({
           success: false,
-          message: 'הסיסמה חייבת להיות לפחות 8 תווים'
+          message: 'הסיסמה חייבת להיות לפחות 6 תווים'
         });
       }
 
@@ -462,7 +407,7 @@ module.exports = async (req, res) => {
       path,
       method: req.method,
       url: req.url,
-      availableEndpoints: ['/login (POST)', '/register (POST)', '/me (GET)', '/forgot-password (POST)', '/reset-password/:token (PUT)', '/change-password (PUT)']
+      availableEndpoints: ['/login (POST)', '/me (GET)', '/forgot-password (POST)', '/reset-password/:token (PUT)', '/change-password (PUT)']
     });
 
     return res.status(404).json({
@@ -473,7 +418,6 @@ module.exports = async (req, res) => {
         requestedMethod: req.method,
         availableEndpoints: [
           'POST /api/auth/login',
-          'POST /api/auth/register',
           'GET /api/auth/me',
           'POST /api/auth/forgot-password',
           'PUT /api/auth/reset-password/:token',

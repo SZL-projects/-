@@ -5,56 +5,6 @@ const User = require('../models/User');
 const { getSignedJwtToken } = require('../middleware/auth');
 const emailService = require('../services/emailService');
 
-// @route   POST /api/auth/register
-// @desc    רישום משתמש חדש
-// @access  Public (ייתכן שנרצה להגביל למנהלים בלבד)
-router.post('/register', async (req, res) => {
-  try {
-    const { username, email, password, firstName, lastName, phone, role } = req.body;
-
-    // בדיקה אם המשתמש כבר קיים
-    const userExists = await User.findOne({ $or: [{ email }, { username }] });
-    if (userExists) {
-      return res.status(400).json({
-        success: false,
-        message: 'משתמש עם אימייל או שם משתמש זה כבר קיים'
-      });
-    }
-
-    // יצירת משתמש
-    const user = await User.create({
-      username,
-      email,
-      password,
-      firstName,
-      lastName,
-      phone,
-      role: role || 'rider'
-    });
-
-    // יצירת token
-    const token = getSignedJwtToken(user._id);
-
-    res.status(201).json({
-      success: true,
-      token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
 // @route   POST /api/auth/login
 // @desc    התחברות משתמש
 // @access  Public
