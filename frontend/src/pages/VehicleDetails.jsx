@@ -34,6 +34,7 @@ import {
   Security,
   EventAvailable,
   Warning,
+  Person as PersonIcon,
 } from '@mui/icons-material';
 import { vehiclesAPI } from '../services/api';
 import VehicleFiles from '../components/VehicleFiles';
@@ -522,6 +523,51 @@ export default function VehicleDetails() {
               <Typography variant="body2" sx={{ color: '#64748b' }}>סטטוס:</Typography>
               {getStatusChip(vehicle.status)}
             </Box>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Card sx={{
+              borderRadius: '12px',
+              border: vehicle.assignedRiderName ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid #e2e8f0',
+              boxShadow: 'none',
+              bgcolor: vehicle.assignedRiderName ? 'rgba(99, 102, 241, 0.04)' : 'transparent',
+            }}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '10px',
+                  bgcolor: vehicle.assignedRiderName ? 'rgba(99, 102, 241, 0.15)' : 'rgba(148, 163, 184, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <PersonIcon sx={{ color: vehicle.assignedRiderName ? '#6366f1' : '#94a3b8', fontSize: 20 }} />
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>רוכב משויך</Typography>
+                  {vehicle.assignedRiderName ? (
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        fontWeight: 600,
+                        color: '#6366f1',
+                        cursor: 'pointer',
+                        '&:hover': { textDecoration: 'underline' },
+                      }}
+                      onClick={() => vehicle.assignedRiderId && navigate(`/riders/${vehicle.assignedRiderId}`)}
+                    >
+                      {vehicle.assignedRiderName}
+                    </Typography>
+                  ) : (
+                    <Typography variant="body1" sx={{ color: '#94a3b8' }}>
+                      לא משויך לרוכב
+                    </Typography>
+                  )}
+                </Box>
+              </CardContent>
+            </Card>
           </Grid>
         </Grid>
       </Paper>

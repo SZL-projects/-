@@ -19,6 +19,29 @@ const upload = multer({
 // כל הנתיבים מוגנים
 router.use(protect);
 
+// פונקציית עזר: הוספת שם רוכב משויך לכלים
+async function enrichVehiclesWithRiderNames(vehicles) {
+  const riderIds = [...new Set(vehicles.map(v => v.assignedTo).filter(Boolean))];
+  if (riderIds.length === 0) return vehicles;
+
+  const riderMap = {};
+  await Promise.all(
+    riderIds.map(async (riderId) => {
+      try {
+        const rider = await RiderModel.findById(riderId);
+        if (rider) {
+          riderMap[riderId] = `${rider.firstName} ${rider.lastName}`.trim();
+        }
+      } catch (_) {}
+    })
+  );
+
+  return vehicles.map(v => ({
+    ...v,
+    assignedRiderName: v.assignedTo ? (riderMap[v.assignedTo] || null) : null,
+  }));
+}
+
 // @route   GET /api/vehicles
 // @desc    קבלת רשימת כלים
 // @access  Private
@@ -43,6 +66,8 @@ router.get('/', checkPermission('vehicles', 'view'), async (req, res) => {
     } else {
       vehicles = await VehicleModel.getAll(filters, parseInt(limit));
     }
+
+    vehicles = await enrichVehiclesWithRiderNames(vehicles);
 
     res.json({
       success: true,
@@ -181,9 +206,22 @@ router.get('/:id', checkPermission('vehicles', 'view'), async (req, res) => {
       });
     }
 
+    // הוספת שם רוכב משויך
+    let assignedRiderName = null;
+    let assignedRiderId = null;
+    if (vehicle.assignedTo) {
+      try {
+        const rider = await RiderModel.findById(vehicle.assignedTo);
+        if (rider) {
+          assignedRiderName = `${rider.firstName} ${rider.lastName}`.trim();
+          assignedRiderId = rider.id;
+        }
+      } catch (_) {}
+    }
+
     res.json({
       success: true,
-      vehicle
+      vehicle: { ...vehicle, assignedRiderName, assignedRiderId }
     });
   } catch (error) {
     res.status(500).json({

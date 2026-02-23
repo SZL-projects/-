@@ -44,6 +44,7 @@ import {
   Speed as SpeedIcon,
   FilterList as FilterListIcon,
   Close as CloseIcon,
+  Person as PersonIcon,
 } from '@mui/icons-material';
 import { vehiclesAPI } from '../services/api';
 import VehicleDialog from '../components/VehicleDialog';
@@ -436,6 +437,15 @@ export default function Vehicles() {
                       </Typography>
                     </Box>
                   </Grid>
+
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <PersonIcon sx={{ fontSize: 16, color: '#94a3b8' }} />
+                      <Typography variant="body2" sx={{ color: vehicle.assignedRiderName ? '#1e293b' : '#94a3b8', fontWeight: vehicle.assignedRiderName ? 500 : 400 }}>
+                        {vehicle.assignedRiderName || 'לא משויך לרוכב'}
+                      </Typography>
+                    </Box>
+                  </Grid>
                 </Grid>
               </CardContent>
 
@@ -505,6 +515,7 @@ export default function Vehicles() {
                 <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>דגם</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>שנה</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>ק"מ נוכחי</TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>רוכב משויך</TableCell>
                 <TableCell sx={{ fontWeight: 600, color: '#475569', py: 2 }}>סטטוס</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 600, color: '#475569', py: 2 }}>פעולות</TableCell>
               </TableRow>
@@ -533,6 +544,9 @@ export default function Vehicles() {
                   <TableCell sx={{ color: '#64748b' }}>{vehicle.year}</TableCell>
                   <TableCell sx={{ color: '#64748b' }}>
                     {vehicle.currentKilometers?.toLocaleString('he-IL') || '0'}
+                  </TableCell>
+                  <TableCell sx={{ color: '#1e293b', fontWeight: vehicle.assignedRiderName ? 500 : 400 }}>
+                    {vehicle.assignedRiderName || <Typography component="span" sx={{ color: '#94a3b8', fontSize: 'inherit' }}>—</Typography>}
                   </TableCell>
                   <TableCell>{getStatusChip(vehicle.status)}</TableCell>
                   <TableCell align="center">

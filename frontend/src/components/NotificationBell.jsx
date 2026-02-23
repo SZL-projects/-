@@ -11,22 +11,52 @@ import {
   ListItemText,
   Divider,
   Chip,
+  Tooltip,
 } from '@mui/material';
-import { Notifications, Shield, DirectionsCar } from '@mui/icons-material';
+import { Notifications, Shield, DirectionsCar, Close } from '@mui/icons-material';
 import api from '../services/api';
 
-const STORAGE_KEY = 'notifications_read_ids';
+const READ_KEY = 'notifications_read_ids';
+const DISMISSED_KEY = 'notifications_dismissed'; // { id: isoString }
+const AUTO_CLEAR_DAYS = 7; // מחיקה אוטומטית אחרי 7 ימים מקריאה
 
 function getReadIds() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    return JSON.parse(localStorage.getItem(READ_KEY) || '[]');
   } catch {
     return [];
   }
 }
 
 function saveReadIds(ids) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+  localStorage.setItem(READ_KEY, JSON.stringify(ids));
+}
+
+function getDismissed() {
+  try {
+    return JSON.parse(localStorage.getItem(DISMISSED_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function saveDismissed(map) {
+  localStorage.setItem(DISMISSED_KEY, JSON.stringify(map));
+}
+
+// מנקה רשומות ישנות שעברו AUTO_CLEAR_DAYS ימים מאז נקראו
+function cleanOldDismissed(dismissed, readIds) {
+  const now = Date.now();
+  const cutoff = AUTO_CLEAR_DAYS * 24 * 60 * 60 * 1000;
+  const cleaned = {};
+  for (const [id, iso] of Object.entries(dismissed)) {
+    const age = now - new Date(iso).getTime();
+    // שמור רק אם עדיין בתוך חלון הניקוי
+    if (age < cutoff) {
+      cleaned[id] = iso;
+    }
+  }
+  return cleaned;
 }
 
 export default function NotificationBell() {
@@ -34,14 +64,25 @@ export default function NotificationBell() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [readIds, setReadIds] = useState(getReadIds);
+  const [dismissed, setDismissed] = useState(() => {
+    const raw = getDismissed();
+    return cleanOldDismissed(raw, getReadIds());
+  });
 
   const fetchAlerts = useCallback(async () => {
     try {
       const { data } = await api.get('/notifications/alerts');
       if (data.success) setAlerts(data.alerts);
     } catch {
-      // שגיאה שקטה - לא להראות ניפוי שגיאות למשתמש
+      // שגיאה שקטה
     }
+  }, []);
+
+  // ניקוי אוטומטי: הסרת dismissed ישנים בכל פתיחה
+  useEffect(() => {
+    const cleaned = cleanOldDismissed(getDismissed(), readIds);
+    setDismissed(cleaned);
+    saveDismissed(cleaned);
   }, []);
 
   // טעינה ראשונית + רענון כל 5 דקות
@@ -51,8 +92,9 @@ export default function NotificationBell() {
     return () => clearInterval(interval);
   }, [fetchAlerts]);
 
-  const unreadAlerts = alerts.filter(a => !readIds.includes(a.id));
-  const unreadCount = unreadAlerts.length;
+  // התראות שלא נמחקו
+  const visibleAlerts = alerts.filter(a => !dismissed[a.id]);
+  const unreadCount = visibleAlerts.filter(a => !readIds.includes(a.id)).length;
 
   const handleOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -67,8 +109,27 @@ export default function NotificationBell() {
   };
 
   const handleAlertClick = (alert) => {
-    handleClose();
+    // סמן כנקרא
+    if (!readIds.includes(alert.id)) {
+      const updated = [...readIds, alert.id];
+      setReadIds(updated);
+      saveReadIds(updated);
+    }
+    setAnchorEl(null);
     navigate(`/vehicles/${alert.vehicleId}`);
+  };
+
+  const handleDismiss = (e, alert) => {
+    e.stopPropagation();
+    const updated = { ...dismissed, [alert.id]: new Date().toISOString() };
+    setDismissed(updated);
+    saveDismissed(updated);
+    // סמן גם כנקרא
+    if (!readIds.includes(alert.id)) {
+      const updatedRead = [...readIds, alert.id];
+      setReadIds(updatedRead);
+      saveReadIds(updatedRead);
+    }
   };
 
   const getDaysColor = (daysLeft) => {
@@ -88,6 +149,8 @@ export default function NotificationBell() {
     }
     return 'טסט / רשיון רכב';
   };
+
+  const isRead = (alert) => readIds.includes(alert.id);
 
   return (
     <>
@@ -147,9 +210,9 @@ export default function NotificationBell() {
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1e293b' }}>
             התראות
           </Typography>
-          {alerts.length > 0 && (
+          {visibleAlerts.length > 0 && (
             <Chip
-              label={`${alerts.length} פעילות`}
+              label={`${visibleAlerts.length} פעילות`}
               size="small"
               sx={{ bgcolor: '#fef3c7', color: '#92400e', fontWeight: 600, fontSize: '0.7rem' }}
             />
@@ -158,7 +221,7 @@ export default function NotificationBell() {
 
         {/* תוכן */}
         <Box sx={{ overflowY: 'auto', maxHeight: 400 }}>
-          {alerts.length === 0 ? (
+          {visibleAlerts.length === 0 ? (
             <Box sx={{ p: 4, textAlign: 'center' }}>
               <Notifications sx={{ fontSize: 40, color: '#cbd5e1', mb: 1 }} />
               <Typography variant="body2" color="text.secondary">
@@ -167,58 +230,89 @@ export default function NotificationBell() {
             </Box>
           ) : (
             <List disablePadding>
-              {alerts.map((alert, index) => (
-                <Box key={alert.id}>
-                  <ListItem
-                    button
-                    onClick={() => handleAlertClick(alert)}
-                    sx={{
-                      px: 2,
-                      py: 1.5,
-                      gap: 1.5,
-                      bgcolor: readIds.includes(alert.id) ? 'transparent' : 'rgba(99, 102, 241, 0.04)',
-                      '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.08)' },
-                      cursor: 'pointer',
-                      alignItems: 'flex-start',
-                    }}
-                  >
-                    <Box sx={{ pt: 0.3 }}>{getAlertIcon(alert.type)}</Box>
-                    <ListItemText
-                      primary={
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b', lineHeight: 1.3 }}>
-                          {alert.licensePlate}
-                        </Typography>
-                      }
-                      secondary={
-                        <Box component="span" sx={{ display: 'flex', flexDirection: 'column', gap: 0.3, mt: 0.3 }}>
-                          <Typography component="span" variant="caption" color="text.secondary">
-                            {getTypeLabel(alert)}
-                          </Typography>
-                          <Typography
-                            component="span"
-                            variant="caption"
-                            sx={{ fontWeight: 700, color: getDaysColor(alert.daysLeft) }}
-                          >
-                            פוקע בעוד {alert.daysLeft} ימים •{' '}
-                            {new Date(alert.expiryDate).toLocaleDateString('he-IL')}
-                          </Typography>
-                        </Box>
-                      }
-                    />
-                    {!readIds.includes(alert.id) && (
-                      <Box sx={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        bgcolor: '#6366f1',
-                        flexShrink: 0,
-                        mt: 0.8,
-                      }} />
-                    )}
-                  </ListItem>
-                  {index < alerts.length - 1 && <Divider />}
-                </Box>
-              ))}
+              {visibleAlerts.map((alert, index) => {
+                const read = isRead(alert);
+                return (
+                  <Box key={alert.id}>
+                    <ListItem
+                      button
+                      onClick={() => handleAlertClick(alert)}
+                      sx={{
+                        px: 2,
+                        py: 1.5,
+                        gap: 1.5,
+                        bgcolor: read ? 'transparent' : 'rgba(99, 102, 241, 0.04)',
+                        opacity: read ? 0.65 : 1,
+                        '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.08)', opacity: 1 },
+                        cursor: 'pointer',
+                        alignItems: 'flex-start',
+                        transition: 'opacity 0.2s',
+                      }}
+                    >
+                      <Box sx={{ pt: 0.3 }}>{getAlertIcon(alert.type)}</Box>
+                      <ListItemText
+                        primary={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2" sx={{ fontWeight: read ? 400 : 600, color: '#1e293b', lineHeight: 1.3 }}>
+                              {alert.licensePlate}
+                            </Typography>
+                            {read && (
+                              <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.65rem' }}>
+                                נקרא
+                              </Typography>
+                            )}
+                          </Box>
+                        }
+                        secondary={
+                          <Box component="span" sx={{ display: 'flex', flexDirection: 'column', gap: 0.3, mt: 0.3 }}>
+                            <Typography component="span" variant="caption" color="text.secondary">
+                              {getTypeLabel(alert)}
+                            </Typography>
+                            <Typography
+                              component="span"
+                              variant="caption"
+                              sx={{ fontWeight: 700, color: getDaysColor(alert.daysLeft) }}
+                            >
+                              פוקע בעוד {alert.daysLeft} ימים •{' '}
+                              {new Date(alert.expiryDate).toLocaleDateString('he-IL')}
+                            </Typography>
+                          </Box>
+                        }
+                      />
+
+                      {/* נקודה כחולה לא-נקרא */}
+                      {!read && (
+                        <Box sx={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          bgcolor: '#6366f1',
+                          flexShrink: 0,
+                          mt: 0.8,
+                        }} />
+                      )}
+
+                      {/* כפתור מחיקה */}
+                      <Tooltip title={`הסר (יימחק אוטומטית אחרי ${AUTO_CLEAR_DAYS} ימים)`} placement="top">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => handleDismiss(e, alert)}
+                          sx={{
+                            p: 0.3,
+                            color: '#94a3b8',
+                            flexShrink: 0,
+                            mt: 0.2,
+                            '&:hover': { color: '#ef4444', bgcolor: 'rgba(239,68,68,0.08)' },
+                          }}
+                        >
+                          <Close sx={{ fontSize: 14 }} />
+                        </IconButton>
+                      </Tooltip>
+                    </ListItem>
+                    {index < visibleAlerts.length - 1 && <Divider />}
+                  </Box>
+                );
+              })}
             </List>
           )}
         </Box>
