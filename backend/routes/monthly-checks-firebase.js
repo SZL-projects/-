@@ -175,7 +175,7 @@ router.post('/', checkPermission('monthly_checks', 'edit'), async (req, res) => 
       }
 
       for (const created of createdChecks) {
-        logAudit(req, {
+        await logAudit(req, {
           action: 'create',
           entityType: 'monthly_check',
           entityId: created.id,

@@ -67,7 +67,7 @@ router.put('/', async (req, res) => {
     });
 
     for (const role of Object.keys(permissions)) {
-      logAudit(req, {
+      await logAudit(req, {
         action: 'update',
         entityType: 'permission',
         entityName: role,

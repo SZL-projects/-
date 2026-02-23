@@ -13,24 +13,25 @@ const AuditLogModel = require('../models/firestore/AuditLogModel');
  * @param {Object} [options.changes] - שינויים שבוצעו
  * @param {string} [options.description] - תיאור טקסטואלי של הפעולה
  */
-function logAudit(req, { action, entityType, entityId, entityName, changes, description }) {
-  // fire-and-forget - לא חוסם את ה-response
-  AuditLogModel.log({
-    userId: req.user?.id || req.user?._id || null,
-    userName: req.user ? `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username : 'מערכת',
-    action,
-    entityType,
-    entityId,
-    entityName,
-    changes,
-    description,
-    metadata: {
-      ip: req.ip,
-      userAgent: req.get('user-agent'),
-    },
-  }).catch(err => {
-    console.error('Audit log error (non-blocking):', err.message);
-  });
+async function logAudit(req, { action, entityType, entityId, entityName, changes, description }) {
+  try {
+    await AuditLogModel.log({
+      userId: req.user?.id || req.user?._id || null,
+      userName: req.user ? `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username : 'מערכת',
+      action,
+      entityType,
+      entityId,
+      entityName,
+      changes,
+      description,
+      metadata: {
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+      },
+    });
+  } catch (err) {
+    console.error('Audit log error:', err.message);
+  }
 }
 
 module.exports = { logAudit };

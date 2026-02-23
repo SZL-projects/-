@@ -164,7 +164,7 @@ router.post('/login', loginLimiter, async (req, res) => {
       }
     });
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'login',
       entityType: 'user',
       entityId: user.id,

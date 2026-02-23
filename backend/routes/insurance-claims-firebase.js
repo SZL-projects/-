@@ -159,7 +159,7 @@ router.post('/', async (req, res) => {
 
     const claim = await InsuranceClaimModel.create(req.body, req.user.id);
 
-    logAudit(req, { action: 'create', entityType: 'insurance_claim', entityId: claim.id, entityName: claim.claimNumber || 'תביעה חדשה', description: `תביעת ביטוח חדשה נוצרה: ${claim.claimNumber || ''}` });
+    await logAudit(req, { action: 'create', entityType: 'insurance_claim', entityId: claim.id, entityName: claim.claimNumber || 'תביעה חדשה', description: `תביעת ביטוח חדשה נוצרה: ${claim.claimNumber || ''}` });
 
     res.status(201).json({
       success: true,
@@ -188,7 +188,7 @@ router.put('/:id', checkPermission('insurance_claims', 'edit'), async (req, res)
       });
     }
 
-    logAudit(req, { action: 'update', entityType: 'insurance_claim', entityId: req.params.id, entityName: claim.claimNumber, description: `תביעת ביטוח עודכנה: ${claim.claimNumber || ''}` });
+    await logAudit(req, { action: 'update', entityType: 'insurance_claim', entityId: req.params.id, entityName: claim.claimNumber, description: `תביעת ביטוח עודכנה: ${claim.claimNumber || ''}` });
 
     res.json({
       success: true,
@@ -218,7 +218,7 @@ router.put('/:id/submit', checkPermission('insurance_claims', 'edit'), async (re
       return res.status(404).json({ success: false, message: 'תביעה לא נמצאה' });
     }
 
-    logAudit(req, { action: 'status_change', entityType: 'insurance_claim', entityId: req.params.id, entityName: claim.claimNumber, description: `תביעת ביטוח הוגשה: ${claim.claimNumber || ''}` });
+    await logAudit(req, { action: 'status_change', entityType: 'insurance_claim', entityId: req.params.id, entityName: claim.claimNumber, description: `תביעת ביטוח הוגשה: ${claim.claimNumber || ''}` });
 
     res.json({
       success: true,
@@ -253,7 +253,7 @@ router.put('/:id/approve', checkPermission('insurance_claims', 'edit'), async (r
       return res.status(404).json({ success: false, message: 'תביעה לא נמצאה' });
     }
 
-    logAudit(req, { action: 'status_change', entityType: 'insurance_claim', entityId: req.params.id, entityName: claim.claimNumber, description: `תביעת ביטוח אושרה: ${claim.claimNumber || ''}, סכום: ${req.body.approvedAmount}` });
+    await logAudit(req, { action: 'status_change', entityType: 'insurance_claim', entityId: req.params.id, entityName: claim.claimNumber, description: `תביעת ביטוח אושרה: ${claim.claimNumber || ''}, סכום: ${req.body.approvedAmount}` });
 
     res.json({
       success: true,
@@ -287,7 +287,7 @@ router.put('/:id/reject', checkPermission('insurance_claims', 'edit'), async (re
       return res.status(404).json({ success: false, message: 'תביעה לא נמצאה' });
     }
 
-    logAudit(req, { action: 'status_change', entityType: 'insurance_claim', entityId: req.params.id, entityName: claim.claimNumber, description: `תביעת ביטוח נדחתה: ${claim.claimNumber || ''}, סיבה: ${req.body.rejectionReason}` });
+    await logAudit(req, { action: 'status_change', entityType: 'insurance_claim', entityId: req.params.id, entityName: claim.claimNumber, description: `תביעת ביטוח נדחתה: ${claim.claimNumber || ''}, סיבה: ${req.body.rejectionReason}` });
 
     res.json({
       success: true,
@@ -315,7 +315,7 @@ router.put('/:id/close', checkPermission('insurance_claims', 'edit'), async (req
       return res.status(404).json({ success: false, message: 'תביעה לא נמצאה' });
     }
 
-    logAudit(req, { action: 'status_change', entityType: 'insurance_claim', entityId: req.params.id, entityName: claim.claimNumber, description: `תביעת ביטוח נסגרה: ${claim.claimNumber || ''}` });
+    await logAudit(req, { action: 'status_change', entityType: 'insurance_claim', entityId: req.params.id, entityName: claim.claimNumber, description: `תביעת ביטוח נסגרה: ${claim.claimNumber || ''}` });
 
     res.json({
       success: true,
@@ -343,7 +343,7 @@ router.delete('/:id', checkPermission('insurance_claims', 'edit'), async (req, r
 
     await InsuranceClaimModel.delete(req.params.id);
 
-    logAudit(req, { action: 'delete', entityType: 'insurance_claim', entityId: req.params.id, entityName: claim.claimNumber, description: `תביעת ביטוח נמחקה: ${claim.claimNumber || ''}` });
+    await logAudit(req, { action: 'delete', entityType: 'insurance_claim', entityId: req.params.id, entityName: claim.claimNumber, description: `תביעת ביטוח נמחקה: ${claim.claimNumber || ''}` });
 
     res.json({
       success: true,

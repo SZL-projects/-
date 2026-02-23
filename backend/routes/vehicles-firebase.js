@@ -200,7 +200,7 @@ router.post('/', checkPermission('vehicles', 'edit'), async (req, res) => {
   try {
     const vehicle = await VehicleModel.create(req.body, req.user.id);
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'create',
       entityType: 'vehicle',
       entityId: vehicle.id,
@@ -235,7 +235,7 @@ router.put('/:id', checkPermission('vehicles', 'edit'), async (req, res) => {
       });
     }
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'update',
       entityType: 'vehicle',
       entityId: req.params.id,
@@ -298,7 +298,7 @@ router.delete('/:id', checkPermission('vehicles', 'edit'), async (req, res) => {
     const vehicle = await VehicleModel.findById(req.params.id);
     await VehicleModel.delete(req.params.id);
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'delete',
       entityType: 'vehicle',
       entityId: req.params.id,
@@ -573,7 +573,7 @@ router.post('/:id/assign', checkPermission('vehicles', 'edit'), async (req, res)
       updatedBy: req.user.id
     });
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'assign',
       entityType: 'vehicle',
       entityId: vehicleId,
@@ -644,7 +644,7 @@ router.post('/:id/unassign', checkPermission('vehicles', 'edit'), async (req, re
       });
     }
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'unassign',
       entityType: 'vehicle',
       entityId: vehicleId,

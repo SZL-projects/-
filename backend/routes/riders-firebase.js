@@ -238,7 +238,7 @@ router.post('/', checkPermission('riders', 'edit'), async (req, res) => {
     const rider = await RiderModel.create(req.body, req.user.id);
 
     const riderName = `${req.body.firstName} ${req.body.lastName}`.trim();
-    logAudit(req, {
+    await logAudit(req, {
       action: 'create',
       entityType: 'rider',
       entityId: rider.id,
@@ -277,7 +277,7 @@ router.put('/:id', checkPermission('riders', 'edit'), async (req, res) => {
     const riderName = existingRider
       ? `${existingRider.firstName} ${existingRider.lastName}`.trim()
       : `${rider.firstName} ${rider.lastName}`.trim();
-    logAudit(req, {
+    await logAudit(req, {
       action: 'update',
       entityType: 'rider',
       entityId: req.params.id,
@@ -307,7 +307,7 @@ router.delete('/:id', checkPermission('riders', 'edit'), async (req, res) => {
     await RiderModel.delete(req.params.id);
 
     const riderName = rider ? `${rider.firstName} ${rider.lastName}`.trim() : req.params.id;
-    logAudit(req, {
+    await logAudit(req, {
       action: 'delete',
       entityType: 'rider',
       entityId: req.params.id,

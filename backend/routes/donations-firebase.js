@@ -144,7 +144,7 @@ router.post('/', checkPermission('donations', 'edit'), async (req, res) => {
 
     const donation = await DonationModel.create(req.body, req.user.id);
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'create',
       entityType: 'donation',
       entityId: donation.id,
@@ -179,7 +179,7 @@ router.put('/:id', checkPermission('donations', 'edit'), async (req, res) => {
       });
     }
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'update',
       entityType: 'donation',
       entityId: req.params.id,
@@ -216,7 +216,7 @@ router.delete('/:id', checkPermission('donations', 'edit'), async (req, res) => 
 
     await DonationModel.delete(req.params.id);
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'delete',
       entityType: 'donation',
       entityId: req.params.id,
@@ -286,7 +286,7 @@ router.post('/upload-file', checkPermission('donations', 'edit'), upload.single(
       }
     }
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'create',
       entityType: 'donation',
       entityId: donationId || 'upload',

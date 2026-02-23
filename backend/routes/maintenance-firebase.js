@@ -195,7 +195,7 @@ router.post('/', async (req, res) => {
 
     const maintenance = await MaintenanceModel.create(req.body, req.user.id);
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'create',
       entityType: 'maintenance',
       entityId: maintenance.id,
@@ -230,7 +230,7 @@ router.put('/:id', checkPermission('maintenance', 'edit'), async (req, res) => {
       });
     }
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'update',
       entityType: 'maintenance',
       entityId: req.params.id,
@@ -280,7 +280,7 @@ router.put('/:id/complete', checkPermission('maintenance', 'edit'), async (req, 
       });
     }
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'status_change',
       entityType: 'maintenance',
       entityId: req.params.id,
@@ -317,7 +317,7 @@ router.delete('/:id', checkPermission('maintenance', 'edit'), async (req, res) =
 
     await MaintenanceModel.delete(req.params.id);
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'delete',
       entityType: 'maintenance',
       entityId: req.params.id,
@@ -405,7 +405,7 @@ router.post('/upload-file', upload.single('file'), async (req, res) => {
       req.file.mimetype
     );
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'create',
       entityType: 'maintenance',
       entityId: maintenanceId || vehicleId,

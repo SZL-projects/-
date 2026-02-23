@@ -85,7 +85,7 @@ router.post('/', checkPermission('tasks', 'edit'), async (req, res) => {
   try {
     const task = await TaskModel.create(req.body, req.user.id);
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'create',
       entityType: 'task',
       entityId: task.id,
@@ -119,7 +119,7 @@ router.put('/:id', checkPermission('tasks', 'edit'), async (req, res) => {
       });
     }
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'update',
       entityType: 'task',
       entityId: task.id,
@@ -147,7 +147,7 @@ router.delete('/:id', checkPermission('tasks', 'edit'), async (req, res) => {
     const existingTask = await TaskModel.findById(req.params.id);
     await TaskModel.delete(req.params.id);
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'delete',
       entityType: 'task',
       entityId: req.params.id,

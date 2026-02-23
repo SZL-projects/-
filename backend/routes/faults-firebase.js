@@ -85,7 +85,7 @@ router.post('/', async (req, res) => {
   try {
     const fault = await FaultModel.create(req.body, req.user.id);
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'create',
       entityType: 'fault',
       entityId: fault.id,
@@ -119,7 +119,7 @@ router.put('/:id', checkPermission('faults', 'edit'), async (req, res) => {
       });
     }
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'update',
       entityType: 'fault',
       entityId: fault.id,
@@ -147,7 +147,7 @@ router.delete('/:id', checkPermission('faults', 'edit'), async (req, res) => {
     const existingFault = await FaultModel.findById(req.params.id);
     await FaultModel.delete(req.params.id);
 
-    logAudit(req, {
+    await logAudit(req, {
       action: 'delete',
       entityType: 'fault',
       entityId: req.params.id,
