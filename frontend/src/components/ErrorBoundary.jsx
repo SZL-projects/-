@@ -14,6 +14,19 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+
+    // אחרי פריסה חדשה ב-Vercel, ה-chunks הישנים לא קיימים יותר
+    // רענון אוטומטי פותר את הבעיה
+    const isChunkError =
+      error?.message?.includes('Failed to fetch dynamically imported module') ||
+      error?.message?.includes('Importing a module script failed') ||
+      error?.name === 'ChunkLoadError';
+
+    if (isChunkError) {
+      window.location.reload();
+      return;
+    }
+
     this.setState({
       error,
       errorInfo
