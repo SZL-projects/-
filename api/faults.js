@@ -239,11 +239,14 @@ async function handleDonationsRequest(req, res, db, user, url) {
 
       await donationRef.update(updateData);
       const updatedDoc = await donationRef.get();
+      await writeAuditLog(db, user, { action: 'update', entityType: 'donation', entityId: donationId, entityName: updatedDoc.data().donationNumber || 'תרומה', description: 'תרומה עודכנה' });
       return res.json({ success: true, message: 'תרומה עודכנה בהצלחה', donation: { id: updatedDoc.id, ...updatedDoc.data() } });
     }
 
     if (req.method === 'DELETE') {
+      const deletedData = doc.data();
       await donationRef.delete();
+      await writeAuditLog(db, user, { action: 'delete', entityType: 'donation', entityId: donationId, entityName: deletedData.donationNumber || 'תרומה', description: 'תרומה נמחקה' });
       return res.json({ success: true, message: 'תרומה נמחקה בהצלחה' });
     }
   }
@@ -327,6 +330,7 @@ async function handleDonationsRequest(req, res, db, user, url) {
     const donationRef = await db.collection('donations').add(donationData);
     const donationDoc = await donationRef.get();
 
+    await writeAuditLog(db, user, { action: 'create', entityType: 'donation', entityId: donationRef.id, entityName: donationNumber, description: entryType === 'expense' ? 'הוצאה חדשה נוצרה' : 'תרומה חדשה נוצרה' });
     return res.status(201).json({
       success: true,
       message: 'תרומה נוצרה בהצלחה',

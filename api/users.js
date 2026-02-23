@@ -5,6 +5,7 @@ const { initFirebase } = require('./_utils/firebase');
 const { authenticateToken, checkPermission } = require('./_utils/auth');
 const { sendLoginCredentials } = require('./_utils/emailService');
 const { setCorsHeaders } = require('./_utils/cors');
+const { writeAuditLog } = require('./_utils/auditLog');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -61,6 +62,8 @@ module.exports = async (req, res) => {
         updatedAt: new Date()
       });
 
+      const unlockedData = doc.data();
+      await writeAuditLog(db, user, { action: 'update', entityType: 'user', entityId: userId, entityName: `${unlockedData.firstName || ''} ${unlockedData.lastName || ''}`.trim() || unlockedData.username, description: 'נעילת משתמש בוטלה' });
       return res.status(200).json({ success: true, message: 'הנעילה בוטלה בהצלחה' });
     }
 
@@ -114,6 +117,7 @@ module.exports = async (req, res) => {
 
         console.log('✅ Login credentials sent to:', userData.email);
 
+        await writeAuditLog(db, user, { action: 'update', entityType: 'user', entityId: userId, entityName: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || userData.username, description: 'פרטי התחברות נשלחו למייל' });
         return res.status(200).json({
           success: true,
           message: 'פרטי ההתחברות נשלחו בהצלחה למייל'
@@ -190,6 +194,7 @@ module.exports = async (req, res) => {
         const updatedData = updatedDoc.data();
         delete updatedData.password;
 
+        await writeAuditLog(db, user, { action: 'update', entityType: 'user', entityId: userId, entityName: `${updatedData.firstName || ''} ${updatedData.lastName || ''}`.trim() || updatedData.username, description: 'פרטי משתמש עודכנו' });
         return res.status(200).json({
           success: true,
           message: 'משתמש עודכן בהצלחה',
@@ -213,6 +218,7 @@ module.exports = async (req, res) => {
 
         await userRef.delete();
 
+        await writeAuditLog(db, user, { action: 'delete', entityType: 'user', entityId: userId, entityName: `${existingUserData.firstName || ''} ${existingUserData.lastName || ''}`.trim() || existingUserData.username, description: 'משתמש נמחק' });
         return res.status(200).json({
           success: true,
           message: 'משתמש נמחק בהצלחה'
@@ -377,6 +383,7 @@ module.exports = async (req, res) => {
       }
 
       console.log('🎉 User creation successful!');
+      await writeAuditLog(db, user, { action: 'create', entityType: 'user', entityId: userRef.id, entityName: `${firstName || ''} ${lastName || ''}`.trim() || username, description: 'משתמש חדש נוצר' });
       return res.status(201).json({
         success: true,
         message: 'משתמש נוצר בהצלחה',
