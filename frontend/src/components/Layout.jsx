@@ -47,6 +47,7 @@ import ChangePasswordDialog from './ChangePasswordDialog';
 import GlobalSearchResults from './GlobalSearchResults';
 import NotificationBell from './NotificationBell';
 import { useGlobalSearch } from '../hooks/useGlobalSearch';
+import { clearAllCache } from '../services/api';
 
 const drawerWidth = 280;
 const drawerWidthClosed = 72;
@@ -96,6 +97,11 @@ export default function Layout() {
   Object.values(search.results).forEach(items => {
     items.forEach(item => flatResults.push(item));
   });
+
+  // ניקוי cache בכל מעבר בין מסכים - כדי לטעון נתונים עדכניים
+  useEffect(() => {
+    clearAllCache();
+  }, [location.pathname]);
 
   // סגירת dropdown בלחיצה מחוץ לאזור
   useEffect(() => {
