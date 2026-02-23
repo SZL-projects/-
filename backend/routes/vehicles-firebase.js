@@ -20,18 +20,18 @@ const upload = multer({
 router.use(protect);
 
 // פונקציית עזר: הוספת שם רוכב משויך לכלים
-// בונה מפה vehicleId→שם מתוך רוכבים משויכים (מהימן יותר מאשר vehicle.assignedTo)
+// שולף את כל הרוכבים (ללא פילטר Firestore) ומסנן ב-JS כדי להימנע מבעיית index
 async function enrichVehiclesWithRiderNames(vehicles) {
   if (vehicles.length === 0) return vehicles;
 
   try {
-    const assignedRiders = await RiderModel.getAll({ assignmentStatus: 'assigned' }, 500);
+    const allRiders = await RiderModel.getAll({}, 500);
 
     // בנה מפה: vehicleId → שם מלא (תומך בשתי שמות השדה האפשריות)
     const vehicleRiderMap = {};
-    for (const rider of assignedRiders) {
+    for (const rider of allRiders) {
       const vehicleId = rider.assignedVehicleId || rider.assignedVehicle || null;
-      if (vehicleId) {
+      if (vehicleId && rider.assignmentStatus === 'assigned') {
         vehicleRiderMap[vehicleId] = {
           name: `${rider.firstName} ${rider.lastName}`.trim(),
           riderId: rider.id,
@@ -44,7 +44,8 @@ async function enrichVehiclesWithRiderNames(vehicles) {
       assignedRiderName: vehicleRiderMap[v.id]?.name || null,
       assignedRiderId: vehicleRiderMap[v.id]?.riderId || null,
     }));
-  } catch (_) {
+  } catch (err) {
+    console.error('enrichVehiclesWithRiderNames error:', err.message);
     return vehicles;
   }
 }
@@ -213,19 +214,22 @@ router.get('/:id', checkPermission('vehicles', 'view'), async (req, res) => {
       });
     }
 
-    // הוספת שם רוכב משויך — חיפוש מצד הרוכב (מהימן יותר)
+    // הוספת שם רוכב משויך — שולף כל הרוכבים ומסנן ב-JS
     let assignedRiderName = null;
     let assignedRiderId = null;
     try {
-      const assignedRiders = await RiderModel.getAll({ assignmentStatus: 'assigned' }, 500);
-      const match = assignedRiders.find(r =>
-        (r.assignedVehicleId === vehicle.id) || (r.assignedVehicle === vehicle.id)
+      const allRiders = await RiderModel.getAll({}, 500);
+      const match = allRiders.find(r =>
+        r.assignmentStatus === 'assigned' &&
+        ((r.assignedVehicleId === vehicle.id) || (r.assignedVehicle === vehicle.id))
       );
       if (match) {
         assignedRiderName = `${match.firstName} ${match.lastName}`.trim();
         assignedRiderId = match.id;
       }
-    } catch (_) {}
+    } catch (err) {
+      console.error('rider lookup error:', err.message);
+    }
 
     res.json({
       success: true,
