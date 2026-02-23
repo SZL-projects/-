@@ -13,7 +13,7 @@ import {
   Chip,
 } from '@mui/material';
 import { Notifications, Shield, DirectionsCar } from '@mui/icons-material';
-import axios from 'axios';
+import api from '../services/api';
 
 const STORAGE_KEY = 'notifications_read_ids';
 
@@ -37,7 +37,7 @@ export default function NotificationBell() {
 
   const fetchAlerts = useCallback(async () => {
     try {
-      const { data } = await axios.get('/api/notifications/alerts');
+      const { data } = await api.get('/notifications/alerts');
       if (data.success) setAlerts(data.alerts);
     } catch {
       // שגיאה שקטה - לא להראות ניפוי שגיאות למשתמש
