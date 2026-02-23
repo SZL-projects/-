@@ -263,11 +263,13 @@ class PermissionModel {
     }
 
     // בדיקה אם רמת הגישה מספיקה
+    // הערה: 'self' מאפשר צפייה בנתונים עצמיים בלבד (שווה ל-view לצורך הבדיקה)
+    // הגבלת ה-self מתבצעת בראוטים עצמם דרך req.permissionLevel === 'self'
     const requiredPriority = levelPriority[requiredLevel] || 0;
-    const userPriority = levelPriority[highestLevel] || 0;
+    const effectivePriority = highestLevel === 'self' ? levelPriority['view'] : (levelPriority[highestLevel] || 0);
 
     return {
-      allowed: userPriority >= requiredPriority,
+      allowed: effectivePriority >= requiredPriority,
       level: highestLevel,
     };
   }

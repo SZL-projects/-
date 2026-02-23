@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import {
   IconButton,
   Badge,
@@ -61,6 +62,7 @@ function cleanOldDismissed(dismissed, readIds) {
 
 export default function NotificationBell() {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
   const [anchorEl, setAnchorEl] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [readIds, setReadIds] = useState(getReadIds);
@@ -116,7 +118,12 @@ export default function NotificationBell() {
       saveReadIds(updated);
     }
     setAnchorEl(null);
-    navigate(`/vehicles/${alert.vehicleId}`);
+    // רוכב עם self - נווט לדף הרכב שלו, אחרים - לדף הרכב הספציפי
+    if (hasPermission('vehicles', 'view')) {
+      navigate(`/vehicles/${alert.vehicleId}`);
+    } else {
+      navigate('/my-vehicle');
+    }
   };
 
   const handleDismiss = (e, alert) => {

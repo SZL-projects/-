@@ -377,6 +377,30 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+// Permission Route Component - חוסם גישה לדפים ללא הרשאה מתאימה
+function PermissionRoute({ children, entity, level = 'view' }) {
+  const { isAuthenticated, loading, hasPermission, userPermissions, user } = useAuth();
+
+  if (loading) {
+    return <PageLoader />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // אם ההרשאות עדיין נטענות - המתן
+  if (userPermissions === null) {
+    return <PageLoader />;
+  }
+
+  if (!hasPermission(entity, level)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+}
+
 function AppRoutes() {
   return (
     <Suspense fallback={<PageLoader />}>
@@ -394,31 +418,41 @@ function AppRoutes() {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
-          <Route path="riders" element={<Riders />} />
-          <Route path="riders/:id" element={<RiderDetail />} />
-          <Route path="vehicles" element={<Vehicles />} />
-          <Route path="vehicles/:id" element={<VehicleDetails />} />
-          <Route path="tasks" element={<Tasks />} />
-          <Route path="monthly-checks" element={<MonthlyChecks />} />
-          <Route path="monthly-check/:id" element={<MonthlyCheckForm />} />
-          <Route path="faults" element={<Faults />} />
-          <Route path="maintenance" element={<Maintenance />} />
-          <Route path="insurance-claims" element={<InsuranceClaims />} />
-          <Route path="fault-report" element={<FaultReport />} />
-          <Route path="monthly-check-form" element={<MonthlyCheckForm />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="settings/users" element={<Settings />} />
-          <Route path="settings/permissions" element={<Settings />} />
-          <Route path="settings/audit-log" element={<Settings />} />
-          <Route path="settings/reports" element={<Settings />} />
-          <Route path="settings/form-builder" element={<Settings />} />
+          {/* ניהול רוכבים - דורש הרשאת צפייה */}
+          <Route path="riders" element={<PermissionRoute entity="riders" level="view"><Riders /></PermissionRoute>} />
+          <Route path="riders/:id" element={<PermissionRoute entity="riders" level="view"><RiderDetail /></PermissionRoute>} />
+          {/* ניהול כלים - דורש הרשאת צפייה */}
+          <Route path="vehicles" element={<PermissionRoute entity="vehicles" level="view"><Vehicles /></PermissionRoute>} />
+          <Route path="vehicles/:id" element={<PermissionRoute entity="vehicles" level="view"><VehicleDetails /></PermissionRoute>} />
+          {/* משימות - דורש הרשאת צפייה */}
+          <Route path="tasks" element={<PermissionRoute entity="tasks" level="view"><Tasks /></PermissionRoute>} />
+          {/* בדיקות חודשיות - דורש הרשאת צפייה */}
+          <Route path="monthly-checks" element={<PermissionRoute entity="monthly_checks" level="view"><MonthlyChecks /></PermissionRoute>} />
+          <Route path="monthly-check/:id" element={<PermissionRoute entity="monthly_checks" level="view"><MonthlyCheckForm /></PermissionRoute>} />
+          {/* תקלות - דורש הרשאת צפייה */}
+          <Route path="faults" element={<PermissionRoute entity="faults" level="view"><Faults /></PermissionRoute>} />
+          {/* טיפולים - דורש הרשאת צפייה */}
+          <Route path="maintenance" element={<PermissionRoute entity="maintenance" level="view"><Maintenance /></PermissionRoute>} />
+          {/* תביעות ביטוח - דורש הרשאת צפייה */}
+          <Route path="insurance-claims" element={<PermissionRoute entity="insurance_claims" level="view"><InsuranceClaims /></PermissionRoute>} />
+          {/* תרומות - דורש הרשאת צפייה */}
+          <Route path="donations" element={<PermissionRoute entity="donations" level="view"><Donations /></PermissionRoute>} />
+          {/* הגדרות - דורש הרשאת צפייה */}
+          <Route path="settings" element={<PermissionRoute entity="settings" level="view"><Settings /></PermissionRoute>} />
+          <Route path="settings/users" element={<PermissionRoute entity="users" level="view"><Settings /></PermissionRoute>} />
+          <Route path="settings/permissions" element={<PermissionRoute entity="settings" level="view"><Settings /></PermissionRoute>} />
+          <Route path="settings/audit-log" element={<PermissionRoute entity="audit_logs" level="view"><Settings /></PermissionRoute>} />
+          <Route path="settings/reports" element={<PermissionRoute entity="reports" level="view"><Settings /></PermissionRoute>} />
+          <Route path="settings/form-builder" element={<PermissionRoute entity="settings" level="view"><Settings /></PermissionRoute>} />
           {/* Redirects from old paths */}
           <Route path="users" element={<Navigate to="/settings/users" replace />} />
           <Route path="permissions" element={<Navigate to="/settings/permissions" replace />} />
           <Route path="reports" element={<Navigate to="/settings/reports" replace />} />
           <Route path="audit-log" element={<Navigate to="/settings/audit-log" replace />} />
           <Route path="form-builder" element={<Navigate to="/settings/form-builder" replace />} />
-          <Route path="donations" element={<Donations />} />
+          {/* דפי self-access - נגישים לכל משתמש מחובר */}
+          <Route path="fault-report" element={<FaultReport />} />
+          <Route path="monthly-check-form" element={<MonthlyCheckForm />} />
           <Route path="my-vehicle" element={<MyVehicle />} />
           <Route path="my-faults" element={<MyFaults />} />
           <Route path="my-profile" element={<MyProfile />} />

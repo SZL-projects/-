@@ -42,10 +42,12 @@ import {
 import { ridersAPI, authAPI, vehiclesAPI } from '../services/api';
 import RiderDialog from '../components/RiderDialog';
 import RiderFiles from '../components/RiderFiles';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function RiderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
   const [rider, setRider] = useState(null);
   const [vehicle, setVehicle] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -272,46 +274,50 @@ export default function RiderDetail() {
         </Box>
 
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Button
-            variant="outlined"
-            startIcon={<PersonAdd />}
-            onClick={() => setCreateUserDialogOpen(true)}
-            sx={{
-              borderRadius: '12px',
-              px: 3,
-              py: 1.2,
-              fontWeight: 600,
-              borderColor: '#e2e8f0',
-              color: '#6366f1',
-              '&:hover': {
-                borderColor: '#6366f1',
-                bgcolor: 'rgba(99, 102, 241, 0.05)',
-              },
-            }}
-          >
-            יצירת משתמש
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<Edit />}
-            onClick={() => setEditDialogOpen(true)}
-            sx={{
-              borderRadius: '12px',
-              px: 3,
-              py: 1.2,
-              fontWeight: 600,
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-              boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-                boxShadow: '0 6px 20px rgba(99, 102, 241, 0.4)',
-                transform: 'translateY(-1px)',
-              },
-              transition: 'all 0.2s ease-in-out',
-            }}
-          >
-            עריכה
-          </Button>
+          {hasPermission('users', 'edit') && (
+            <Button
+              variant="outlined"
+              startIcon={<PersonAdd />}
+              onClick={() => setCreateUserDialogOpen(true)}
+              sx={{
+                borderRadius: '12px',
+                px: 3,
+                py: 1.2,
+                fontWeight: 600,
+                borderColor: '#e2e8f0',
+                color: '#6366f1',
+                '&:hover': {
+                  borderColor: '#6366f1',
+                  bgcolor: 'rgba(99, 102, 241, 0.05)',
+                },
+              }}
+            >
+              יצירת משתמש
+            </Button>
+          )}
+          {hasPermission('riders', 'edit') && (
+            <Button
+              variant="contained"
+              startIcon={<Edit />}
+              onClick={() => setEditDialogOpen(true)}
+              sx={{
+                borderRadius: '12px',
+                px: 3,
+                py: 1.2,
+                fontWeight: 600,
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                  boxShadow: '0 6px 20px rgba(99, 102, 241, 0.4)',
+                  transform: 'translateY(-1px)',
+                },
+                transition: 'all 0.2s ease-in-out',
+              }}
+            >
+              עריכה
+            </Button>
+          )}
         </Box>
       </Box>
 

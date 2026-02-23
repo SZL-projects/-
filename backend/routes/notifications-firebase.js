@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const VehicleModel = require('../models/firestore/VehicleModel');
 const { protect } = require('../middleware/auth-firebase');
+const PermissionModel = require('../models/firestore/PermissionModel');
 
 const vehicleModel = new VehicleModel();
 
@@ -11,9 +12,22 @@ router.use(protect);
 /**
  * GET /api/notifications/alerts
  * מחזיר התראות פעילות: ביטוחים שפוקעים ב-14 יום הקרובים ורשיונות ב-30 יום הקרובים
+ * סינון לפי הרשאות המשתמש:
+ *   - view/edit: כל ההתראות
+ *   - self: רק ההתראות של הרכב שלו
+ *   - none: אין התראות
  */
 router.get('/alerts', async (req, res) => {
   try {
+    // בדיקת רמת הרשאה לכלים
+    const userRoles = Array.isArray(req.user.roles) ? req.user.roles : [req.user.role];
+    const { allowed, level } = await PermissionModel.checkAccess(userRoles, 'vehicles', 'view');
+
+    // אם אין הרשאה כלל - החזר רשימה ריקה
+    if (!allowed && level === 'none') {
+      return res.json({ success: true, alerts: [], count: 0 });
+    }
+
     const now = new Date();
     const in14Days = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
     const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -21,7 +35,16 @@ router.get('/alerts', async (req, res) => {
     // שליפת כל הכלים הפעילים (ללא מגבלת limit)
     const vehicles = await vehicleModel.getAll({ status: 'active' }, 500);
     const waitingVehicles = await vehicleModel.getAll({ status: 'waiting_for_rider' }, 500);
-    const allVehicles = [...vehicles, ...waitingVehicles];
+    let allVehicles = [...vehicles, ...waitingVehicles];
+
+    // אם הרשאת 'self' - סנן רק לרכבים שהמשתמש משויך אליהם
+    if (level === 'self') {
+      const userVehicleAccess = Array.isArray(req.user.vehicleAccess) ? req.user.vehicleAccess : [];
+      if (userVehicleAccess.length === 0) {
+        return res.json({ success: true, alerts: [], count: 0 });
+      }
+      allVehicles = allVehicles.filter(v => userVehicleAccess.includes(v.id));
+    }
 
     const alerts = [];
 
