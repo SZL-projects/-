@@ -77,7 +77,10 @@ export default function Vehicles() {
     try {
       setLoading(true);
       const response = await vehiclesAPI.getAll({ search: debouncedSearchTerm });
-      setVehicles(response.data.vehicles || []);
+      const vehiclesList = response.data.vehicles || [];
+      console.log('DEBUG vehicles[0]:', vehiclesList[0]);
+      console.log('DEBUG assignedRiderNames:', vehiclesList.map(v => ({ id: v.id, plate: v.licensePlate, riderName: v.assignedRiderName })));
+      setVehicles(vehiclesList);
       setError('');
     } catch (err) {
       setError('שגיאה בטעינת כלים');
