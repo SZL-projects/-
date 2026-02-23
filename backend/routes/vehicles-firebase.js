@@ -20,26 +20,33 @@ const upload = multer({
 router.use(protect);
 
 // פונקציית עזר: הוספת שם רוכב משויך לכלים
+// בונה מפה vehicleId→שם מתוך רוכבים משויכים (מהימן יותר מאשר vehicle.assignedTo)
 async function enrichVehiclesWithRiderNames(vehicles) {
-  const riderIds = [...new Set(vehicles.map(v => v.assignedTo).filter(Boolean))];
-  if (riderIds.length === 0) return vehicles;
+  if (vehicles.length === 0) return vehicles;
 
-  const riderMap = {};
-  await Promise.all(
-    riderIds.map(async (riderId) => {
-      try {
-        const rider = await RiderModel.findById(riderId);
-        if (rider) {
-          riderMap[riderId] = `${rider.firstName} ${rider.lastName}`.trim();
-        }
-      } catch (_) {}
-    })
-  );
+  try {
+    const assignedRiders = await RiderModel.getAll({ assignmentStatus: 'assigned' }, 500);
 
-  return vehicles.map(v => ({
-    ...v,
-    assignedRiderName: v.assignedTo ? (riderMap[v.assignedTo] || null) : null,
-  }));
+    // בנה מפה: vehicleId → שם מלא (תומך בשתי שמות השדה האפשריות)
+    const vehicleRiderMap = {};
+    for (const rider of assignedRiders) {
+      const vehicleId = rider.assignedVehicleId || rider.assignedVehicle || null;
+      if (vehicleId) {
+        vehicleRiderMap[vehicleId] = {
+          name: `${rider.firstName} ${rider.lastName}`.trim(),
+          riderId: rider.id,
+        };
+      }
+    }
+
+    return vehicles.map(v => ({
+      ...v,
+      assignedRiderName: vehicleRiderMap[v.id]?.name || null,
+      assignedRiderId: vehicleRiderMap[v.id]?.riderId || null,
+    }));
+  } catch (_) {
+    return vehicles;
+  }
 }
 
 // @route   GET /api/vehicles
@@ -206,18 +213,19 @@ router.get('/:id', checkPermission('vehicles', 'view'), async (req, res) => {
       });
     }
 
-    // הוספת שם רוכב משויך
+    // הוספת שם רוכב משויך — חיפוש מצד הרוכב (מהימן יותר)
     let assignedRiderName = null;
     let assignedRiderId = null;
-    if (vehicle.assignedTo) {
-      try {
-        const rider = await RiderModel.findById(vehicle.assignedTo);
-        if (rider) {
-          assignedRiderName = `${rider.firstName} ${rider.lastName}`.trim();
-          assignedRiderId = rider.id;
-        }
-      } catch (_) {}
-    }
+    try {
+      const assignedRiders = await RiderModel.getAll({ assignmentStatus: 'assigned' }, 500);
+      const match = assignedRiders.find(r =>
+        (r.assignedVehicleId === vehicle.id) || (r.assignedVehicle === vehicle.id)
+      );
+      if (match) {
+        assignedRiderName = `${match.firstName} ${match.lastName}`.trim();
+        assignedRiderId = match.id;
+      }
+    } catch (_) {}
 
     res.json({
       success: true,
