@@ -2,6 +2,7 @@
 const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkPermission } = require('./_utils/auth');
 const { setCorsHeaders } = require('./_utils/cors');
+const { writeAuditLog } = require('./_utils/auditLog');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -58,6 +59,7 @@ module.exports = async (req, res) => {
 
         await taskRef.update(updateData);
         const updatedDoc = await taskRef.get();
+        await writeAuditLog(db, user, { action: 'update', entityType: 'task', entityId: taskId, entityName: updatedDoc.data().title || 'משימה', description: `משימה עודכנה: ${updatedDoc.data().title || ''}` });
 
         return res.status(200).json({
           success: true,
@@ -69,7 +71,9 @@ module.exports = async (req, res) => {
       if (req.method === 'DELETE') {
         await checkPermission(user, db, 'tasks', 'edit');
 
+        const deletedTaskData = doc.data();
         await taskRef.delete();
+        await writeAuditLog(db, user, { action: 'delete', entityType: 'task', entityId: taskId, entityName: deletedTaskData.title || 'משימה', description: `משימה נמחקה: ${deletedTaskData.title || ''}` });
 
         return res.status(200).json({
           success: true,
@@ -148,6 +152,7 @@ module.exports = async (req, res) => {
 
       const taskRef = await db.collection('tasks').add(taskData);
       const taskDoc = await taskRef.get();
+      await writeAuditLog(db, user, { action: 'create', entityType: 'task', entityId: taskRef.id, entityName: req.body.title || 'משימה חדשה', description: `משימה חדשה נוצרה: ${req.body.title || ''}` });
 
       return res.status(201).json({
         success: true,

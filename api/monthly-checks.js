@@ -3,6 +3,7 @@ const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkPermission } = require('./_utils/auth');
 const { sendMonthlyCheckReminder, sendCheckIssuesAlert } = require('./_utils/emailService');
 const { setCorsHeaders } = require('./_utils/cors');
+const { writeAuditLog } = require('./_utils/auditLog');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -272,6 +273,7 @@ module.exports = async (req, res) => {
 
         const updatedDoc = await checkRef.get();
 
+        await writeAuditLog(db, user, { action: 'update', entityType: 'monthly_check', entityId: checkId, entityName: 'בקרה חודשית', description: 'בקרה חודשית עודכנה' });
         return res.status(200).json({
           success: true,
           message: issues.length > 0
@@ -288,6 +290,7 @@ module.exports = async (req, res) => {
         await checkPermission(user, db, 'monthly_checks', 'edit');
 
         await checkRef.delete();
+        await writeAuditLog(db, user, { action: 'delete', entityType: 'monthly_check', entityId: checkId, entityName: 'בקרה חודשית', description: 'בקרה חודשית נמחקה' });
 
         return res.status(200).json({
           success: true,
@@ -480,6 +483,7 @@ module.exports = async (req, res) => {
 
         const checkRef = await db.collection('monthly_checks').add(checkData);
         const checkDoc = await checkRef.get();
+        await writeAuditLog(db, user, { action: 'create', entityType: 'monthly_check', entityId: checkRef.id, entityName: 'בקרה חודשית', description: 'בקרה חודשית חדשה נוצרה' });
 
         return res.status(201).json({
           success: true,

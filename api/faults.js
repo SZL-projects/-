@@ -3,6 +3,7 @@ const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkPermission } = require('./_utils/auth');
 const getRawBody = require('raw-body');
 const { setCorsHeaders } = require('./_utils/cors');
+const { writeAuditLog } = require('./_utils/auditLog');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -358,12 +359,15 @@ async function handleFaultsRequest(req, res, db, user, url) {
       const updateData = { ...req.body, updatedBy: user.id, updatedAt: new Date() };
       await faultRef.update(updateData);
       const updatedDoc = await faultRef.get();
+      await writeAuditLog(db, user, { action: 'update', entityType: 'fault', entityId: faultId, entityName: updatedDoc.data().description?.substring(0, 40) || 'תקלה', description: 'תקלה עודכנה' });
       return res.status(200).json({ success: true, message: 'תקלה עודכנה בהצלחה', fault: { id: updatedDoc.id, ...updatedDoc.data() } });
     }
 
     if (req.method === 'DELETE') {
       await checkPermission(user, db, 'faults', 'edit');
+      const deletedFaultData = doc.data();
       await faultRef.delete();
+      await writeAuditLog(db, user, { action: 'delete', entityType: 'fault', entityId: faultId, entityName: deletedFaultData.description?.substring(0, 40) || 'תקלה', description: 'תקלה נמחקה' });
       return res.status(200).json({ success: true, message: 'תקלה נמחקה בהצלחה' });
     }
   }
@@ -462,6 +466,7 @@ async function handleFaultsRequest(req, res, db, user, url) {
 
     const faultRef = await db.collection('faults').add(faultData);
     const faultDoc = await faultRef.get();
+    await writeAuditLog(db, user, { action: 'create', entityType: 'fault', entityId: faultRef.id, entityName: req.body.description?.substring(0, 40) || 'תקלה חדשה', description: 'תקלה חדשה דווחה' });
 
     return res.status(201).json({
       success: true,

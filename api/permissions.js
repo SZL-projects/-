@@ -2,6 +2,7 @@
 const { initFirebase } = require('./_utils/firebase');
 const { authenticateToken } = require('./_utils/auth');
 const { setCorsHeaders } = require('./_utils/cors');
+const { writeAuditLog } = require('./_utils/auditLog');
 
 // רמות גישה אפשריות
 const ACCESS_LEVELS = ['none', 'view', 'edit', 'self'];
@@ -165,6 +166,7 @@ module.exports = async (req, res) => {
         updatedBy: user.id,
       });
 
+      await writeAuditLog(db, user, { action: 'update', entityType: 'permission', entityName: 'הגדרות מערכת', description: 'הרשאות אופסו לברירת מחדל' });
       return res.status(200).json({
         success: true,
         message: 'ההרשאות אופסו לברירת מחדל',
@@ -239,6 +241,7 @@ module.exports = async (req, res) => {
         updatedBy: user.id,
       });
 
+      await writeAuditLog(db, user, { action: 'update', entityType: 'permission', entityName: 'הגדרות מערכת', description: 'הרשאות עודכנו' });
       return res.status(200).json({
         success: true,
         message: 'ההרשאות עודכנו בהצלחה',

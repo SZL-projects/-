@@ -5,6 +5,7 @@ const { initFirebase } = require('./_utils/firebase');
 const { getSignedJwtToken, authenticateToken } = require('./_utils/auth');
 const { sendPasswordResetEmail } = require('./_utils/emailService');
 const { setCorsHeaders } = require('./_utils/cors');
+const { writeAuditLog } = require('./_utils/auditLog');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -128,6 +129,14 @@ module.exports = async (req, res) => {
       });
 
       const token = getSignedJwtToken(userId);
+
+      await writeAuditLog(db, { id: userId, firstName: userData.firstName, lastName: userData.lastName, username: userData.username }, {
+        action: 'login',
+        entityType: 'user',
+        entityId: userId,
+        entityName: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || userData.username,
+        description: 'משתמש התחבר למערכת'
+      });
 
       return res.status(200).json({
         success: true,

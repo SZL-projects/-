@@ -6,6 +6,7 @@ const getRawBody = require('raw-body');
 const Busboy = require('busboy');
 const { Readable } = require('stream');
 const { setCorsHeaders } = require('./_utils/cors');
+const { writeAuditLog } = require('./_utils/auditLog');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -898,6 +899,7 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
 
       await maintenanceRef.update(updateData);
       const updatedDoc = await maintenanceRef.get();
+      await writeAuditLog(db, user, { action: 'update', entityType: 'maintenance', entityId: maintenanceId, entityName: updatedDoc.data().maintenanceNumber || 'טיפול', description: 'טיפול עודכן' });
 
       return res.json({
         success: true,
@@ -926,7 +928,9 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
         }
       }
 
+      const deletedMaintData = maintenanceData;
       await maintenanceRef.delete();
+      await writeAuditLog(db, user, { action: 'delete', entityType: 'maintenance', entityId: maintenanceId, entityName: deletedMaintData.maintenanceNumber || 'טיפול', description: 'טיפול נמחק' });
 
       return res.json({
         success: true,
@@ -1038,6 +1042,7 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
 
     const maintenanceRef = await db.collection('maintenance').add(maintenanceData);
     const maintenanceDoc = await maintenanceRef.get();
+    await writeAuditLog(db, user, { action: 'create', entityType: 'maintenance', entityId: maintenanceRef.id, entityName: maintenanceDoc.data().maintenanceNumber || 'טיפול חדש', description: 'טיפול חדש נוצר' });
 
     return res.status(201).json({
       success: true,

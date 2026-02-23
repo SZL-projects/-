@@ -6,6 +6,7 @@ const Busboy = require('busboy');
 const getRawBody = require('raw-body');
 const { Readable } = require('stream');
 const { setCorsHeaders } = require('./_utils/cors');
+const { writeAuditLog } = require('./_utils/auditLog');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -905,6 +906,7 @@ module.exports = async (req, res) => {
 
       const updatedVehicle = await db.collection('vehicles').doc(vehicleId).get();
 
+      await writeAuditLog(db, user, { action: 'assign', entityType: 'vehicle', entityId: vehicleId, entityName: vehicle.licensePlate || 'כלי', description: `כלי שוייך לרוכב` });
       return res.json({
         success: true,
         message: 'כלי שוייך בהצלחה לרוכב',
@@ -986,6 +988,7 @@ module.exports = async (req, res) => {
 
       const updatedVehicle = await db.collection('vehicles').doc(vehicleId).get();
 
+      await writeAuditLog(db, user, { action: 'unassign', entityType: 'vehicle', entityId: vehicleId, entityName: vehicle.licensePlate || 'כלי', description: `שיוך כלי בוטל` });
       return res.json({
         success: true,
         message: 'שיוך הכלי בוטל בהצלחה',
@@ -1071,6 +1074,7 @@ module.exports = async (req, res) => {
 
         await vehicleRef.update(updateData);
         const updatedDoc = await vehicleRef.get();
+        await writeAuditLog(db, user, { action: 'update', entityType: 'vehicle', entityId: vehicleId, entityName: updatedDoc.data().licensePlate || 'כלי', description: `כלי עודכן: ${updatedDoc.data().licensePlate || ''}` });
 
         return res.status(200).json({
           success: true,
@@ -1081,8 +1085,9 @@ module.exports = async (req, res) => {
 
       if (req.method === 'DELETE') {
         await checkPermission(user, db, 'vehicles', 'edit');
-
+        const deletedVehicleData = doc.data();
         await vehicleRef.delete();
+        await writeAuditLog(db, user, { action: 'delete', entityType: 'vehicle', entityId: vehicleId, entityName: deletedVehicleData.licensePlate || 'כלי', description: `כלי נמחק: ${deletedVehicleData.licensePlate || ''}` });
 
         return res.status(200).json({
           success: true,
@@ -1210,6 +1215,7 @@ module.exports = async (req, res) => {
 
       const vehicleRef = await db.collection('vehicles').add(vehicleData);
       const vehicleDoc = await vehicleRef.get();
+      await writeAuditLog(db, user, { action: 'create', entityType: 'vehicle', entityId: vehicleRef.id, entityName: req.body.licensePlate || 'כלי חדש', description: `כלי חדש נוצר: ${req.body.licensePlate || ''}` });
 
       return res.status(201).json({
         success: true,
