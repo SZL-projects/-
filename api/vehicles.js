@@ -8,6 +8,33 @@ const { Readable } = require('stream');
 const { setCorsHeaders } = require('./_utils/cors');
 const { writeAuditLog } = require('./_utils/auditLog');
 
+// Helper: enrich vehicles with assigned rider name
+async function enrichVehiclesWithRiderNames(db, vehicles) {
+  if (!vehicles || vehicles.length === 0) return vehicles;
+  try {
+    const ridersSnapshot = await db.collection('riders').get();
+    const vehicleRiderMap = {};
+    ridersSnapshot.forEach(doc => {
+      const rider = { id: doc.id, ...doc.data() };
+      const vehicleId = rider.assignedVehicleId || rider.assignedVehicle || null;
+      if (vehicleId && rider.assignmentStatus === 'assigned') {
+        vehicleRiderMap[vehicleId] = {
+          name: `${rider.firstName || ''} ${rider.lastName || ''}`.trim(),
+          riderId: rider.id,
+        };
+      }
+    });
+    return vehicles.map(v => ({
+      ...v,
+      assignedRiderName: vehicleRiderMap[v.id]?.name || null,
+      assignedRiderId: vehicleRiderMap[v.id]?.riderId || null,
+    }));
+  } catch (err) {
+    console.error('enrichVehiclesWithRiderNames error:', err.message);
+    return vehicles;
+  }
+}
+
 module.exports = async (req, res) => {
   // CORS Headers
   setCorsHeaders(req, res);
@@ -1057,9 +1084,11 @@ module.exports = async (req, res) => {
       }
 
       if (req.method === 'GET') {
+        const vehicleData = { id: doc.id, ...doc.data() };
+        const [enriched] = await enrichVehiclesWithRiderNames(db, [vehicleData]);
         return res.status(200).json({
           success: true,
-          vehicle: { id: doc.id, ...doc.data() }
+          vehicle: enriched
         });
       }
 
@@ -1143,9 +1172,10 @@ module.exports = async (req, res) => {
         const vehicles = vehicleDocs
           .filter(doc => doc.exists)
           .map(doc => ({ id: doc.id, ...doc.data() }));
+        const enrichedVehicles = await enrichVehiclesWithRiderNames(db, vehicles);
 
         return res.status(200).json({
-          success: true, count: vehicles.length, totalPages: 1, currentPage: 1, vehicles
+          success: true, count: enrichedVehicles.length, totalPages: 1, currentPage: 1, vehicles: enrichedVehicles
         });
       }
 
@@ -1164,6 +1194,7 @@ module.exports = async (req, res) => {
 
         const snapshot = await query.get();
         const vehicles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const enrichedVehicles = await enrichVehiclesWithRiderNames(db, vehicles);
 
         // ספירה כוללת
         const countSnapshot = await db.collection('vehicles').count().get();
@@ -1174,7 +1205,7 @@ module.exports = async (req, res) => {
           count: totalCount,
           totalPages: Math.ceil(totalCount / limitNum),
           currentPage: pageNum,
-          vehicles: vehicles
+          vehicles: enrichedVehicles
         });
       }
 
@@ -1193,13 +1224,14 @@ module.exports = async (req, res) => {
       const startIndex = (pageNum - 1) * limitNum;
       const endIndex = pageNum * limitNum;
       const paginatedVehicles = vehicles.slice(startIndex, endIndex);
+      const enrichedPaginated = await enrichVehiclesWithRiderNames(db, paginatedVehicles);
 
       return res.status(200).json({
         success: true,
         count: vehicles.length,
         totalPages: Math.ceil(vehicles.length / limitNum),
         currentPage: pageNum,
-        vehicles: paginatedVehicles
+        vehicles: enrichedPaginated
       });
     }
 
