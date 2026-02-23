@@ -25,7 +25,7 @@ const countByField = (items, field) => {
 // ========== Audit Logs Handlers ==========
 
 async function handleAuditLogsUsers(db, res) {
-  const snapshot = await db.collection('auditLogs')
+  const snapshot = await db.collection('audit_logs')
     .orderBy('timestamp', 'desc')
     .limit(1000)
     .get();
@@ -51,7 +51,7 @@ async function handleAuditLogs(req, db, res) {
   const { userId, action, entityType, search, dateFrom, dateTo, limit = 100 } = req.query;
   const limitNum = Math.min(parseInt(limit) || 100, 500);
 
-  let query = db.collection('auditLogs').orderBy('timestamp', 'desc');
+  let query = db.collection('audit_logs').orderBy('timestamp', 'desc');
 
   if (userId) {
     query = query.where('userId', '==', userId);

@@ -6,6 +6,7 @@ const Busboy = require('busboy');
 const getRawBody = require('raw-body');
 const { Readable } = require('stream');
 const { setCorsHeaders } = require('./_utils/cors');
+const { writeAuditLog } = require('./_utils/auditLog');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -706,6 +707,15 @@ module.exports = async (req, res) => {
 
         console.log('[RIDER UPDATE] Rider updated successfully:', riderId);
 
+        const updatedData = updatedDoc.data();
+        await writeAuditLog(db, user, {
+          action: 'update',
+          entityType: 'rider',
+          entityId: riderId,
+          entityName: `${updatedData.firstName || ''} ${updatedData.lastName || ''}`.trim(),
+          description: `רוכב עודכן: ${updatedData.firstName || ''} ${updatedData.lastName || ''}`.trim()
+        });
+
         return res.status(200).json({
           success: true,
           message: 'רוכב עודכן בהצלחה',
@@ -717,7 +727,15 @@ module.exports = async (req, res) => {
       if (req.method === 'DELETE') {
         await checkPermission(user, db, 'riders', 'edit');
 
+        const deletedData = doc.data();
         await riderRef.delete();
+        await writeAuditLog(db, user, {
+          action: 'delete',
+          entityType: 'rider',
+          entityId: riderId,
+          entityName: `${deletedData.firstName || ''} ${deletedData.lastName || ''}`.trim(),
+          description: `רוכב נמחק: ${deletedData.firstName || ''} ${deletedData.lastName || ''}`.trim()
+        });
 
         return res.status(200).json({
           success: true,
@@ -898,6 +916,14 @@ module.exports = async (req, res) => {
       }
 
       const riderDoc = await riderRef.get();
+      const riderName = `${req.body.firstName || ''} ${req.body.lastName || ''}`.trim();
+      await writeAuditLog(db, user, {
+        action: 'create',
+        entityType: 'rider',
+        entityId: riderRef.id,
+        entityName: riderName,
+        description: `רוכב חדש נוצר: ${riderName}`
+      });
 
       return res.status(201).json({
         success: true,
