@@ -126,6 +126,15 @@ module.exports = async (req, res) => {
 
     // ========== Notifications Routes ==========
     if (urlWithoutQuery.includes('notifications')) {
+      // בדיקת הרשאה לכלים - סינון לפי רמת גישה
+      let vehiclePermLevel = 'none';
+      try {
+        vehiclePermLevel = await checkPermission(user, db, 'vehicles', 'view');
+      } catch (e) {
+        // אין הרשאה לכלים - החזר רשימה ריקה
+        return res.status(200).json({ success: true, alerts: [], count: 0 });
+      }
+
       const now = new Date();
       const in14Days = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
       const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -135,10 +144,19 @@ module.exports = async (req, res) => {
         db.collection('vehicles').where('status', '==', 'waiting_for_rider').get(),
       ]);
 
-      const allVehicles = [
+      let allVehicles = [
         ...activeSnap.docs.map(d => ({ id: d.id, ...d.data() })),
         ...waitingSnap.docs.map(d => ({ id: d.id, ...d.data() })),
       ];
+
+      // אם הרשאת 'self' - סנן רק לרכבים שהמשתמש משויך אליהם
+      if (vehiclePermLevel === 'self') {
+        const userVehicleAccess = Array.isArray(user.vehicleAccess) ? user.vehicleAccess : [];
+        if (userVehicleAccess.length === 0) {
+          return res.status(200).json({ success: true, alerts: [], count: 0 });
+        }
+        allVehicles = allVehicles.filter(v => userVehicleAccess.includes(v.id));
+      }
 
       const alerts = [];
       for (const vehicle of allVehicles) {
