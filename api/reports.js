@@ -129,10 +129,13 @@ module.exports = async (req, res) => {
       const now = new Date();
       console.log(`[Cron] מתחיל בדיקת תוקף - ${now.toLocaleDateString('he-IL')}`);
 
-      const target14Start = new Date(now); target14Start.setDate(target14Start.getDate() + 14); target14Start.setHours(0,0,0,0);
-      const target14End = new Date(target14Start); target14End.setHours(23,59,59,999);
-      const target30Start = new Date(now); target30Start.setDate(target30Start.getDate() + 30); target30Start.setHours(0,0,0,0);
-      const target30End = new Date(target30Start); target30End.setHours(23,59,59,999);
+      // גבולות יום ישראלי (UTC+2): חצות IST = 22:00 UTC של היום הקודם, סוף יום IST = 21:59:59 UTC
+      const target14 = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+      const target14Start = new Date(target14); target14Start.setUTCHours(22, 0, 0, 0); target14Start.setUTCDate(target14Start.getUTCDate() - 1);
+      const target14End = new Date(target14); target14End.setUTCHours(21, 59, 59, 999);
+      const target30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const target30Start = new Date(target30); target30Start.setUTCHours(22, 0, 0, 0); target30Start.setUTCDate(target30Start.getUTCDate() - 1);
+      const target30End = new Date(target30); target30End.setUTCHours(21, 59, 59, 999);
 
       const [activeSnap, waitingSnap, ridersSnap] = await Promise.all([
         db.collection('vehicles').where('status', '==', 'active').get(),
@@ -214,8 +217,13 @@ module.exports = async (req, res) => {
       }
 
       const now = new Date();
-      const in14Days = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-      const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      // גבולות יום ישראלי (UTC+2) - חלון בדיוק של יום 14 / 30
+      const ins14 = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+      const ins14Start = new Date(ins14); ins14Start.setUTCHours(22, 0, 0, 0); ins14Start.setUTCDate(ins14Start.getUTCDate() - 1);
+      const ins14End = new Date(ins14); ins14End.setUTCHours(21, 59, 59, 999);
+      const lic30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const lic30Start = new Date(lic30); lic30Start.setUTCHours(22, 0, 0, 0); lic30Start.setUTCDate(lic30Start.getUTCDate() - 1);
+      const lic30End = new Date(lic30); lic30End.setUTCHours(21, 59, 59, 999);
 
       const [activeSnap, waitingSnap] = await Promise.all([
         db.collection('vehicles').where('status', '==', 'active').get(),
@@ -239,40 +247,40 @@ module.exports = async (req, res) => {
       const alerts = [];
       for (const vehicle of allVehicles) {
         if (vehicle.insurance?.mandatory?.expiryDate) {
-          const expiry = new Date(vehicle.insurance.mandatory.expiryDate);
-          if (expiry >= now && expiry <= in14Days) {
+          const expiry = toDate(vehicle.insurance.mandatory.expiryDate);
+          if (expiry && expiry >= ins14Start && expiry <= ins14End) {
             alerts.push({
               id: `ins-mandatory-${vehicle.id}`,
               type: 'insurance', subType: 'mandatory',
               vehicleId: vehicle.id, licensePlate: vehicle.licensePlate,
-              expiryDate: vehicle.insurance.mandatory.expiryDate,
-              daysLeft: Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)),
+              expiryDate: expiry.toISOString(),
+              daysLeft: 14,
               label: `ביטוח חובה - ${vehicle.licensePlate}`,
             });
           }
         }
         if (vehicle.insurance?.comprehensive?.expiryDate) {
-          const expiry = new Date(vehicle.insurance.comprehensive.expiryDate);
-          if (expiry >= now && expiry <= in14Days) {
+          const expiry = toDate(vehicle.insurance.comprehensive.expiryDate);
+          if (expiry && expiry >= ins14Start && expiry <= ins14End) {
             alerts.push({
               id: `ins-comprehensive-${vehicle.id}`,
               type: 'insurance', subType: 'comprehensive',
               vehicleId: vehicle.id, licensePlate: vehicle.licensePlate,
-              expiryDate: vehicle.insurance.comprehensive.expiryDate,
-              daysLeft: Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)),
+              expiryDate: expiry.toISOString(),
+              daysLeft: 14,
               label: `ביטוח מקיף - ${vehicle.licensePlate}`,
             });
           }
         }
         if (vehicle.vehicleLicense?.expiryDate) {
-          const expiry = new Date(vehicle.vehicleLicense.expiryDate);
-          if (expiry >= now && expiry <= in30Days) {
+          const expiry = toDate(vehicle.vehicleLicense.expiryDate);
+          if (expiry && expiry >= lic30Start && expiry <= lic30End) {
             alerts.push({
               id: `license-${vehicle.id}`,
               type: 'license',
               vehicleId: vehicle.id, licensePlate: vehicle.licensePlate,
-              expiryDate: vehicle.vehicleLicense.expiryDate,
-              daysLeft: Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)),
+              expiryDate: expiry.toISOString(),
+              daysLeft: 30,
               label: `טסט/רשיון - ${vehicle.licensePlate}`,
             });
           }
