@@ -477,3 +477,132 @@ exports.sendLoginCredentials = async (user, temporaryPassword) => {
     html,
   });
 };
+
+// שליחת התראה על ביטוחים שפוקעים בעוד 14 יום
+exports.sendInsuranceExpiryEmail = async (insuranceItems) => {
+  if (!insuranceItems || insuranceItems.length === 0) return;
+
+  const today = new Date().toLocaleDateString('he-IL');
+  const expiryDateStr = new Date(insuranceItems[0].expiryDate).toLocaleDateString('he-IL');
+
+  const cardsHtml = insuranceItems.map(item => `
+    <div style="background:#ffffff; border:1px solid #e2e8f0; border-right:4px solid #f59e0b; border-radius:8px; padding:16px 20px; margin-bottom:12px;">
+      <p style="margin:0 0 8px 0; color:#374151; font-size:15px;">
+        <span style="color:#6b7280; font-size:13px;">שם הרוכב:</span><br>
+        <strong>${item.riderName}</strong>
+      </p>
+      <p style="margin:0 0 8px 0; color:#374151; font-size:15px;">
+        <span style="color:#6b7280; font-size:13px;">מספר רכב:</span><br>
+        <strong>${item.licensePlate}</strong>
+      </p>
+      <p style="margin:0 0 8px 0; color:#374151; font-size:15px;">
+        <span style="color:#6b7280; font-size:13px;">דגם:</span><br>
+        <strong>${item.vehicleModel || 'לא ידוע'}</strong>
+      </p>
+      <p style="margin:0 0 8px 0; color:#374151; font-size:15px;">
+        <span style="color:#6b7280; font-size:13px;">סוג ביטוח:</span><br>
+        <strong>${item.insuranceType === 'mandatory' ? 'ביטוח חובה' : 'ביטוח מקיף'}</strong>
+      </p>
+      <p style="margin:0; color:#374151; font-size:15px;">
+        <span style="color:#6b7280; font-size:13px;">תאריך תפוגת הביטוח:</span><br>
+        <strong style="color:#dc2626;">${new Date(item.expiryDate).toLocaleDateString('he-IL')}</strong>
+      </p>
+    </div>
+  `).join('');
+
+  const html = `<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="UTF-8">
+    <style>
+      body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; margin: 0; }
+      .container { max-width: 620px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
+      .header { background: linear-gradient(135deg, #f59e0b, #d97706); padding: 28px 30px; text-align: center; }
+      .header h1 { color: #ffffff; margin: 0; font-size: 22px; }
+      .header p { color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px; }
+      .body { padding: 24px 30px; }
+      .footer { padding: 16px 30px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #94a3b8; }
+    </style></head><body>
+    <div class="container">
+      <div class="header">
+        <h1>📋 התראת ביטוח</h1>
+        <p>${insuranceItems.length} כלים שביטוחם פוקע בתאריך ${expiryDateStr} (עוד 14 יום)</p>
+      </div>
+      <div class="body">${cardsHtml}
+        <p style="margin-top:20px; color:#64748b; font-size:14px; text-align:center;">אנא טפל בחידוש הביטוחים בהקדם האפשרי.</p>
+      </div>
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} צי לוג ידידים | תאריך שליחה: ${today}</p>
+        <p>התראה זו נשלחת אוטומטית 14 יום לפני פקיעת הביטוח</p>
+      </div>
+    </div></body></html>`;
+
+  const systemEmail = process.env.FROM_EMAIL;
+  if (systemEmail) {
+    await exports.sendEmail({
+      email: systemEmail,
+      subject: `⚠️ התראת ביטוח: ${insuranceItems.length} כלים - פוקע ב-${expiryDateStr}`,
+      html,
+    });
+  }
+};
+
+// שליחת התראה על רשיון רכב/טסט שפוקע בעוד 30 יום
+exports.sendLicenseExpiryEmail = async (licenseItems) => {
+  if (!licenseItems || licenseItems.length === 0) return;
+
+  const today = new Date().toLocaleDateString('he-IL');
+  const expiryDateStr = new Date(licenseItems[0].expiryDate).toLocaleDateString('he-IL');
+
+  const cardsHtml = licenseItems.map(item => `
+    <div style="background:#ffffff; border:1px solid #e2e8f0; border-right:4px solid #3b82f6; border-radius:8px; padding:16px 20px; margin-bottom:12px;">
+      <p style="margin:0 0 8px 0; color:#374151; font-size:15px;">
+        <span style="color:#6b7280; font-size:13px;">מספר רכב:</span><br>
+        <strong>${item.licensePlate}</strong>
+      </p>
+      <p style="margin:0 0 8px 0; color:#374151; font-size:15px;">
+        <span style="color:#6b7280; font-size:13px;">שם הרוכב:</span><br>
+        <strong>${item.riderName}</strong>
+      </p>
+      ${item.riderIdNumber ? `<p style="margin:0 0 8px 0; color:#374151; font-size:15px;"><span style="color:#6b7280; font-size:13px;">תעודת זהות:</span><br><strong>${item.riderIdNumber}</strong></p>` : ''}
+      <p style="margin:0 0 8px 0; color:#374151; font-size:15px;">
+        <span style="color:#6b7280; font-size:13px;">דגם:</span><br>
+        <strong>${item.vehicleModel || 'לא ידוע'}</strong>
+      </p>
+      <p style="margin:0; color:#374151; font-size:15px;">
+        <span style="color:#6b7280; font-size:13px;">תאריך תפוגת הרישיון:</span><br>
+        <strong style="color:#dc2626;">${new Date(item.expiryDate).toLocaleDateString('he-IL')}</strong>
+      </p>
+    </div>
+  `).join('');
+
+  const html = `<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="UTF-8">
+    <style>
+      body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; margin: 0; }
+      .container { max-width: 620px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
+      .header { background: linear-gradient(135deg, #3b82f6, #1d4ed8); padding: 28px 30px; text-align: center; }
+      .header h1 { color: #ffffff; margin: 0; font-size: 22px; }
+      .header p { color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px; }
+      .body { padding: 24px 30px; }
+      .footer { padding: 16px 30px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #94a3b8; }
+    </style></head><body>
+    <div class="container">
+      <div class="header">
+        <h1>🚗 התראת טסט / רשיון רכב</h1>
+        <p>${licenseItems.length} כלים שרשיונם פוקע בתאריך ${expiryDateStr} (עוד 30 יום)</p>
+      </div>
+      <div class="body">${cardsHtml}
+        <p style="margin-top:20px; color:#64748b; font-size:14px; text-align:center;">אנא דאג לחידוש הטסט / רשיון הרכב בהקדם האפשרי.</p>
+      </div>
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} צי לוג ידידים | תאריך שליחה: ${today}</p>
+        <p>התראה זו נשלחת אוטומטית 30 יום לפני פקיעת רשיון הרכב</p>
+      </div>
+    </div></body></html>`;
+
+  const systemEmail = process.env.FROM_EMAIL;
+  if (systemEmail) {
+    await exports.sendEmail({
+      email: systemEmail,
+      subject: `⚠️ התראת טסט/רשיון: ${licenseItems.length} כלים - פוקע ב-${expiryDateStr}`,
+      html,
+    });
+  }
+};
