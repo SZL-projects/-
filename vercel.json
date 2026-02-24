@@ -18,11 +18,11 @@
     { "source": "/api/reports/:path*", "destination": "/api/reports" },
     { "source": "/api/audit-logs/:path*", "destination": "/api/reports" },
     { "source": "/api/donations/:path*", "destination": "/api/donations" },
-    { "source": "/api/notifications/:path*", "destination": "/api/notifications" }
+    { "source": "/api/notifications/:path*", "destination": "/api/reports" }
   ],
   "crons": [
     {
-      "path": "/api/cron/expiry-reminders",
+      "path": "/api/reports/cron-reminders",
       "schedule": "0 8 * * *"
     }
   ]

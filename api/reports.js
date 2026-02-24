@@ -1,7 +1,8 @@
-// Vercel Serverless Function - /api/reports + /api/audit-logs
+// Vercel Serverless Function - /api/reports + /api/audit-logs + /api/notifications + cron
 const { initFirebase } = require('./_utils/firebase');
 const { authenticateToken, checkPermission } = require('./_utils/auth');
 const { setCorsHeaders } = require('./_utils/cors');
+const emailService = require('./_utils/emailService');
 
 const hebrewMonths = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
 
@@ -114,6 +115,85 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
+  const urlWithoutQuery = req.url.split('?')[0];
+
+  // ========== Cron: Expiry Reminders (ללא אימות משתמש) ==========
+  if (urlWithoutQuery.includes('cron-reminders')) {
+    const isVercelCron = req.headers['x-vercel-cron'] === '1';
+    const hasCronSecret = process.env.CRON_SECRET && req.headers['authorization'] === `Bearer ${process.env.CRON_SECRET}`;
+    if (!isVercelCron && !hasCronSecret) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    try {
+      const { db } = initFirebase();
+      const now = new Date();
+      console.log(`[Cron] מתחיל בדיקת תוקף - ${now.toLocaleDateString('he-IL')}`);
+
+      const target14Start = new Date(now); target14Start.setDate(target14Start.getDate() + 14); target14Start.setHours(0,0,0,0);
+      const target14End = new Date(target14Start); target14End.setHours(23,59,59,999);
+      const target30Start = new Date(now); target30Start.setDate(target30Start.getDate() + 30); target30Start.setHours(0,0,0,0);
+      const target30End = new Date(target30Start); target30End.setHours(23,59,59,999);
+
+      const [activeSnap, waitingSnap, ridersSnap] = await Promise.all([
+        db.collection('vehicles').where('status', '==', 'active').get(),
+        db.collection('vehicles').where('status', '==', 'waiting_for_rider').get(),
+        db.collection('riders').where('assignmentStatus', '==', 'assigned').get(),
+      ]);
+
+      const vehicles = [];
+      activeSnap.forEach(doc => vehicles.push({ id: doc.id, ...doc.data() }));
+      waitingSnap.forEach(doc => vehicles.push({ id: doc.id, ...doc.data() }));
+
+      const riderMap = {};
+      ridersSnap.forEach(doc => {
+        const rider = { id: doc.id, ...doc.data() };
+        if (rider.assignedVehicleId) riderMap[rider.assignedVehicleId] = rider;
+      });
+
+      const insuranceItems = [];
+      const licenseItems = [];
+
+      for (const vehicle of vehicles) {
+        const rider = riderMap[vehicle.id] || null;
+        const riderName = rider ? `${rider.firstName} ${rider.lastName}` : 'לא משובץ';
+        const riderIdNumber = rider?.idNumber || '';
+        const vehicleModel = `${vehicle.manufacturer || ''} ${vehicle.model || ''}`.trim();
+
+        const mandatoryExpiry = toDate(vehicle.insurance?.mandatory?.expiryDate);
+        if (mandatoryExpiry && mandatoryExpiry >= target14Start && mandatoryExpiry <= target14End) {
+          insuranceItems.push({ licensePlate: vehicle.licensePlate, vehicleModel, riderName, riderIdNumber, expiryDate: mandatoryExpiry, insuranceType: 'mandatory' });
+        }
+        const comprehensiveExpiry = toDate(vehicle.insurance?.comprehensive?.expiryDate);
+        if (comprehensiveExpiry && comprehensiveExpiry >= target14Start && comprehensiveExpiry <= target14End) {
+          insuranceItems.push({ licensePlate: vehicle.licensePlate, vehicleModel, riderName, riderIdNumber, expiryDate: comprehensiveExpiry, insuranceType: 'comprehensive' });
+        }
+        const licenseExpiry = toDate(vehicle.vehicleLicense?.expiryDate);
+        if (licenseExpiry && licenseExpiry >= target30Start && licenseExpiry <= target30End) {
+          licenseItems.push({ licensePlate: vehicle.licensePlate, vehicleModel, riderName, riderIdNumber, expiryDate: licenseExpiry });
+        }
+      }
+
+      const results = { insurance: 0, license: 0 };
+      if (insuranceItems.length > 0) {
+        await emailService.sendInsuranceExpiryEmail(insuranceItems);
+        results.insurance = insuranceItems.length;
+        console.log(`[Cron] מייל ביטוח נשלח - ${insuranceItems.length} כלים`);
+      }
+      if (licenseItems.length > 0) {
+        await emailService.sendLicenseExpiryEmail(licenseItems);
+        results.license = licenseItems.length;
+        console.log(`[Cron] מייל טסט/רשיון נשלח - ${licenseItems.length} כלים`);
+      }
+      if (insuranceItems.length === 0 && licenseItems.length === 0) {
+        console.log('[Cron] אין התראות להיום');
+      }
+      return res.status(200).json({ success: true, ...results });
+    } catch (error) {
+      console.error('[Cron] שגיאה:', error);
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
   if (req.method !== 'GET') {
     return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
@@ -121,8 +201,6 @@ module.exports = async (req, res) => {
   try {
     const { db } = initFirebase();
     const user = await authenticateToken(req, db);
-
-    const urlWithoutQuery = req.url.split('?')[0];
 
     // ========== Notifications Routes ==========
     if (urlWithoutQuery.includes('notifications')) {
