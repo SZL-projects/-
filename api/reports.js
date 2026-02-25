@@ -124,7 +124,7 @@ module.exports = async (req, res) => {
 
   // ========== Cron: Expiry Reminders (ללא אימות משתמש) ==========
   if (urlWithoutQuery.includes('cron-reminders')) {
-    const isVercelCron = req.headers['x-vercel-cron'] === '1';
+    const isVercelCron = !!req.headers['x-vercel-cron'];
     const hasCronSecret = process.env.CRON_SECRET && req.headers['authorization'] === `Bearer ${process.env.CRON_SECRET}`;
     if (!isVercelCron && !hasCronSecret) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
