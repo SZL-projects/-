@@ -40,6 +40,7 @@ import {
   WhatsApp,
 } from '@mui/icons-material';
 import api, { ridersAPI, vehiclesAPI, tasksAPI, faultsAPI } from '../services/api';
+import { toHebrewDate } from '../utils/hebrewDate';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -65,19 +66,10 @@ const toHebrewNumeral = (num) => {
   return result.slice(0, -1) + '\u05F4' + result.slice(-1);
 };
 
-// עיצוב תאריך עברי באותיות (כ"ה שבט תשפ"ו)
+// עיצוב תאריך עברי באותיות (ו׳ אדר תשפ"ו)
 const formatHebrewDate = (date) => {
-  const parts = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', {
-    timeZone: 'Asia/Jerusalem',
-    year: 'numeric', month: 'long', day: 'numeric',
-  }).formatToParts(date);
-  let day = '', month = '', year = '';
-  parts.forEach(p => {
-    if (p.type === 'day') day = p.value;
-    if (p.type === 'month') month = p.value;
-    if (p.type === 'year') year = p.value;
-  });
-  return `${toHebrewNumeral(parseInt(day))} ${month} ${toHebrewNumeral(parseInt(year) % 1000)}`;
+  const { year, day, monthName } = toHebrewDate(date);
+  return `${toHebrewNumeral(day)} ${monthName} ${toHebrewNumeral(year % 1000)}`;
 };
 
 // פונקציה להמרת תאריך לזמן יחסי (לפני שעה, לפני יום וכו')
