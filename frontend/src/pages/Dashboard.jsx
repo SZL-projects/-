@@ -39,7 +39,7 @@ import {
   ErrorOutline,
   WhatsApp,
 } from '@mui/icons-material';
-import { ridersAPI, vehiclesAPI, tasksAPI, faultsAPI } from '../services/api';
+import api, { ridersAPI, vehiclesAPI, tasksAPI, faultsAPI } from '../services/api';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -102,6 +102,25 @@ export default function Dashboard() {
   const [monthlyTrendData, setMonthlyTrendData] = useState([]);
   const [expiringLicenseVehicles, setExpiringLicenseVehicles] = useState([]);
   const [expiringInsuranceVehicles, setExpiringInsuranceVehicles] = useState([]);
+  const [serverOffset, setServerOffset] = useState(0);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // סנכרון שעה עם השרת (פעם אחת)
+  useEffect(() => {
+    api.get('/reports/server-time').then(res => {
+      if (res.data?.timestamp) {
+        setServerOffset(res.data.timestamp - Date.now());
+      }
+    }).catch(() => {});
+  }, []);
+
+  // עדיכון שעה כל שניה לפי offset של השרת
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date(Date.now() + serverOffset));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [serverOffset]);
 
   useEffect(() => {
     loadDashboardData();
@@ -512,7 +531,28 @@ export default function Dashboard() {
             דשבורד ראשי
           </Typography>
           <Typography variant="body2" sx={{ color: '#64748b' }}>
-            עדכון אחרון: {new Date().toLocaleTimeString('he-IL')}
+            {new Intl.DateTimeFormat('he-IL-u-ca-hebrew', {
+              timeZone: 'Asia/Jerusalem',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            }).format(currentTime)}
+            {' | '}
+            {new Intl.DateTimeFormat('he-IL', {
+              timeZone: 'Asia/Jerusalem',
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            }).format(currentTime)}
+            {' | '}
+            {new Intl.DateTimeFormat('he-IL', {
+              timeZone: 'Asia/Jerusalem',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false,
+            }).format(currentTime)}
           </Typography>
         </Box>
         <MuiTooltip title="רענן נתונים">

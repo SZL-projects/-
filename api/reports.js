@@ -117,6 +117,11 @@ module.exports = async (req, res) => {
 
   const urlWithoutQuery = req.url.split('?')[0];
 
+  // ========== Server Time (ללא אימות משתמש) ==========
+  if (urlWithoutQuery.includes('server-time')) {
+    return res.status(200).json({ success: true, timestamp: Date.now() });
+  }
+
   // ========== Cron: Expiry Reminders (ללא אימות משתמש) ==========
   if (urlWithoutQuery.includes('cron-reminders')) {
     const isVercelCron = req.headers['x-vercel-cron'] === '1';
