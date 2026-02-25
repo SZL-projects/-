@@ -18,17 +18,14 @@ const createTransporter = () => {
     },
     // הגדרות נוספות עבור Vercel Serverless
     tls: {
-      rejectUnauthorized: false, // Allow self-signed certificates
-      ciphers: 'SSLv3'
+      rejectUnauthorized: false,
     },
-    connectionTimeout: 10000, // 10 seconds
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-    dnsTimeout: 10000,
-    // Try to use IPv4 first
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 15000,
     family: 4,
-    logger: true, // Enable logging
-    debug: process.env.NODE_ENV === 'development'
+    logger: true,
+    debug: true
   };
 
   // Try direct require of nodemailer's createTransport
