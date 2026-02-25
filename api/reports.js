@@ -166,10 +166,6 @@ module.exports = async (req, res) => {
         if (mandatoryExpiry && mandatoryExpiry >= target14Start && mandatoryExpiry <= target14End) {
           insuranceItems.push({ licensePlate: vehicle.licensePlate, vehicleModel, riderName, riderIdNumber, expiryDate: mandatoryExpiry, insuranceType: 'mandatory' });
         }
-        const comprehensiveExpiry = toDate(vehicle.insurance?.comprehensive?.expiryDate);
-        if (comprehensiveExpiry && comprehensiveExpiry >= target14Start && comprehensiveExpiry <= target14End) {
-          insuranceItems.push({ licensePlate: vehicle.licensePlate, vehicleModel, riderName, riderIdNumber, expiryDate: comprehensiveExpiry, insuranceType: 'comprehensive' });
-        }
         const licenseExpiry = toDate(vehicle.vehicleLicense?.expiryDate);
         if (licenseExpiry && licenseExpiry >= target30Start && licenseExpiry <= target30End) {
           licenseItems.push({ licensePlate: vehicle.licensePlate, vehicleModel, riderName, riderIdNumber, expiryDate: licenseExpiry });
