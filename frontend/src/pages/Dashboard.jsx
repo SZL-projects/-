@@ -45,6 +45,41 @@ import { useAuth } from '../contexts/AuthContext';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
+// המרת מספר לגמטריה עברית
+const toHebrewNumeral = (num) => {
+  const letters = [
+    [400, 'ת'], [300, 'ש'], [200, 'ר'], [100, 'ק'],
+    [90, 'צ'], [80, 'פ'], [70, 'ע'], [60, 'ס'], [50, 'נ'],
+    [40, 'מ'], [30, 'ל'], [20, 'כ'], [10, 'י'],
+    [9, 'ט'], [8, 'ח'], [7, 'ז'], [6, 'ו'], [5, 'ה'],
+    [4, 'ד'], [3, 'ג'], [2, 'ב'], [1, 'א'],
+  ];
+  if (num === 15) return 'ט"ו';
+  if (num === 16) return 'ט"ז';
+  let result = '';
+  let remaining = num;
+  for (const [value, letter] of letters) {
+    while (remaining >= value) { result += letter; remaining -= value; }
+  }
+  if (result.length === 1) return result + '\u05F3';
+  return result.slice(0, -1) + '\u05F4' + result.slice(-1);
+};
+
+// עיצוב תאריך עברי באותיות (כ"ה שבט תשפ"ו)
+const formatHebrewDate = (date) => {
+  const parts = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', {
+    timeZone: 'Asia/Jerusalem',
+    year: 'numeric', month: 'long', day: 'numeric',
+  }).formatToParts(date);
+  let day = '', month = '', year = '';
+  parts.forEach(p => {
+    if (p.type === 'day') day = p.value;
+    if (p.type === 'month') month = p.value;
+    if (p.type === 'year') year = p.value;
+  });
+  return `${toHebrewNumeral(parseInt(day))} ${month} ${toHebrewNumeral(parseInt(year) % 1000)}`;
+};
+
 // פונקציה להמרת תאריך לזמן יחסי (לפני שעה, לפני יום וכו')
 const formatTimeAgo = (date) => {
   if (!date) return '';
@@ -531,12 +566,7 @@ export default function Dashboard() {
             דשבורד ראשי
           </Typography>
           <Typography variant="body2" sx={{ color: '#64748b' }}>
-            {new Intl.DateTimeFormat('he-IL-u-ca-hebrew', {
-              timeZone: 'Asia/Jerusalem',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            }).format(currentTime)}
+            {formatHebrewDate(currentTime)}
             {' | '}
             {new Intl.DateTimeFormat('he-IL', {
               timeZone: 'Asia/Jerusalem',
