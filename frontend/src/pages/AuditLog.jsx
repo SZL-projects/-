@@ -112,6 +112,16 @@ const fieldLabelMap = {
   insuranceExpiry:    'תפוגת ביטוח',
   vehicleTestExpiry:  'תפוגת טסט',
   assignmentStatus:   'סטטוס שיוך',
+  region:             'אזור',
+  vehicleType:        'סוג כלי',
+  color:              'צבע',
+  engineSize:         'נפח מנוע',
+  assignedVehicleId:  'כלי משויך',
+  riderIdNumber:      'ת.ז. רוכב',
+  insurance:          'ביטוח',
+  vehicleLicense:     'רישיון רכב',
+  driveFolderData:    'תיקיית Drive',
+  fileSettings:       'הגדרות קבצים',
 };
 
 function translateValue(value) {
@@ -119,7 +129,13 @@ function translateValue(value) {
   if (typeof value === 'boolean') return value ? 'כן' : 'לא';
   if (typeof value === 'object') {
     try {
-      return JSON.stringify(value, null, 2);
+      // אם זה אובייקט פשוט עם שדות מוכרים - הצג בצורה קריאה
+      const entries = Object.entries(value).filter(([, v]) => v !== null && v !== undefined && v !== '');
+      if (entries.length === 0) return '(ריק)';
+      if (entries.length <= 3) {
+        return entries.map(([k, v]) => `${fieldLabelMap[k] || k}: ${String(v)}`).join(', ');
+      }
+      return JSON.stringify(value);
     } catch {
       return String(value);
     }
@@ -142,27 +158,27 @@ function ChangesPanel({ changes }) {
         <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, mb: 0.5, display: 'block' }}>
           שינויים:
         </Typography>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
           {entries.map(([field, diff]) => {
             const label = fieldLabelMap[field] || field;
             const oldVal = translateValue(diff?.old);
             const newVal = translateValue(diff?.new);
             return (
-              <Box key={field} sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center', fontSize: '0.78rem' }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: '#1e293b', minWidth: 90 }}>
+              <Box key={field} sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: '#1e293b', minWidth: 100 }}>
                   {label}:
                 </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', direction: 'ltr' }}>
                   <Chip
                     label={oldVal}
                     size="small"
-                    sx={{ bgcolor: 'rgba(239,68,68,0.08)', color: '#b91c1c', fontSize: '0.72rem', height: 20, maxWidth: 180 }}
+                    sx={{ bgcolor: 'rgba(239,68,68,0.08)', color: '#b91c1c', fontSize: '0.72rem', height: 22, maxWidth: 200 }}
                   />
-                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>→</Typography>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>←</Typography>
                   <Chip
                     label={newVal}
                     size="small"
-                    sx={{ bgcolor: 'rgba(16,185,129,0.08)', color: '#065f46', fontSize: '0.72rem', height: 20, maxWidth: 180 }}
+                    sx={{ bgcolor: 'rgba(16,185,129,0.08)', color: '#065f46', fontSize: '0.72rem', height: 22, maxWidth: 200 }}
                   />
                 </Box>
               </Box>
@@ -183,8 +199,8 @@ function ChangesPanel({ changes }) {
         {entries.map(([field, value]) => {
           const label = fieldLabelMap[field] || field;
           return (
-            <Box key={field} sx={{ display: 'flex', gap: 0.5, alignItems: 'center', fontSize: '0.78rem' }}>
-              <Typography variant="caption" sx={{ fontWeight: 700, color: '#1e293b', minWidth: 90 }}>{label}:</Typography>
+            <Box key={field} sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+              <Typography variant="caption" sx={{ fontWeight: 700, color: '#1e293b', minWidth: 100 }}>{label}:</Typography>
               <Typography variant="caption" sx={{ color: '#475569' }}>{translateValue(value)}</Typography>
             </Box>
           );
@@ -276,10 +292,10 @@ function LogRow({ log, isMobile }) {
       <TableRow>
         <TableCell colSpan={isMobile ? 4 : 6} sx={{ py: 0, borderBottom: open ? '1px solid #e2e8f0' : 'none', bgcolor: 'rgba(241,245,249,0.6)' }}>
           <Collapse in={open} timeout="auto" unmountOnExit>
-            <Box sx={{ px: 3, py: 1.5 }}>
+            <Box sx={{ px: 3, py: 1.5, direction: 'rtl', textAlign: 'right' }}>
 
               {/* פרטים בסיסיים - תמיד מוצגים */}
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 1 }}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 1, justifyContent: 'flex-start' }}>
                 {log.entityType && (
                   <Typography variant="caption" sx={{ color: '#64748b' }}>
                     <strong>סוג:</strong> {entityTypeMap[log.entityType] || log.entityType}
@@ -292,7 +308,7 @@ function LogRow({ log, isMobile }) {
                 )}
                 {log.userName && (
                   <Typography variant="caption" sx={{ color: '#64748b' }}>
-                    <strong>משתמש:</strong> {log.userName}
+                    <strong>ביצע:</strong> {log.userName}
                   </Typography>
                 )}
                 {log.entityId && (
