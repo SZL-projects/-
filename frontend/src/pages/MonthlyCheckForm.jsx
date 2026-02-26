@@ -33,6 +33,7 @@ import {
   ArrowBack,
   ArrowForward,
   Send,
+  CalendarToday,
 } from '@mui/icons-material';
 import { monthlyChecksAPI, vehiclesAPI, ridersAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -55,6 +56,7 @@ export default function MonthlyCheckForm() {
     vehicleId: '',
     vehicleLicensePlate: '',
     riderId: '',
+    checkDate: new Date().toISOString().split('T')[0],
     currentKm: '',
     oilCheck: '',
     waterCheck: '',
@@ -215,8 +217,8 @@ export default function MonthlyCheckForm() {
           setError('נא לבדוק את רמת השמן');
           return false;
         }
-        if (vehicle?.type === 'scooter' && !formData.waterCheck) {
-          setError('נא לבדוק את רמת המים');
+        if (!formData.waterCheck) {
+          setError('נא לבדוק את רמת המים / קירור (בחר "לא רלוונטי" אם אין קירור נוזלי)');
           return false;
         }
         if (vehicle?.type === 'scooter') {
@@ -267,6 +269,7 @@ export default function MonthlyCheckForm() {
         vehicleLicensePlate: formData.vehicleLicensePlate,
         riderId: formData.riderId || existingCheck?.riderId,
         currentKm: parseInt(formData.currentKm),
+        completedAt: formData.checkDate ? new Date(formData.checkDate).toISOString() : new Date().toISOString(),
 
         checkResults: {
           oilCheck: formData.oilCheck,
@@ -284,7 +287,6 @@ export default function MonthlyCheckForm() {
 
         issues: formData.issues || '',
         notes: formData.notes || '',
-        completedAt: new Date().toISOString(),
         status: 'completed',
       };
 
@@ -447,7 +449,22 @@ export default function MonthlyCheckForm() {
             </Card>
 
             <Grid container spacing={3}>
-              <Grid item xs={12}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="תאריך הבקרה"
+                  required
+                  type="date"
+                  value={formData.checkDate}
+                  onChange={handleChange('checkDate')}
+                  InputProps={{
+                    startAdornment: <CalendarToday sx={{ mr: 1, color: '#6366f1' }} />,
+                  }}
+                  InputLabelProps={{ shrink: true }}
+                  sx={textFieldSx}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="קילומטראז' נוכחי"
@@ -516,35 +533,34 @@ export default function MonthlyCheckForm() {
                 </FormControl>
               </Grid>
 
-              {vehicle?.type === 'scooter' && (
-                <Grid item xs={12}>
-                  <FormControl component="fieldset" fullWidth>
-                    <FormLabel
-                      component="legend"
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                        mb: 1,
-                        color: '#1e293b',
-                        fontWeight: 600,
-                        '&.Mui-focused': { color: '#1e293b' },
-                      }}
-                    >
-                      <LocalGasStation sx={{ color: '#6366f1' }} /> מים (עפ"י הוראות הכלי)
-                    </FormLabel>
-                    <RadioGroup
-                      row
-                      value={formData.waterCheck}
-                      onChange={handleChange('waterCheck')}
-                    >
-                      <FormControlLabel value="ok" control={<Radio sx={{ '&.Mui-checked': { color: '#059669' } }} />} label="תקין" />
-                      <FormControlLabel value="low" control={<Radio sx={{ '&.Mui-checked': { color: '#d97706' } }} />} label="נמוך" />
-                      <FormControlLabel value="not_ok" control={<Radio sx={{ '&.Mui-checked': { color: '#dc2626' } }} />} label="לא תקין" />
-                    </RadioGroup>
-                  </FormControl>
-                </Grid>
-              )}
+              <Grid item xs={12}>
+                <FormControl component="fieldset" fullWidth>
+                  <FormLabel
+                    component="legend"
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      mb: 1,
+                      color: '#1e293b',
+                      fontWeight: 600,
+                      '&.Mui-focused': { color: '#1e293b' },
+                    }}
+                  >
+                    <LocalGasStation sx={{ color: '#6366f1' }} /> מים / קירור (עפ"י הוראות הכלי)
+                  </FormLabel>
+                  <RadioGroup
+                    row
+                    value={formData.waterCheck}
+                    onChange={handleChange('waterCheck')}
+                  >
+                    <FormControlLabel value="ok" control={<Radio sx={{ '&.Mui-checked': { color: '#059669' } }} />} label="תקין" />
+                    <FormControlLabel value="low" control={<Radio sx={{ '&.Mui-checked': { color: '#d97706' } }} />} label="נמוך" />
+                    <FormControlLabel value="not_ok" control={<Radio sx={{ '&.Mui-checked': { color: '#dc2626' } }} />} label="לא תקין" />
+                    <FormControlLabel value="na" control={<Radio sx={{ '&.Mui-checked': { color: '#94a3b8' } }} />} label="לא רלוונטי" />
+                  </RadioGroup>
+                </FormControl>
+              </Grid>
 
               <Grid item xs={12}>
                 <Divider sx={{ borderColor: '#e2e8f0' }} />

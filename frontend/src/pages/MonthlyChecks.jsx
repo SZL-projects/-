@@ -82,7 +82,7 @@ import {
   Delete,
   Close,
 } from '@mui/icons-material';
-import { monthlyChecksAPI, ridersAPI, vehiclesAPI } from '../services/api';
+import { monthlyChecksAPI, ridersAPI, vehiclesAPI, tasksAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function MonthlyChecks() {
@@ -106,6 +106,8 @@ export default function MonthlyChecks() {
   const [selectedRiders, setSelectedRiders] = useState([]);
   const [openingChecks, setOpeningChecks] = useState(false);
   const [deletingCheck, setDeletingCheck] = useState(null);
+  const [approvingCheck, setApprovingCheck] = useState(false);
+  const [creatingTask, setCreatingTask] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -337,6 +339,44 @@ export default function MonthlyChecks() {
     setSelectedRiders(eligibleRiders.map(r => r._id || r.id));
     setOpenChecksDialogOpen(true);
   }, [eligibleRiders]);
+
+  const handleApproveCheck = useCallback(async () => {
+    if (!selectedCheck) return;
+    setApprovingCheck(true);
+    try {
+      await monthlyChecksAPI.update(selectedCheck._id || selectedCheck.id, { status: 'completed' });
+      setSnackbar({ open: true, message: 'הבקרה אושרה בהצלחה', severity: 'success' });
+      setDetailsDialogOpen(false);
+      await loadData();
+    } catch (error) {
+      setSnackbar({ open: true, message: error.response?.data?.message || 'שגיאה באישור הבקרה', severity: 'error' });
+    } finally {
+      setApprovingCheck(false);
+    }
+  }, [selectedCheck, loadData]);
+
+  const handleCreateTask = useCallback(async () => {
+    if (!selectedCheck) return;
+    setCreatingTask(true);
+    try {
+      const issuesList = selectedCheck.issuesList?.join(', ') || selectedCheck.issues || 'בעיות מבקרה חודשית';
+      await tasksAPI.create({
+        title: `תיקון ממצאי בקרה חודשית - ${selectedCheck.vehicleLicensePlate || selectedCheck.vehiclePlate}`,
+        description: `ממצאים מבקרה חודשית של ${selectedCheck.riderName}:\n${issuesList}`,
+        vehicleId: selectedCheck.vehicleId,
+        riderId: selectedCheck.riderId,
+        priority: 'high',
+        status: 'open',
+        relatedMonthlyCheckId: selectedCheck._id || selectedCheck.id,
+      });
+      setSnackbar({ open: true, message: 'משימה נוצרה בהצלחה', severity: 'success' });
+      setDetailsDialogOpen(false);
+    } catch (error) {
+      setSnackbar({ open: true, message: error.response?.data?.message || 'שגיאה ביצירת משימה', severity: 'error' });
+    } finally {
+      setCreatingTask(false);
+    }
+  }, [selectedCheck]);
 
   const handleToggleRider = useCallback((riderId) => {
     setSelectedRiders(prev =>
@@ -1245,28 +1285,96 @@ export default function MonthlyChecks() {
                   )}
                 </>
               )}
+
+              {isMobile && hasPermission('monthly_checks', 'edit') && (
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 1 }} />
+                  <Stack direction="column" spacing={1} sx={{ mt: 1 }}>
+                    {(checkHasIssues(selectedCheck) || selectedCheck.status !== 'pending') && (
+                      <Button
+                        fullWidth
+                        onClick={handleCreateTask}
+                        disabled={creatingTask}
+                        variant="outlined"
+                        startIcon={creatingTask ? <CircularProgress size={16} /> : <AddTask />}
+                        sx={{ borderRadius: '12px', fontWeight: 600, borderColor: '#f59e0b', color: '#d97706' }}
+                      >
+                        צור משימה
+                      </Button>
+                    )}
+                    {selectedCheck.status === 'pending' && (
+                      <Button
+                        fullWidth
+                        onClick={handleApproveCheck}
+                        disabled={approvingCheck}
+                        variant="contained"
+                        startIcon={approvingCheck ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : <CheckCircle />}
+                        sx={{
+                          borderRadius: '12px', fontWeight: 600,
+                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        }}
+                      >
+                        אשר בקרה
+                      </Button>
+                    )}
+                  </Stack>
+                </Grid>
+              )}
             </Grid>
           )}
         </DialogContent>
         {!isMobile && (
-          <DialogActions sx={{ px: 3, pb: 3 }}>
+          <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
             <Button
               onClick={() => setDetailsDialogOpen(false)}
               variant="outlined"
               sx={{
                 borderRadius: '12px',
-                px: 4,
+                px: 3,
                 fontWeight: 600,
                 borderColor: '#e2e8f0',
                 color: '#64748b',
-                '&:hover': {
-                  borderColor: '#cbd5e1',
-                  bgcolor: '#f8fafc',
-                },
+                '&:hover': { borderColor: '#cbd5e1', bgcolor: '#f8fafc' },
               }}
             >
               סגור
             </Button>
+            {hasPermission('monthly_checks', 'edit') && selectedCheck && (checkHasIssues(selectedCheck) || selectedCheck.status !== 'pending') && (
+              <Button
+                onClick={handleCreateTask}
+                disabled={creatingTask}
+                variant="outlined"
+                startIcon={creatingTask ? <CircularProgress size={16} /> : <AddTask />}
+                sx={{
+                  borderRadius: '12px',
+                  px: 3,
+                  fontWeight: 600,
+                  borderColor: '#f59e0b',
+                  color: '#d97706',
+                  '&:hover': { borderColor: '#d97706', bgcolor: 'rgba(245,158,11,0.06)' },
+                }}
+              >
+                צור משימה
+              </Button>
+            )}
+            {hasPermission('monthly_checks', 'edit') && selectedCheck?.status === 'pending' && (
+              <Button
+                onClick={handleApproveCheck}
+                disabled={approvingCheck}
+                variant="contained"
+                startIcon={approvingCheck ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : <CheckCircle />}
+                sx={{
+                  borderRadius: '12px',
+                  px: 3,
+                  fontWeight: 600,
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  '&:hover': { background: 'linear-gradient(135deg, #059669 0%, #047857 100%)' },
+                  '&:disabled': { background: '#e2e8f0', color: '#94a3b8' },
+                }}
+              >
+                אשר בקרה
+              </Button>
+            )}
           </DialogActions>
         )}
       </Dialog>
