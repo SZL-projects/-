@@ -6,7 +6,7 @@ const Busboy = require('busboy');
 const getRawBody = require('raw-body');
 const { Readable } = require('stream');
 const { setCorsHeaders } = require('./_utils/cors');
-const { writeAuditLog } = require('./_utils/auditLog');
+const { writeAuditLog, buildChanges } = require('./_utils/auditLog');
 
 // Helper: enrich vehicles with assigned rider name
 async function enrichVehiclesWithRiderNames(db, vehicles) {
@@ -1095,6 +1095,7 @@ module.exports = async (req, res) => {
       if (req.method === 'PUT') {
         await checkPermission(user, db, 'vehicles', 'edit');
 
+        const existingVehicleData = doc.data();
         const updateData = {
           ...req.body,
           updatedBy: user.id,
@@ -1103,7 +1104,8 @@ module.exports = async (req, res) => {
 
         await vehicleRef.update(updateData);
         const updatedDoc = await vehicleRef.get();
-        await writeAuditLog(db, user, { action: 'update', entityType: 'vehicle', entityId: vehicleId, entityName: updatedDoc.data().licensePlate || 'כלי', description: `כלי עודכן: ${updatedDoc.data().licensePlate || ''}` });
+        const vehicleDiff = buildChanges(existingVehicleData, req.body);
+        await writeAuditLog(db, user, { action: 'update', entityType: 'vehicle', entityId: vehicleId, entityName: updatedDoc.data().licensePlate || 'כלי', changes: vehicleDiff, description: `כלי עודכן: ${updatedDoc.data().licensePlate || ''}` });
 
         return res.status(200).json({
           success: true,

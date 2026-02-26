@@ -6,7 +6,7 @@ const Busboy = require('busboy');
 const getRawBody = require('raw-body');
 const { Readable } = require('stream');
 const { setCorsHeaders } = require('./_utils/cors');
-const { writeAuditLog } = require('./_utils/auditLog');
+const { writeAuditLog, buildChanges } = require('./_utils/auditLog');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -708,11 +708,13 @@ module.exports = async (req, res) => {
         console.log('[RIDER UPDATE] Rider updated successfully:', riderId);
 
         const updatedData = updatedDoc.data();
+        const riderDiff = buildChanges(currentRiderData, req.body);
         await writeAuditLog(db, user, {
           action: 'update',
           entityType: 'rider',
           entityId: riderId,
           entityName: `${updatedData.firstName || ''} ${updatedData.lastName || ''}`.trim(),
+          changes: riderDiff,
           description: `רוכב עודכן: ${updatedData.firstName || ''} ${updatedData.lastName || ''}`.trim()
         });
 

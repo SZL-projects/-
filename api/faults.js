@@ -3,7 +3,7 @@ const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkPermission } = require('./_utils/auth');
 const getRawBody = require('raw-body');
 const { setCorsHeaders } = require('./_utils/cors');
-const { writeAuditLog } = require('./_utils/auditLog');
+const { writeAuditLog, buildChanges } = require('./_utils/auditLog');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -360,10 +360,12 @@ async function handleFaultsRequest(req, res, db, user, url) {
 
     if (req.method === 'PUT') {
       await checkPermission(user, db, 'faults', 'edit');
+      const existingFaultData = doc.data();
       const updateData = { ...req.body, updatedBy: user.id, updatedAt: new Date() };
       await faultRef.update(updateData);
       const updatedDoc = await faultRef.get();
-      await writeAuditLog(db, user, { action: 'update', entityType: 'fault', entityId: faultId, entityName: updatedDoc.data().description?.substring(0, 40) || 'תקלה', description: 'תקלה עודכנה' });
+      const faultDiff = buildChanges(existingFaultData, req.body);
+      await writeAuditLog(db, user, { action: 'update', entityType: 'fault', entityId: faultId, entityName: updatedDoc.data().description?.substring(0, 40) || 'תקלה', changes: faultDiff, description: 'תקלה עודכנה' });
       return res.status(200).json({ success: true, message: 'תקלה עודכנה בהצלחה', fault: { id: updatedDoc.id, ...updatedDoc.data() } });
     }
 

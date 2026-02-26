@@ -2,7 +2,7 @@
 const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkPermission } = require('./_utils/auth');
 const { setCorsHeaders } = require('./_utils/cors');
-const { writeAuditLog } = require('./_utils/auditLog');
+const { writeAuditLog, buildChanges } = require('./_utils/auditLog');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -51,6 +51,7 @@ module.exports = async (req, res) => {
       if (req.method === 'PUT') {
         await checkPermission(user, db, 'tasks', 'edit');
 
+        const existingTaskData = doc.data();
         const updateData = {
           ...req.body,
           updatedBy: user.id,
@@ -59,7 +60,8 @@ module.exports = async (req, res) => {
 
         await taskRef.update(updateData);
         const updatedDoc = await taskRef.get();
-        await writeAuditLog(db, user, { action: 'update', entityType: 'task', entityId: taskId, entityName: updatedDoc.data().title || 'משימה', description: `משימה עודכנה: ${updatedDoc.data().title || ''}` });
+        const taskDiff = buildChanges(existingTaskData, req.body);
+        await writeAuditLog(db, user, { action: 'update', entityType: 'task', entityId: taskId, entityName: updatedDoc.data().title || 'משימה', changes: taskDiff, description: `משימה עודכנה: ${updatedDoc.data().title || ''}` });
 
         return res.status(200).json({
           success: true,

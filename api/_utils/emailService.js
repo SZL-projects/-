@@ -68,6 +68,23 @@ exports.sendEmail = async (options) => {
   try {
     const info = await transporter.sendMail(message);
     console.log('📧 Email sent successfully:', info.messageId);
+
+    // רישום שליחת מייל בלוג (fire-and-forget)
+    try {
+      const { initFirebase } = require('./firebase');
+      const { writeSystemAuditLog } = require('./auditLog');
+      const { db } = initFirebase();
+      writeSystemAuditLog(db, {
+        action: 'email_sent',
+        entityType: 'email',
+        entityName: options.email,
+        description: `מייל נשלח ל: ${options.email} | נושא: ${options.subject}`,
+        metadata: { messageId: info.messageId, to: options.email, subject: options.subject },
+      });
+    } catch (logErr) {
+      console.error('Email audit log error:', logErr.message);
+    }
+
     return info;
   } catch (error) {
     console.error('❌ Error sending email:', error);

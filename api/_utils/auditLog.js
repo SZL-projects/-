@@ -1,16 +1,53 @@
+// שדות שיש להתעלם מהם בחישוב שינויים
+const IGNORE_FIELDS = [
+  'updatedAt', 'updatedBy', 'createdAt', 'createdBy', 'id', '_id',
+  'timestamp', '__v', 'password', 'token'
+];
+
+/**
+ * חישוב הפרש בין נתונים ישנים לחדשים
+ * מחזיר: { fieldName: { old: '...', new: '...' } }
+ */
+function buildChanges(before, after) {
+  if (!before || !after) return after || null;
+
+  const changes = {};
+
+  for (const key of Object.keys(after)) {
+    if (IGNORE_FIELDS.includes(key)) continue;
+
+    const oldVal = before[key];
+    const newVal = after[key];
+
+    const oldStr = JSON.stringify(oldVal ?? null);
+    const newStr = JSON.stringify(newVal ?? null);
+
+    if (oldStr !== newStr) {
+      changes[key] = { old: oldVal ?? null, new: newVal ?? null };
+    }
+  }
+
+  return Object.keys(changes).length > 0 ? changes : null;
+}
+
 /**
  * כתיבת רשומה ללוג פעילות ב-Firestore
+ * תומך עכשיו ב: changes (ישן/חדש), metadata
  */
-async function writeAuditLog(db, user, { action, entityType, entityId, entityName, description }) {
+async function writeAuditLog(db, user, { action, entityType, entityId, entityName, changes, description, metadata }) {
   try {
     await db.collection('audit_logs').add({
       userId: user?.id || user?._id || null,
-      userName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'משתמש' : 'מערכת',
+      userName: user
+        ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'משתמש'
+        : 'מערכת',
       action,
       entityType,
       entityId: entityId || null,
       entityName: entityName || null,
+      changes: changes || null,
       description: description || null,
+      metadata: metadata || null,
       timestamp: new Date(),
       createdAt: new Date(),
     });
@@ -19,4 +56,27 @@ async function writeAuditLog(db, user, { action, entityType, entityId, entityNam
   }
 }
 
-module.exports = { writeAuditLog };
+/**
+ * רישום לוג ללא user object (לפעולות מערכת / שליחת מיילים)
+ */
+async function writeSystemAuditLog(db, { action, entityType, entityId, entityName, changes, description, metadata }) {
+  try {
+    await db.collection('audit_logs').add({
+      userId: null,
+      userName: 'מערכת',
+      action,
+      entityType,
+      entityId: entityId || null,
+      entityName: entityName || null,
+      changes: changes || null,
+      description: description || null,
+      metadata: metadata || null,
+      timestamp: new Date(),
+      createdAt: new Date(),
+    });
+  } catch (err) {
+    console.error('System audit log write error:', err.message);
+  }
+}
+
+module.exports = { writeAuditLog, writeSystemAuditLog, buildChanges };

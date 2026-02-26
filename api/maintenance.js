@@ -6,7 +6,7 @@ const getRawBody = require('raw-body');
 const Busboy = require('busboy');
 const { Readable } = require('stream');
 const { setCorsHeaders } = require('./_utils/cors');
-const { writeAuditLog } = require('./_utils/auditLog');
+const { writeAuditLog, buildChanges } = require('./_utils/auditLog');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -874,6 +874,7 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
     if (req.method === 'PUT') {
       await checkPermission(user, db, 'maintenance', 'edit');
 
+      const existingMaintenanceData = doc.data();
       // תמיכה גם בפורמט garage object וגם garageId/garageName
       const garageData = req.body.garage || {};
 
@@ -899,7 +900,8 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
 
       await maintenanceRef.update(updateData);
       const updatedDoc = await maintenanceRef.get();
-      await writeAuditLog(db, user, { action: 'update', entityType: 'maintenance', entityId: maintenanceId, entityName: updatedDoc.data().maintenanceNumber || 'טיפול', description: 'טיפול עודכן' });
+      const maintDiff = buildChanges(existingMaintenanceData, req.body);
+      await writeAuditLog(db, user, { action: 'update', entityType: 'maintenance', entityId: maintenanceId, entityName: updatedDoc.data().maintenanceNumber || 'טיפול', changes: maintDiff, description: 'טיפול עודכן' });
 
       return res.json({
         success: true,
