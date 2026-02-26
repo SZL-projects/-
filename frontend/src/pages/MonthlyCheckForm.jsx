@@ -33,7 +33,6 @@ import {
   ArrowBack,
   ArrowForward,
   Send,
-  CalendarToday,
 } from '@mui/icons-material';
 import { monthlyChecksAPI, vehiclesAPI, ridersAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -56,7 +55,6 @@ export default function MonthlyCheckForm() {
     vehicleId: '',
     vehicleLicensePlate: '',
     riderId: '',
-    checkDate: new Date().toISOString().split('T')[0],
     currentKm: '',
     oilCheck: '',
     waterCheck: '',
@@ -269,7 +267,7 @@ export default function MonthlyCheckForm() {
         vehicleLicensePlate: formData.vehicleLicensePlate,
         riderId: formData.riderId || existingCheck?.riderId,
         currentKm: parseInt(formData.currentKm),
-        completedAt: formData.checkDate ? new Date(formData.checkDate).toISOString() : new Date().toISOString(),
+        completedAt: new Date().toISOString(),
 
         checkResults: {
           oilCheck: formData.oilCheck,
@@ -449,21 +447,6 @@ export default function MonthlyCheckForm() {
             </Card>
 
             <Grid container spacing={3}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="תאריך הבקרה"
-                  required
-                  type="date"
-                  value={formData.checkDate}
-                  onChange={handleChange('checkDate')}
-                  InputProps={{
-                    startAdornment: <CalendarToday sx={{ mr: 1, color: '#6366f1' }} />,
-                  }}
-                  InputLabelProps={{ shrink: true }}
-                  sx={textFieldSx}
-                />
-              </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth

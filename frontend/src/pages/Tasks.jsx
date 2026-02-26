@@ -41,7 +41,7 @@ import {
   CalendarToday,
   Flag,
 } from '@mui/icons-material';
-import { tasksAPI } from '../services/api';
+import { tasksAPI, authAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import TaskDialog from '../components/TaskDialog';
 
@@ -59,9 +59,11 @@ export default function Tasks() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [allUsers, setAllUsers] = useState([]);
 
   useEffect(() => {
     loadTasks();
+    authAPI.getAllUsers().then(res => setAllUsers(res.data.users || [])).catch(() => {});
   }, []);
 
   const loadTasks = async () => {
@@ -560,6 +562,7 @@ export default function Tasks() {
         onClose={handleCloseDialog}
         onSave={handleSaveTask}
         task={editingTask}
+        users={allUsers}
       />
 
       {/* Modern Delete Confirmation Dialog */}

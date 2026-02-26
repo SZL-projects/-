@@ -8,6 +8,7 @@ import {
   TextField,
   Grid,
   MenuItem,
+  ListSubheader,
   FormControl,
   InputLabel,
   Select,
@@ -33,13 +34,16 @@ const priorities = [
   { value: 'high', label: 'גבוה' },
 ];
 
-export default function TaskDialog({ open, onClose, onSave, task }) {
+const roleLabels = { rider: 'רוכבים', manager: 'מנהלים', super_admin: 'מנהל ראשי', mechanic: 'מכונאים', admin: 'מנהלים' };
+
+export default function TaskDialog({ open, onClose, onSave, task, users = [] }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    assigneeId: '',
     riderId: '',
     riderName: '',
     vehicleId: '',
@@ -61,6 +65,7 @@ export default function TaskDialog({ open, onClose, onSave, task }) {
       setFormData({
         title: '',
         description: '',
+        assigneeId: '',
         riderId: '',
         riderName: '',
         vehicleId: '',
@@ -84,6 +89,21 @@ export default function TaskDialog({ open, onClose, onSave, task }) {
     if (errors[field]) {
       setErrors({ ...errors, [field]: '' });
     }
+  };
+
+  const handleAssigneeChange = (event) => {
+    const userId = event.target.value;
+    const user = users.find(u => (u._id || u.id) === userId);
+    const name = user ? (`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username) : '';
+    const role = user?.role || (user?.roles && user.roles[0]) || '';
+    setFormData(prev => ({
+      ...prev,
+      assigneeId: userId,
+      assigneeName: name,
+      assigneeRole: role,
+      riderId: role === 'rider' ? userId : prev.riderId,
+      riderName: role === 'rider' ? name : prev.riderName,
+    }));
   };
 
   const validate = () => {
@@ -162,12 +182,43 @@ export default function TaskDialog({ open, onClose, onSave, task }) {
           </Grid>
 
           <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="שם רוכב"
-              value={formData.riderName}
-              onChange={handleChange('riderName')}
-            />
+            {users.length > 0 ? (
+              <FormControl fullWidth>
+                <InputLabel>שייך למשתמש</InputLabel>
+                <Select
+                  value={formData.assigneeId || ''}
+                  onChange={handleAssigneeChange}
+                  label="שייך למשתמש"
+                >
+                  <MenuItem value="">ללא שיוך</MenuItem>
+                  {(() => {
+                    const grouped = users.reduce((acc, u) => {
+                      const r = u.role || (u.roles && u.roles[0]) || 'other';
+                      if (!acc[r]) acc[r] = [];
+                      acc[r].push(u);
+                      return acc;
+                    }, {});
+                    return Object.entries(grouped).flatMap(([role, roleUsers]) => [
+                      <ListSubheader key={`h-${role}`} sx={{ fontWeight: 700, color: '#6366f1', bgcolor: '#f8fafc' }}>
+                        {roleLabels[role] || role}
+                      </ListSubheader>,
+                      ...roleUsers.map(u => (
+                        <MenuItem key={u._id || u.id} value={u._id || u.id} sx={{ pr: 3 }}>
+                          {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.username}
+                        </MenuItem>
+                      ))
+                    ]);
+                  })()}
+                </Select>
+              </FormControl>
+            ) : (
+              <TextField
+                fullWidth
+                label="שם רוכב"
+                value={formData.riderName}
+                onChange={handleChange('riderName')}
+              />
+            )}
           </Grid>
 
           <Grid item xs={12} sm={6}>

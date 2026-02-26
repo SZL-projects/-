@@ -46,6 +46,7 @@ import {
   CardActions,
   Select,
   MenuItem,
+  ListSubheader,
   FormControl,
   InputLabel,
   Dialog,
@@ -82,7 +83,7 @@ import {
   Delete,
   Close,
 } from '@mui/icons-material';
-import { monthlyChecksAPI, ridersAPI, vehiclesAPI, tasksAPI } from '../services/api';
+import { monthlyChecksAPI, ridersAPI, vehiclesAPI, tasksAPI, authAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function MonthlyChecks() {
@@ -108,6 +109,9 @@ export default function MonthlyChecks() {
   const [deletingCheck, setDeletingCheck] = useState(null);
   const [approvingCheck, setApprovingCheck] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [taskFormData, setTaskFormData] = useState({ title: '', description: '', assigneeId: '', priority: 'high', dueDate: '' });
+  const [allUsers, setAllUsers] = useState([]);
 
   useEffect(() => {
     loadData();
@@ -116,10 +120,11 @@ export default function MonthlyChecks() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [checksRes, ridersRes, vehiclesRes] = await Promise.all([
+      const [checksRes, ridersRes, vehiclesRes, usersRes] = await Promise.all([
         monthlyChecksAPI.getAll().catch(() => ({ data: { checks: [] } })),
         ridersAPI.getAll().catch(() => ({ data: { riders: [] } })),
         vehiclesAPI.getAll().catch(() => ({ data: { vehicles: [] } })),
+        authAPI.getAllUsers().catch(() => ({ data: { users: [] } })),
       ]);
 
       const checksData = checksRes.data.checks || checksRes.data.monthlyChecks || [];
@@ -129,6 +134,7 @@ export default function MonthlyChecks() {
       setChecks(checksData);
       setRiders(ridersRes.data.riders || []);
       setVehicles(vehiclesRes.data.vehicles || []);
+      setAllUsers(usersRes.data.users || []);
       setError('');
     } catch (err) {
       setError('שגיאה בטעינת הנתונים');
@@ -179,6 +185,19 @@ export default function MonthlyChecks() {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
+    }).format(date);
+  };
+
+  const formatDateTime = (timestamp) => {
+    if (!timestamp) return '-';
+    const date = safeParseDate(timestamp);
+    if (!date) return '-';
+    return new Intl.DateTimeFormat('he-IL', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
     }).format(date);
   };
 
@@ -355,28 +374,48 @@ export default function MonthlyChecks() {
     }
   }, [selectedCheck, loadData]);
 
-  const handleCreateTask = useCallback(async () => {
+  const handleCreateTask = useCallback(() => {
     if (!selectedCheck) return;
+    const issuesList = selectedCheck.issuesList?.join(', ') || selectedCheck.issues || '';
+    setTaskFormData({
+      title: `תיקון ממצאי בקרה חודשית - ${selectedCheck.vehicleLicensePlate || selectedCheck.vehiclePlate || ''}`,
+      description: issuesList ? `ממצאים מבקרה חודשית של ${selectedCheck.riderName}:\n${issuesList}` : '',
+      assigneeId: selectedCheck.riderId || '',
+      priority: 'high',
+      dueDate: '',
+    });
+    setTaskDialogOpen(true);
+  }, [selectedCheck]);
+
+  const handleSubmitTask = useCallback(async () => {
     setCreatingTask(true);
     try {
-      const issuesList = selectedCheck.issuesList?.join(', ') || selectedCheck.issues || 'בעיות מבקרה חודשית';
+      const assignee = allUsers.find(u => (u._id || u.id) === taskFormData.assigneeId);
+      const assigneeName = assignee ? `${assignee.firstName || ''} ${assignee.lastName || ''}`.trim() || assignee.username : '';
+      const assigneeRole = assignee?.role || (assignee?.roles && assignee.roles[0]) || '';
       await tasksAPI.create({
-        title: `תיקון ממצאי בקרה חודשית - ${selectedCheck.vehicleLicensePlate || selectedCheck.vehiclePlate}`,
-        description: `ממצאים מבקרה חודשית של ${selectedCheck.riderName}:\n${issuesList}`,
-        vehicleId: selectedCheck.vehicleId,
-        riderId: selectedCheck.riderId,
-        priority: 'high',
+        title: taskFormData.title,
+        description: taskFormData.description,
+        assigneeId: taskFormData.assigneeId || undefined,
+        assigneeName: assigneeName || undefined,
+        assigneeRole: assigneeRole || undefined,
+        riderId: assigneeRole === 'rider' ? taskFormData.assigneeId : undefined,
+        riderName: assigneeRole === 'rider' ? assigneeName : undefined,
+        vehicleId: selectedCheck?.vehicleId,
+        priority: taskFormData.priority,
         status: 'open',
-        relatedMonthlyCheckId: selectedCheck._id || selectedCheck.id,
+        dueDate: taskFormData.dueDate ? new Date(taskFormData.dueDate).toISOString() : undefined,
+        relatedMonthlyCheckId: selectedCheck?._id || selectedCheck?.id,
       });
       setSnackbar({ open: true, message: 'משימה נוצרה בהצלחה', severity: 'success' });
+      setTaskDialogOpen(false);
       setDetailsDialogOpen(false);
     } catch (error) {
       setSnackbar({ open: true, message: error.response?.data?.message || 'שגיאה ביצירת משימה', severity: 'error' });
     } finally {
       setCreatingTask(false);
     }
-  }, [selectedCheck]);
+  }, [taskFormData, selectedCheck]);
 
   const handleToggleRider = useCallback((riderId) => {
     setSelectedRiders(prev =>
@@ -1177,9 +1216,9 @@ export default function MonthlyChecks() {
                   boxShadow: 'none',
                 }}>
                   <CardContent>
-                    <Typography variant="subtitle2" sx={{ color: '#94a3b8', fontSize: '0.75rem' }}>תאריך בדיקה</Typography>
+                    <Typography variant="subtitle2" sx={{ color: '#94a3b8', fontSize: '0.75rem' }}>תאריך ושעת בדיקה</Typography>
                     <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
-                      {formatDate(selectedCheck.checkDate)}
+                      {formatDateTime(selectedCheck.completedAt || selectedCheck.checkDate)}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -1302,7 +1341,7 @@ export default function MonthlyChecks() {
                         צור משימה
                       </Button>
                     )}
-                    {selectedCheck.status === 'pending' && (
+                    {(selectedCheck.status === 'pending' || selectedCheck.status === 'issues') && (
                       <Button
                         fullWidth
                         onClick={handleApproveCheck}
@@ -1357,7 +1396,7 @@ export default function MonthlyChecks() {
                 צור משימה
               </Button>
             )}
-            {hasPermission('monthly_checks', 'edit') && selectedCheck?.status === 'pending' && (
+            {hasPermission('monthly_checks', 'edit') && (selectedCheck?.status === 'pending' || selectedCheck?.status === 'issues') && (
               <Button
                 onClick={handleApproveCheck}
                 disabled={approvingCheck}
@@ -1377,6 +1416,110 @@ export default function MonthlyChecks() {
             )}
           </DialogActions>
         )}
+      </Dialog>
+
+      {/* Dialog ליצירת משימה */}
+      <Dialog
+        open={taskDialogOpen}
+        onClose={() => setTaskDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        dir="rtl"
+        PaperProps={{ sx: { borderRadius: '20px' } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, color: '#1e293b' }}>יצירת משימה חדשה</DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              fullWidth
+              label="כותרת המשימה"
+              value={taskFormData.title}
+              onChange={e => setTaskFormData(p => ({ ...p, title: e.target.value }))}
+              required
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+            />
+            <TextField
+              fullWidth
+              label="תיאור המשימה"
+              value={taskFormData.description}
+              onChange={e => setTaskFormData(p => ({ ...p, description: e.target.value }))}
+              multiline
+              rows={3}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+            />
+            <FormControl fullWidth>
+              <InputLabel>שייך למשתמש</InputLabel>
+              <Select
+                value={taskFormData.assigneeId}
+                onChange={e => setTaskFormData(p => ({ ...p, assigneeId: e.target.value }))}
+                label="שייך למשתמש"
+                sx={{ borderRadius: '12px' }}
+              >
+                <MenuItem value="">ללא שיוך</MenuItem>
+                {(() => {
+                  const roleLabels = { rider: 'רוכבים', manager: 'מנהלים', super_admin: 'מנהל ראשי', mechanic: 'מכונאים', admin: 'מנהלים' };
+                  const grouped = allUsers.reduce((acc, u) => {
+                    const r = u.role || (u.roles && u.roles[0]) || 'other';
+                    if (!acc[r]) acc[r] = [];
+                    acc[r].push(u);
+                    return acc;
+                  }, {});
+                  return Object.entries(grouped).flatMap(([role, users]) => [
+                    <ListSubheader key={`header-${role}`} sx={{ fontWeight: 700, color: '#6366f1', bgcolor: '#f8fafc' }}>
+                      {roleLabels[role] || role}
+                    </ListSubheader>,
+                    ...users.map(u => (
+                      <MenuItem key={u._id || u.id} value={u._id || u.id} sx={{ pr: 3 }}>
+                        {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.username}
+                      </MenuItem>
+                    ))
+                  ]);
+                })()}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth>
+              <InputLabel>עדיפות</InputLabel>
+              <Select
+                value={taskFormData.priority}
+                onChange={e => setTaskFormData(p => ({ ...p, priority: e.target.value }))}
+                label="עדיפות"
+                sx={{ borderRadius: '12px' }}
+              >
+                <MenuItem value="low">נמוכה</MenuItem>
+                <MenuItem value="medium">בינונית</MenuItem>
+                <MenuItem value="high">גבוהה</MenuItem>
+                <MenuItem value="urgent">דחופה</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              fullWidth
+              label="תאריך יעד"
+              type="date"
+              value={taskFormData.dueDate}
+              onChange={e => setTaskFormData(p => ({ ...p, dueDate: e.target.value }))}
+              InputLabelProps={{ shrink: true }}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+          <Button
+            onClick={() => setTaskDialogOpen(false)}
+            variant="outlined"
+            sx={{ borderRadius: '12px', px: 3, fontWeight: 600, borderColor: '#e2e8f0', color: '#64748b', '&:hover': { borderColor: '#cbd5e1', bgcolor: '#f8fafc' } }}
+          >
+            ביטול
+          </Button>
+          <Button
+            onClick={handleSubmitTask}
+            disabled={creatingTask || !taskFormData.title}
+            variant="contained"
+            startIcon={creatingTask ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : <AddTask />}
+            sx={{ borderRadius: '12px', px: 3, fontWeight: 600, background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', '&:hover': { background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)' }, '&:disabled': { background: '#e2e8f0', color: '#94a3b8' } }}
+          >
+            צור משימה
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Dialog לפתיחת בקרות חודשיות */}
