@@ -228,43 +228,27 @@ module.exports = async (req, res) => {
           }
         }
 
-        // אם יש בעיות - שלח התראה למנהלים
+        // אם יש בעיות - שלח התראה למנהל לפי MANAGER_EMAIL
         if (issues.length > 0 && req.body.status === 'completed') {
           try {
-            // מציאת מנהלים לשליחת התראה
-            const managersSnapshot = await db.collection('users')
-              .where('roles', 'array-contains', 'manager')
-              .get();
+            const managerEmail = process.env.MANAGER_EMAIL;
 
-            const superAdminsSnapshot = await db.collection('users')
-              .where('roles', 'array-contains', 'super_admin')
-              .get();
-
-            const managerEmails = new Set();
-            managersSnapshot.docs.forEach(doc => {
-              const data = doc.data();
-              if (data.email) managerEmails.add(data.email);
-            });
-            superAdminsSnapshot.docs.forEach(doc => {
-              const data = doc.data();
-              if (data.email) managerEmails.add(data.email);
-            });
-
-            console.log(`📧 שליחת התראות ל-${managerEmails.size} מנהלים על בעיות בבקרה`);
-
-            for (const email of managerEmails) {
+            if (managerEmail) {
+              console.log(`📧 שליחת התראה ל-${managerEmail} על בעיות בבקרה`);
               try {
                 await sendCheckIssuesAlert({
-                  managerEmail: email,
+                  managerEmail,
                   riderName: check.riderName || 'לא ידוע',
                   vehiclePlate: check.vehicleLicensePlate || check.vehiclePlate,
                   issues,
                   checkId
                 });
-                console.log(`✅ התראה נשלחה ל-${email}`);
+                console.log(`✅ התראה נשלחה ל-${managerEmail}`);
               } catch (emailErr) {
-                console.error(`❌ שגיאה בשליחת התראה ל-${email}:`, emailErr.message);
+                console.error(`❌ שגיאה בשליחת התראה ל-${managerEmail}:`, emailErr.message);
               }
+            } else {
+              console.log('⚠️ MANAGER_EMAIL לא הוגדר - לא נשלחה התראה');
             }
           } catch (alertError) {
             console.error('❌ שגיאה בשליחת התראות למנהלים:', alertError.message);
