@@ -87,6 +87,8 @@ class VehicleModel {
     try {
       let vehicles = [];
       const upperSearch = searchTerm.toUpperCase();
+      // גרסה מנורמלת ללא קווים (לחיפוש כשהמשתמש מקליד ללא קווים)
+      const strippedSearch = upperSearch.replace(/-/g, '');
 
       // חיפוש לפי מספר רישוי
       const plateSnapshot = await this.collection
@@ -115,13 +117,16 @@ class VehicleModel {
         });
       }
 
-      // אם אין תוצאות, חיפוש לפי יצרן/דגם
+      // אם אין תוצאות, חיפוש לפי יצרן/דגם ומספר רישוי מנורמל (ללא קווים)
+      // זה פותר את המצב שהלוחית שמורה עם קווים (317-64-703) והחיפוש בלי קווים (31764703)
       if (vehicles.length === 0) {
-        const allVehicles = await this.getAll(filters, limit);
+        const allVehicles = await this.getAll(filters, 500);
         const lowerSearch = searchTerm.toLowerCase();
         vehicles = allVehicles.filter(v =>
           v.manufacturer?.toLowerCase().includes(lowerSearch) ||
-          v.model?.toLowerCase().includes(lowerSearch)
+          v.model?.toLowerCase().includes(lowerSearch) ||
+          (strippedSearch.length >= 2 &&
+            v.licensePlate?.replace(/-/g, '').toUpperCase().startsWith(strippedSearch))
         );
       }
 
