@@ -152,6 +152,7 @@ async function searchRiders(db, term, limit) {
 async function searchVehicles(db, term, limit) {
   let vehicles = [];
   const upperSearch = term.toUpperCase();
+  const strippedSearch = upperSearch.replace(/-/g, '');
 
   // חיפוש לפי מספר רישוי
   const plateSnap = await db.collection('vehicles')
@@ -175,7 +176,8 @@ async function searchVehicles(db, term, limit) {
     });
   }
 
-  // חיפוש לפי יצרן/דגם
+  // חיפוש לפי יצרן/דגם ומספר רישוי מנורמל (ללא קווים)
+  // פותר את המצב שהלוחית שמורה עם קווים (305-32-203) והחיפוש בלי קווים (30532203)
   if (vehicles.length === 0) {
     const allSnap = await db.collection('vehicles').limit(500).get();
     const lowerSearch = term.toLowerCase();
@@ -183,7 +185,9 @@ async function searchVehicles(db, term, limit) {
       const data = doc.data();
       if (
         data.manufacturer?.toLowerCase().includes(lowerSearch) ||
-        data.model?.toLowerCase().includes(lowerSearch)
+        data.model?.toLowerCase().includes(lowerSearch) ||
+        (strippedSearch.length >= 2 &&
+          data.licensePlate?.replace(/-/g, '').toUpperCase().includes(strippedSearch))
       ) {
         vehicles.push({ id: doc.id, ...data });
       }

@@ -1216,8 +1216,11 @@ module.exports = async (req, res) => {
       let vehicles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
       const searchLower = search.toLowerCase();
+      const searchStripped = searchLower.replace(/-/g, '');
       vehicles = vehicles.filter(vehicle =>
         vehicle.licensePlate?.toLowerCase().includes(searchLower) ||
+        (searchStripped.length >= 2 &&
+          vehicle.licensePlate?.replace(/-/g, '').toLowerCase().includes(searchStripped)) ||
         vehicle.internalNumber?.toLowerCase().includes(searchLower) ||
         vehicle.manufacturer?.toLowerCase().includes(searchLower) ||
         vehicle.model?.toLowerCase().includes(searchLower)
