@@ -59,6 +59,68 @@ const entityTypeMap = {
   email:           'מייל',
 };
 
+// תרגום ערכים לעברית
+const valueMap = {
+  // סטטוסים כלליים
+  active:              'פעיל',
+  inactive:            'לא פעיל',
+  pending:             'ממתין',
+  completed:           'הושלם',
+  cancelled:           'בוטל',
+  closed:              'סגור',
+  open:                'פתוח',
+  in_progress:         'בטיפול',
+  // שיוך
+  assigned:            'משויך',
+  unassigned:          'לא משויך',
+  waiting_for_rider:   'ממתין לרוכב',
+  available:           'זמין',
+  // עדיפות / חומרה
+  low:                 'נמוכה',
+  medium:              'בינונית',
+  high:                'גבוהה',
+  urgent:              'דחוף',
+  critical:            'קריטי',
+  // סוגי כלי
+  motorcycle:          'אופנוע',
+  scooter:             'קטנוע',
+  electric_scooter:    'קטנוע חשמלי',
+  moped:               'מופד',
+  bicycle:             'אופניים',
+  electric_bicycle:    'אופניים חשמליים',
+  // תפקידים
+  admin:               'מנהל',
+  manager:             'מנהל יחידה',
+  user:                'משתמש',
+  viewer:              'צופה',
+  rider:               'רוכב',
+  // תשלום
+  company:             'חברה',
+  personal:            'אישי',
+  insurance:           'ביטוח',
+  // כן/לא
+  true:                'כן',
+  false:               'לא',
+  yes:                 'כן',
+  no:                  'לא',
+  // תוצאות בקרה
+  pass:                'עבר',
+  fail:                'נכשל',
+  na:                  'לא רלוונטי',
+  // סוגי ביטוח
+  mandatory:           'חובה',
+  comprehensive:       'מקיף',
+  third_party:         'צד שלישי',
+  // תחנה
+  station:             'תחנה',
+  district:            'מחוז',
+  // ביטוח תביעה
+  approved:            'מאושר',
+  rejected:            'נדחה',
+  under_review:        'בבדיקה',
+  paid:                'שולם',
+};
+
 // תרגום שמות שדות לעברית
 const fieldLabelMap = {
   firstName:          'שם פרטי',
@@ -129,18 +191,22 @@ function translateValue(value) {
   if (typeof value === 'boolean') return value ? 'כן' : 'לא';
   if (typeof value === 'object') {
     try {
-      // אם זה אובייקט פשוט עם שדות מוכרים - הצג בצורה קריאה
       const entries = Object.entries(value).filter(([, v]) => v !== null && v !== undefined && v !== '');
       if (entries.length === 0) return '(ריק)';
-      if (entries.length <= 3) {
-        return entries.map(([k, v]) => `${fieldLabelMap[k] || k}: ${String(v)}`).join(', ');
+      if (entries.length <= 4) {
+        return entries.map(([k, v]) => {
+          const label = fieldLabelMap[k] || k;
+          const val = valueMap[String(v)] || String(v);
+          return `${label}: ${val}`;
+        }).join(' | ');
       }
       return JSON.stringify(value);
     } catch {
       return String(value);
     }
   }
-  return String(value);
+  const str = String(value);
+  return valueMap[str] || str;
 }
 
 function ChangesPanel({ changes }) {
