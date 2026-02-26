@@ -140,7 +140,7 @@ module.exports = async (req, res) => {
   // ========== Cron: Expiry Reminders (ללא אימות משתמש) ==========
   if (urlWithoutQuery.includes('cron-reminders')) {
     try {
-      const { db } = initFirebase();
+      const { db, admin } = initFirebase();
       const now = new Date();
       console.log(`[Cron] מתחיל בדיקת תוקף - ${now.toLocaleDateString('he-IL')}`);
 
@@ -192,7 +192,7 @@ module.exports = async (req, res) => {
         }
       }
 
-      const results = { insurance: 0, license: 0 };
+      const results = { insurance: 0, license: 0, checksCreated: 0, monthlyReminders: 0 };
       if (insuranceItems.length > 0) {
         await emailService.sendInsuranceExpiryEmail(insuranceItems);
         results.insurance = insuranceItems.length;
@@ -204,8 +204,130 @@ module.exports = async (req, res) => {
         console.log(`[Cron] מייל טסט/רשיון נשלח - ${licenseItems.length} כלים`);
       }
       if (insuranceItems.length === 0 && licenseItems.length === 0) {
-        console.log('[Cron] אין התראות להיום');
+        console.log('[Cron] אין התראות ביטוח/רשיון להיום');
       }
+
+      // ========== בקרות חודשיות: פתיחה + תזכורות ==========
+      try {
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        monthStart.setHours(0, 0, 0, 0);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        monthEnd.setHours(23, 59, 59, 999);
+
+        // ---- ביום הראשון לחודש: פתיחת בקרות אוטומטית לכל הרוכבים המשויכים ----
+        // forceFirstOfMonth=true מאפשר בדיקה ידנית גם שלא ב-1 לחודש
+        const isFirstOfMonth = now.getDate() === 1 || req.query.forceFirstOfMonth === 'true';
+        if (isFirstOfMonth) {
+          console.log('[Cron] ראשון לחודש - פתיחת בקרות חודשיות אוטומטית');
+
+          // בניית מפת כלים מהנתונים שכבר נשלפו למעלה
+          const vehicleMap = {};
+          vehicles.forEach(v => { vehicleMap[v.id] = v; });
+
+          const assignedRiders = [];
+          ridersSnap.forEach(doc => assignedRiders.push({ id: doc.id, ...doc.data() }));
+
+          // מציאת בקרות שכבר קיימות לחודש זה למניעת כפילות
+          const existingChecksSnap = await db.collection('monthly_checks')
+            .where('checkDate', '>=', admin.firestore.Timestamp.fromDate(monthStart))
+            .where('checkDate', '<=', admin.firestore.Timestamp.fromDate(monthEnd))
+            .get();
+          const existingRiderIds = new Set(existingChecksSnap.docs.map(d => d.data().riderId));
+
+          for (const rider of assignedRiders) {
+            if (existingRiderIds.has(rider.id)) continue; // כבר קיימת בקרה לרוכב זה
+
+            const vehicle = vehicleMap[rider.assignedVehicleId];
+            if (!vehicle) continue; // כלי לא נמצא
+
+            const checkData = {
+              riderId: rider.id,
+              riderName: `${rider.firstName || ''} ${rider.lastName || ''}`.trim(),
+              vehicleId: vehicle.id,
+              vehicleLicensePlate: vehicle.licensePlate,
+              vehiclePlate: vehicle.licensePlate,
+              checkDate: admin.firestore.Timestamp.fromDate(new Date(now.getFullYear(), now.getMonth(), 1)),
+              status: 'pending',
+              checkResults: {},
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              createdBy: 'system-cron',
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedBy: 'system-cron',
+            };
+
+            await db.collection('monthly_checks').add(checkData);
+            results.checksCreated++;
+            console.log(`[Cron] בקרה נפתחה: ${checkData.riderName} - ${vehicle.licensePlate}`);
+          }
+
+          if (results.checksCreated > 0) {
+            console.log(`[Cron] נפתחו ${results.checksCreated} בקרות חודשיות חדשות`);
+          } else {
+            console.log('[Cron] לא נדרשה פתיחת בקרות חדשות (כולן כבר קיימות)');
+          }
+        }
+
+        // ---- שליחת תזכורות לכל הבקרות הממתינות בחודש הנוכחי ----
+        const pendingChecksSnap = await db.collection('monthly_checks')
+          .where('status', '==', 'pending')
+          .get();
+
+        const currentMonthChecks = pendingChecksSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(check => {
+            const checkDate = toDate(check.checkDate);
+            return checkDate && checkDate >= monthStart && checkDate <= monthEnd;
+          });
+
+        console.log(`[Cron] בקרות חודשיות ממתינות לחודש הנוכחי: ${currentMonthChecks.length}`);
+
+        if (currentMonthChecks.length > 0) {
+          const currentMonthName = hebrewMonths[now.getMonth()];
+          const currentYear = now.getFullYear();
+
+          // שליפת מיילים של רוכבים במקביל
+          const riderEmailMap = {};
+          await Promise.all(
+            currentMonthChecks
+              .filter(c => c.riderId)
+              .map(async (check) => {
+                if (riderEmailMap[check.riderId] !== undefined) return;
+                const riderDoc = await db.collection('riders').doc(check.riderId).get();
+                riderEmailMap[check.riderId] = riderDoc.exists ? (riderDoc.data().email || null) : null;
+              })
+          );
+
+          for (const check of currentMonthChecks) {
+            const riderEmail = check.riderId ? riderEmailMap[check.riderId] : null;
+            if (!riderEmail) {
+              console.log(`[Cron] אין מייל לרוכב ${check.riderName} (${check.riderId}), מדלג`);
+              continue;
+            }
+            try {
+              await emailService.sendMonthlyCheckReminder({
+                to: riderEmail,
+                riderName: check.riderName || 'רוכב',
+                vehiclePlate: check.vehicleLicensePlate || check.vehiclePlate || '',
+                monthName: currentMonthName,
+                year: currentYear,
+                checkId: check.id
+              });
+              results.monthlyReminders++;
+              console.log(`[Cron] תזכורת בקרה נשלחה ל-${check.riderName} (${riderEmail})`);
+            } catch (err) {
+              console.error(`[Cron] שגיאה בשליחת תזכורת בקרה ל-${check.riderName}:`, err.message);
+            }
+          }
+
+          if (results.monthlyReminders > 0) {
+            console.log(`[Cron] סה"כ תזכורות בקרה חודשית נשלחו: ${results.monthlyReminders}`);
+          }
+        }
+      } catch (monthlyCheckError) {
+        console.error('[Cron] שגיאה בבקרות חודשיות:', monthlyCheckError.message);
+        // לא עוצרים את הריצה - ממשיכים גם אם זה נכשל
+      }
+
       return res.status(200).json({ success: true, ...results });
     } catch (error) {
       console.error('[Cron] שגיאה:', error);
