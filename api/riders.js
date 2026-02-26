@@ -28,12 +28,6 @@ module.exports = async (req, res) => {
   }
 
   try {
-    console.log('👤 Riders Request:', {
-      method: req.method,
-      url: req.url,
-      hasAuth: !!req.headers.authorization
-    });
-
     const { db } = initFirebase();
 
     // Initialize Google Drive service with Firestore
@@ -108,8 +102,6 @@ module.exports = async (req, res) => {
 
       return new Promise(async (resolve, reject) => {
         try {
-          console.log('Upload rider file request received');
-
           const rawBody = await getRawBody(req, {
             length: req.headers['content-length'],
             limit: '50mb'
@@ -137,7 +129,6 @@ module.exports = async (req, res) => {
             file.on('data', (data) => chunks.push(data));
             file.on('end', () => {
               fileBuffer = Buffer.concat(chunks);
-              console.log('Rider file received, size:', fileBuffer.length);
             });
           });
 
@@ -570,7 +561,6 @@ module.exports = async (req, res) => {
 
     // Extract ID from URL for regular rider operations
     const riderId = extractIdFromUrl(req.url, 'riders');
-    console.log('📍 Rider ID extracted:', riderId);
 
     // Single rider operations (GET/PUT/DELETE /api/riders/[id])
     if (riderId) {
@@ -617,21 +607,11 @@ module.exports = async (req, res) => {
           : null;
         const newAssignmentStatus = req.body.assignmentStatus || 'unassigned';
 
-        console.log('[RIDER UPDATE] Assignment change detection:', {
-          riderId,
-          oldVehicleId,
-          newVehicleId,
-          oldAssignmentStatus,
-          newAssignmentStatus
-        });
-
         // טיפול בשינויי שיוך כלי
         const assignmentChanged = oldAssignmentStatus !== newAssignmentStatus ||
                                  oldVehicleId !== newVehicleId;
 
         if (assignmentChanged) {
-          console.log('[RIDER UPDATE] Assignment changed - updating vehicles');
-
           // אם היה כלי ישן משויך - בטל את השיוך שלו
           if (oldVehicleId && oldAssignmentStatus === 'assigned') {
             try {
@@ -645,7 +625,6 @@ module.exports = async (req, res) => {
                   updatedAt: new Date(),
                   updatedBy: user.id
                 });
-                console.log('[RIDER UPDATE] Unassigned old vehicle:', oldVehicleId);
               }
             } catch (err) {
               console.error('[RIDER UPDATE] Error unassigning old vehicle:', err);
@@ -681,7 +660,6 @@ module.exports = async (req, res) => {
                 updatedAt: new Date(),
                 updatedBy: user.id
               });
-              console.log('[RIDER UPDATE] Assigned new vehicle:', newVehicleId);
             } catch (err) {
               console.error('[RIDER UPDATE] Error assigning new vehicle:', err);
               return res.status(500).json({
@@ -704,8 +682,6 @@ module.exports = async (req, res) => {
 
         await riderRef.update(updateData);
         const updatedDoc = await riderRef.get();
-
-        console.log('[RIDER UPDATE] Rider updated successfully:', riderId);
 
         const updatedData = updatedDoc.data();
         const riderDiff = buildChanges(currentRiderData, req.body);
@@ -863,8 +839,6 @@ module.exports = async (req, res) => {
       const riderRef = await db.collection('riders').add(riderData);
       const newRiderId = riderRef.id;
 
-      console.log('[RIDER CREATE] New rider created:', newRiderId);
-
       // אם הרוכב החדש צריך להיות משויך לכלי - שייך אותו
       // נורמליזציה: מחרוזת ריקה או undefined הופכים ל-null
       const vehicleId = (req.body.assignedVehicleId && req.body.assignedVehicleId !== '')
@@ -873,8 +847,6 @@ module.exports = async (req, res) => {
       const assignmentStatus = req.body.assignmentStatus || 'unassigned';
 
       if (assignmentStatus === 'assigned' && vehicleId) {
-        console.log('[RIDER CREATE] Assigning vehicle to new rider:', vehicleId);
-
         try {
           const vehicleRef = db.collection('vehicles').doc(vehicleId);
           const vehicleDoc = await vehicleRef.get();
@@ -885,7 +857,6 @@ module.exports = async (req, res) => {
               assignmentStatus: 'unassigned',
               assignedVehicleId: null
             });
-            console.warn('[RIDER CREATE] Vehicle not found, rider set to unassigned');
           } else {
             const vehicleData = vehicleDoc.data();
 
@@ -895,7 +866,6 @@ module.exports = async (req, res) => {
                 assignmentStatus: 'unassigned',
                 assignedVehicleId: null
               });
-              console.warn('[RIDER CREATE] Vehicle already assigned to another rider');
             } else {
               // שיוך הכלי לרוכב החדש
               await vehicleRef.update({
@@ -904,7 +874,6 @@ module.exports = async (req, res) => {
                 updatedAt: new Date(),
                 updatedBy: user.id
               });
-              console.log('[RIDER CREATE] Vehicle assigned successfully');
             }
           }
         } catch (err) {
@@ -933,11 +902,6 @@ module.exports = async (req, res) => {
         rider: { id: riderRef.id, ...riderDoc.data() }
       });
     }
-
-    console.error('❌ Riders: Method not allowed:', {
-      method: req.method,
-      url: req.url
-    });
 
     return res.status(405).json({
       success: false,

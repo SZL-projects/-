@@ -6,8 +6,12 @@ try {
   console.error('Failed to require nodemailer:', e);
 }
 
-// יצירת transporter
-const createTransporter = () => {
+// Singleton transporter - נוצר פעם אחת בלבד
+let _transporter = null;
+
+const getTransporter = () => {
+  if (_transporter) return _transporter;
+
   const transportConfig = {
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT),
@@ -16,7 +20,6 @@ const createTransporter = () => {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
-    // הגדרות נוספות עבור Vercel Serverless
     tls: {
       rejectUnauthorized: false,
     },
@@ -24,39 +27,32 @@ const createTransporter = () => {
     greetingTimeout: 15000,
     socketTimeout: 15000,
     family: 4,
-    logger: true,
-    debug: true
   };
 
-  // Try direct require of nodemailer's createTransport
   try {
     const { createTransport } = require('nodemailer');
     if (typeof createTransport === 'function') {
-      console.log('✅ Using createTransport from direct destructure');
-      return createTransport(transportConfig);
+      _transporter = createTransport(transportConfig);
+      return _transporter;
     }
-  } catch (e) {
-    console.log('❌ Direct destructure failed:', e.message);
-  }
+  } catch (e) { /* fallthrough */ }
 
-  // Try nodemailer.createTransport (note: createTransport, not createTransporter)
   if (nodemailer && typeof nodemailer.createTransport === 'function') {
-    console.log('✅ Using nodemailer.createTransport');
-    return nodemailer.createTransport(transportConfig);
+    _transporter = nodemailer.createTransport(transportConfig);
+    return _transporter;
   }
 
-  // Try nodemailer.default.createTransport
   if (nodemailer?.default && typeof nodemailer.default.createTransport === 'function') {
-    console.log('✅ Using nodemailer.default.createTransport');
-    return nodemailer.default.createTransport(transportConfig);
+    _transporter = nodemailer.default.createTransport(transportConfig);
+    return _transporter;
   }
 
-  throw new Error('❌ Cannot find createTransport in nodemailer module. Available keys: ' + Object.keys(nodemailer || {}).join(', '));
+  throw new Error('Cannot find createTransport in nodemailer module. Available keys: ' + Object.keys(nodemailer || {}).join(', '));
 };
 
 // שליחת מייל כללי
 exports.sendEmail = async (options) => {
-  const transporter = createTransporter();
+  const transporter = getTransporter();
 
   const message = {
     from: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`,
@@ -67,7 +63,6 @@ exports.sendEmail = async (options) => {
 
   try {
     const info = await transporter.sendMail(message);
-    console.log('📧 Email sent successfully:', info.messageId);
 
     // רישום שליחת מייל בלוג (fire-and-forget)
     try {

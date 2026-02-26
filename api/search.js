@@ -131,9 +131,37 @@ async function searchRiders(db, term, limit) {
     });
   }
 
-  // חיפוש לפי שם
+  // חיפוש לפי שם פרטי
   if (riders.length === 0) {
-    const allSnap = await db.collection('riders').limit(500).get();
+    const firstNameSnap = await db.collection('riders')
+      .where('firstName', '>=', term)
+      .where('firstName', '<=', term + '\uf8ff')
+      .limit(limit)
+      .get();
+    firstNameSnap.forEach(doc => {
+      if (!riders.find(r => r.id === doc.id)) {
+        riders.push({ id: doc.id, ...doc.data() });
+      }
+    });
+  }
+
+  // חיפוש לפי שם משפחה
+  if (riders.length === 0) {
+    const lastNameSnap = await db.collection('riders')
+      .where('lastName', '>=', term)
+      .where('lastName', '<=', term + '\uf8ff')
+      .limit(limit)
+      .get();
+    lastNameSnap.forEach(doc => {
+      if (!riders.find(r => r.id === doc.id)) {
+        riders.push({ id: doc.id, ...doc.data() });
+      }
+    });
+  }
+
+  // fallback כללי עם limit מצומצם
+  if (riders.length === 0) {
+    const allSnap = await db.collection('riders').limit(100).get();
     const lowerSearch = term.toLowerCase();
     allSnap.forEach(doc => {
       const data = doc.data();
@@ -177,9 +205,8 @@ async function searchVehicles(db, term, limit) {
   }
 
   // חיפוש לפי יצרן/דגם ומספר רישוי מנורמל (ללא קווים)
-  // פותר את המצב שהלוחית שמורה עם קווים (305-32-203) והחיפוש בלי קווים (30532203)
   if (vehicles.length === 0) {
-    const allSnap = await db.collection('vehicles').limit(500).get();
+    const allSnap = await db.collection('vehicles').limit(100).get();
     const lowerSearch = term.toLowerCase();
     allSnap.forEach(doc => {
       const data = doc.data();
@@ -198,7 +225,7 @@ async function searchVehicles(db, term, limit) {
 }
 
 async function searchCollection(db, collectionName, fields, term, limit) {
-  const allSnap = await db.collection(collectionName).limit(1000).get();
+  const allSnap = await db.collection(collectionName).limit(200).get();
   const searchLower = term.toLowerCase();
   const results = [];
 

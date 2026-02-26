@@ -81,21 +81,28 @@ async function handleGaragesRequest(req, res, db, user, url) {
 
     const { maintenanceType } = req.query;
 
-    const garagesSnapshot = await db.collection('garages').get();
+    const [garagesSnapshot, maintenanceSnapshot] = await Promise.all([
+      db.collection('garages').get(),
+      (() => {
+        let q = db.collection('maintenance').where('status', '==', 'completed');
+        if (maintenanceType) q = q.where('maintenanceType', '==', maintenanceType);
+        return q.get();
+      })()
+    ]);
+
     const garages = garagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    const garagesWithPrices = await Promise.all(garages.map(async (garage) => {
-      let maintenanceQuery = db.collection('maintenance')
-        .where('garageId', '==', garage.id)
-        .where('status', '==', 'completed');
+    // בניית מפה של טיפולים לפי garageId - שאילתה אחת במקום N שאילתות
+    const maintenanceByGarage = {};
+    maintenanceSnapshot.forEach(doc => {
+      const m = doc.data();
+      if (!m.garageId) return;
+      if (!maintenanceByGarage[m.garageId]) maintenanceByGarage[m.garageId] = [];
+      maintenanceByGarage[m.garageId].push(m);
+    });
 
-      if (maintenanceType) {
-        maintenanceQuery = maintenanceQuery.where('maintenanceType', '==', maintenanceType);
-      }
-
-      const maintenanceSnapshot = await maintenanceQuery.get();
-      const maintenances = maintenanceSnapshot.docs.map(doc => doc.data());
-
+    const garagesWithPrices = garages.map(garage => {
+      const maintenances = maintenanceByGarage[garage.id] || [];
       const prices = maintenances
         .filter(m => m.costs?.totalCost)
         .map(m => m.costs.totalCost);
@@ -113,7 +120,7 @@ async function handleGaragesRequest(req, res, db, user, url) {
         minPrice: prices.length > 0 ? Math.min(...prices) : null,
         maxPrice: prices.length > 0 ? Math.max(...prices) : null
       };
-    }));
+    });
 
     const sortedGarages = garagesWithPrices
       .filter(g => g.averagePrice !== null)
@@ -675,8 +682,6 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
   if (url.endsWith('/upload-file') && req.method === 'POST') {
     return new Promise(async (resolve, reject) => {
       try {
-        console.log('Upload maintenance file request received');
-
         const rawBody = await getRawBody(req, {
           length: req.headers['content-length'],
           limit: '10mb'
@@ -916,12 +921,10 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
       // מחיקת קבצים מ-Google Drive לפני מחיקת הטיפול
       const maintenanceData = doc.data();
       if (maintenanceData.documents && maintenanceData.documents.length > 0) {
-        console.log(`Deleting ${maintenanceData.documents.length} files from Drive for maintenance ${maintenanceId}`);
         for (const document of maintenanceData.documents) {
           if (document.fileId) {
             try {
               await googleDriveService.deleteFile(document.fileId);
-              console.log(`Deleted file ${document.fileId} from Drive`);
             } catch (deleteErr) {
               console.error(`Error deleting file ${document.fileId} from Drive:`, deleteErr.message);
               // ממשיכים למחוק את שאר הקבצים גם אם אחד נכשל

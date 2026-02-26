@@ -9,18 +9,21 @@ const { setCorsHeaders } = require('./_utils/cors');
 const { writeAuditLog, buildChanges } = require('./_utils/auditLog');
 
 // Helper: enrich vehicles with assigned rider name
+// מבצע שאילתה רק על רוכבים משויכים במקום כל האוסף
 async function enrichVehiclesWithRiderNames(db, vehicles) {
   if (!vehicles || vehicles.length === 0) return vehicles;
   try {
-    const ridersSnapshot = await db.collection('riders').get();
+    const ridersSnapshot = await db.collection('riders')
+      .where('assignmentStatus', '==', 'assigned')
+      .get();
     const vehicleRiderMap = {};
     ridersSnapshot.forEach(doc => {
-      const rider = { id: doc.id, ...doc.data() };
+      const rider = doc.data();
       const vehicleId = rider.assignedVehicleId || rider.assignedVehicle || null;
-      if (vehicleId && rider.assignmentStatus === 'assigned') {
+      if (vehicleId) {
         vehicleRiderMap[vehicleId] = {
           name: `${rider.firstName || ''} ${rider.lastName || ''}`.trim(),
-          riderId: rider.id,
+          riderId: doc.id,
         };
       }
     });
@@ -460,16 +463,11 @@ module.exports = async (req, res) => {
     if (url.endsWith('/upload-file') && req.method === 'POST') {
       return new Promise(async (resolve, reject) => {
         try {
-          console.log('Upload file request received');
-          console.log('Headers:', req.headers);
-
           // Get raw body first
           const rawBody = await getRawBody(req, {
             length: req.headers['content-length'],
             limit: '10mb'
           });
-
-          console.log('Raw body received, size:', rawBody.length);
 
           // Convert buffer to stream
           const bufferStream = Readable.from(rawBody);
@@ -483,16 +481,12 @@ module.exports = async (req, res) => {
           let fileReceived = false;
 
           busboy.on('file', (fieldname, file, info) => {
-            console.log('Busboy file event:', { fieldname, info });
             // תיקון קידוד תווים עבריים - busboy מקבל latin1 במקום utf8
             try {
-              // המר מ-latin1 ל-utf8
               fileName = Buffer.from(info.filename, 'latin1').toString('utf8');
             } catch (e) {
               fileName = info.filename;
             }
-            console.log('Original filename:', info.filename);
-            console.log('Fixed filename:', fileName);
             mimeType = info.mimeType;
             fileReceived = true;
 
@@ -504,7 +498,6 @@ module.exports = async (req, res) => {
 
             file.on('end', () => {
               fileBuffer = Buffer.concat(chunks);
-              console.log('File received, size:', fileBuffer.length);
             });
 
             file.on('error', (err) => {
@@ -513,7 +506,6 @@ module.exports = async (req, res) => {
           });
 
           busboy.on('field', (fieldname, value) => {
-            console.log('Busboy field event:', { fieldname, value });
             if (fieldname === 'folderId') {
               folderId = value;
             }
@@ -521,7 +513,6 @@ module.exports = async (req, res) => {
 
           busboy.on('finish', async () => {
             try {
-              console.log('Busboy finish event', { fileName, folderId, fileBufferSize: fileBuffer?.length });
 
               if (!fileReceived || !fileBuffer) {
                 res.status(400).json({
@@ -588,8 +579,6 @@ module.exports = async (req, res) => {
     if (url.endsWith('/list-files') && req.method === 'GET') {
       const { folderId, vehicleId, viewAsRider } = req.query;
 
-      console.log('📁 List files request:', { folderId, vehicleId, viewAsRider, userId: user.id, userRoles: user.roles || user.role });
-
       if (!folderId) {
         return res.status(400).json({
           success: false,
@@ -598,13 +587,10 @@ module.exports = async (req, res) => {
       }
 
       const files = await googleDriveService.listFiles(folderId);
-      console.log('📄 Files from Drive:', files.length);
 
       // בדיקת הרשאות משתמש
       const permLevel = await checkPermission(user, db, 'vehicles', 'view');
       const isFullAccess = permLevel !== 'self';
-
-      console.log('👤 User check:', { permLevel, isFullAccess, viewAsRider });
 
       // טעינת הגדרות נראות מ-Firestore
       let fileSettings = {};
@@ -626,9 +612,7 @@ module.exports = async (req, res) => {
 
       // אם viewAsRider=true - רוכב רואה רק קבצים גלויים (מסונן)
       if (viewAsRider === 'true') {
-        console.log('🔵 Rider view mode - filtering hidden files');
         const visibleFiles = filesWithMetadata.filter(f => f.visibleToRider !== false);
-        console.log('✅ Returning', visibleFiles.length, 'visible files for rider (filtered from', files.length, ')');
         return res.json({
           success: true,
           files: visibleFiles
@@ -639,9 +623,6 @@ module.exports = async (req, res) => {
       const filteredFiles = isFullAccess
         ? filesWithMetadata
         : filesWithMetadata.filter(f => f.visibleToRider);
-
-      console.log('✅ Files after filter:', filteredFiles.length);
-      console.log('📋 Sample file visibility:', filteredFiles.slice(0, 2).map(f => ({ name: f.name, visibleToRider: f.visibleToRider })));
 
       return res.json({
         success: true,
@@ -782,8 +763,6 @@ module.exports = async (req, res) => {
       const ridersSnapshot = await db.collection('riders').get();
       const riders = ridersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      console.log(`Refreshing Drive folders for ${vehicles.length} vehicles and ${riders.length} riders`);
-
       const results = await googleDriveService.refreshDriveFolders(vehicles, riders);
 
       // עדכון נתוני התיקיות בכלים שנוצרו להם תיקיות חדשות
@@ -896,7 +875,6 @@ module.exports = async (req, res) => {
 
       // בדיקה אם הכלי כבר משויך לאותו הרוכב - החזר הצלחה (idempotent)
       if (vehicle.assignedTo === riderId) {
-        console.log('[ASSIGN] Vehicle already assigned to this rider - returning success');
         return res.json({
           success: true,
           message: 'הכלי כבר משויך לרוכב זה',
@@ -943,16 +921,13 @@ module.exports = async (req, res) => {
 
     // POST /api/vehicles/:id/unassign - ביטול שיוך כלי מרוכב
     if (url.match(/\/[\w-]+\/unassign$/) && req.method === 'POST') {
-      console.log('[UNASSIGN] Request received - URL:', url);
       await checkPermission(user, db, 'vehicles', 'edit');
 
       // Extract vehicleId from URL like /api/vehicles/abc123/unassign or /vehicles/abc123/unassign
       const match = url.match(/\/vehicles\/([^/]+)\/unassign$/);
       const vehicleId = match ? match[1] : null;
-      console.log('[UNASSIGN] Extracted vehicleId:', vehicleId);
 
       if (!vehicleId) {
-        console.log('[UNASSIGN] ERROR: No vehicleId found in URL');
         return res.status(400).json({
           success: false,
           message: 'מזהה כלי חסר מה-URL'
@@ -962,7 +937,6 @@ module.exports = async (req, res) => {
       // בדיקה שהכלי קיים
       const vehicleDoc = await db.collection('vehicles').doc(vehicleId).get();
       if (!vehicleDoc.exists) {
-        console.log('[UNASSIGN] ERROR: Vehicle not found');
         return res.status(404).json({
           success: false,
           message: 'כלי לא נמצא'
@@ -970,11 +944,9 @@ module.exports = async (req, res) => {
       }
 
       const vehicle = { id: vehicleDoc.id, ...vehicleDoc.data() };
-      console.log('[UNASSIGN] Vehicle found - assignedTo:', vehicle.assignedTo);
 
       // אם הכלי כבר לא משויך - החזר הצלחה (idempotent operation)
       if (!vehicle.assignedTo) {
-        console.log('[UNASSIGN] Vehicle already unassigned - returning success');
         return res.json({
           success: true,
           message: 'הכלי כבר לא משויך',
@@ -983,7 +955,6 @@ module.exports = async (req, res) => {
       }
 
       const riderId = vehicle.assignedTo;
-      console.log('[UNASSIGN] Proceeding to unassign from rider:', riderId);
 
       // עדכון הכלי - הסרת שיוך
       await db.collection('vehicles').doc(vehicleId).update({
@@ -998,19 +969,15 @@ module.exports = async (req, res) => {
       // עדכון הרוכב - הסרת שיוך (שימוש בשני שמות השדות לתמיכה מלאה)
       const riderDoc = await db.collection('riders').doc(riderId).get();
       if (riderDoc.exists) {
-        console.log('[UNASSIGN] Updating rider:', riderId, 'setting assignedVehicle=null, assignedVehicleId=null');
         const updateData = {
           assignedVehicle: null,
-          assignedVehicleId: null, // שדה נוסף שה-frontend משתמש בו
+          assignedVehicleId: null,
           assignmentStatus: 'unassigned',
           assignedAt: null,
           updatedAt: new Date(),
           updatedBy: user.id
         };
         await db.collection('riders').doc(riderId).update(updateData);
-        console.log('[UNASSIGN] Rider updated successfully with:', updateData);
-      } else {
-        console.log('[UNASSIGN] WARNING: Rider doc not found:', riderId);
       }
 
       const updatedVehicle = await db.collection('vehicles').doc(vehicleId).get();

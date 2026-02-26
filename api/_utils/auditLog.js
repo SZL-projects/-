@@ -31,52 +31,43 @@ function buildChanges(before, after) {
 }
 
 /**
- * כתיבת רשומה ללוג פעילות ב-Firestore
- * תומך עכשיו ב: changes (ישן/חדש), metadata
+ * כתיבת רשומה ללוג פעילות ב-Firestore (fire-and-forget - לא חוסם את הבקשה)
  */
-async function writeAuditLog(db, user, { action, entityType, entityId, entityName, changes, description, metadata }) {
-  try {
-    await db.collection('audit_logs').add({
-      userId: user?.id || user?._id || null,
-      userName: user
-        ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'משתמש'
-        : 'מערכת',
-      action,
-      entityType,
-      entityId: entityId || null,
-      entityName: entityName || null,
-      changes: changes || null,
-      description: description || null,
-      metadata: metadata || null,
-      timestamp: new Date(),
-      createdAt: new Date(),
-    });
-  } catch (err) {
-    console.error('Audit log write error:', err.message);
-  }
+function writeAuditLog(db, user, { action, entityType, entityId, entityName, changes, description, metadata }) {
+  db.collection('audit_logs').add({
+    userId: user?.id || user?._id || null,
+    userName: user
+      ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'משתמש'
+      : 'מערכת',
+    action,
+    entityType,
+    entityId: entityId || null,
+    entityName: entityName || null,
+    changes: changes || null,
+    description: description || null,
+    metadata: metadata || null,
+    timestamp: new Date(),
+    createdAt: new Date(),
+  }).catch(err => console.error('Audit log write error:', err.message));
 }
 
 /**
- * רישום לוג ללא user object (לפעולות מערכת / שליחת מיילים)
+ * רישום לוג ללא user object (לפעולות מערכת / שליחת מיילים) - fire-and-forget
  */
-async function writeSystemAuditLog(db, { action, entityType, entityId, entityName, changes, description, metadata }) {
-  try {
-    await db.collection('audit_logs').add({
-      userId: null,
-      userName: 'מערכת',
-      action,
-      entityType,
-      entityId: entityId || null,
-      entityName: entityName || null,
-      changes: changes || null,
-      description: description || null,
-      metadata: metadata || null,
-      timestamp: new Date(),
-      createdAt: new Date(),
-    });
-  } catch (err) {
-    console.error('System audit log write error:', err.message);
-  }
+function writeSystemAuditLog(db, { action, entityType, entityId, entityName, changes, description, metadata }) {
+  db.collection('audit_logs').add({
+    userId: null,
+    userName: 'מערכת',
+    action,
+    entityType,
+    entityId: entityId || null,
+    entityName: entityName || null,
+    changes: changes || null,
+    description: description || null,
+    metadata: metadata || null,
+    timestamp: new Date(),
+    createdAt: new Date(),
+  }).catch(err => console.error('System audit log write error:', err.message));
 }
 
 module.exports = { writeAuditLog, writeSystemAuditLog, buildChanges };

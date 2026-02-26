@@ -39,17 +39,8 @@ module.exports = async (req, res) => {
       path = rawPath.startsWith('/') ? rawPath : '/' + rawPath;
     }
 
-    console.log('🔐 Auth Request:', {
-      path,
-      method: req.method,
-      fullUrl: req.url,
-      hasBody: !!req.body,
-      bodyKeys: req.body ? Object.keys(req.body) : []
-    });
-
     // POST /api/auth/login
     if (path === '/login' && req.method === 'POST') {
-      console.log('📝 Login attempt for username:', req.body?.username);
       const { username, password } = req.body;
 
       if (!username || !password) {
@@ -67,7 +58,6 @@ module.exports = async (req, res) => {
 
       // אם לא נמצא לפי שם משתמש, ננסה לפי אימייל
       if (usersSnapshot.empty) {
-        console.log('📝 Username not found, trying email lookup:', username.toLowerCase());
         usersSnapshot = await db.collection('users')
           .where('email', '==', username.toLowerCase())
           .limit(1)
@@ -75,7 +65,6 @@ module.exports = async (req, res) => {
       }
 
       if (usersSnapshot.empty) {
-        console.log('❌ User not found by username or email:', username);
         return res.status(401).json({
           success: false,
           message: 'שם משתמש או סיסמה שגויים'
@@ -180,7 +169,6 @@ module.exports = async (req, res) => {
 
     // POST /api/auth/forgot-password
     if (path === '/forgot-password' && req.method === 'POST') {
-      console.log('📧 Forgot password request for:', req.body?.email);
       const { email } = req.body;
 
       if (!email) {
@@ -213,8 +201,6 @@ module.exports = async (req, res) => {
         resetPasswordExpiry: resetTokenExpiry
       });
 
-      console.log('✅ Reset token created for user:', userId);
-
       try {
         const userData = userDoc.data();
         await sendPasswordResetEmail(
@@ -225,7 +211,6 @@ module.exports = async (req, res) => {
           },
           resetToken
         );
-        console.log('✅ Password reset email sent successfully to:', userData.email);
       } catch (emailError) {
         console.error('❌ Failed to send password reset email:', emailError);
       }
@@ -239,8 +224,6 @@ module.exports = async (req, res) => {
     // PUT /api/auth/reset-password/:token
     if (path.startsWith('/reset-password/') && req.method === 'PUT') {
       const token = path.split('/reset-password/')[1];
-      console.log('🔄 Reset password request with token:', token?.substring(0, 10) + '...');
-
       const { password } = req.body;
 
       if (!password) {
@@ -286,12 +269,6 @@ module.exports = async (req, res) => {
         }
       }
 
-      console.log('🕐 Token expiry check:', {
-        now: now.toISOString(),
-        expiry: expiryDate ? expiryDate.toISOString() : 'N/A',
-        isExpired: !expiryDate || expiryDate < now
-      });
-
       if (!expiryDate || expiryDate < now) {
         return res.status(400).json({
           success: false,
@@ -308,8 +285,6 @@ module.exports = async (req, res) => {
         resetPasswordExpiry: null,
         updatedAt: new Date()
       });
-
-      console.log('✅ Password reset successful for user:', userId);
 
       return res.status(200).json({
         success: true,
@@ -372,8 +347,6 @@ module.exports = async (req, res) => {
         mustChangePassword: false,
         updatedAt: new Date()
       });
-
-      console.log('✅ Password changed successfully for user:', authUser.id);
 
       return res.status(200).json({
         success: true,

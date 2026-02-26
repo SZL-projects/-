@@ -25,20 +25,11 @@ module.exports = async (req, res) => {
   }
 
   try {
-    console.log('📋 Monthly Checks Request [v3 - Debug Send Notification]:', {
-      method: req.method,
-      url: req.url,
-      hasAuth: !!req.headers.authorization,
-      fullUrl: req.url,
-      isSendNotification: req.url.includes('/send-notification')
-    });
-
     const { db, admin } = initFirebase();
     const user = await authenticateToken(req, db);
 
     // Extract ID from URL
     const checkId = extractIdFromUrl(req.url, 'monthly-checks');
-    console.log('📍 Check ID extracted:', checkId, 'from URL:', req.url);
 
     // Single check operations (GET/PUT/DELETE /api/monthly-checks/[id])
     if (checkId) {
@@ -89,19 +80,8 @@ module.exports = async (req, res) => {
         const monthName = monthNames[checkDate.getMonth()];
         const year = checkDate.getFullYear();
 
-        console.log('📧 [SEND NOTIFICATION] Attempting to send email:', {
-          riderEmail,
-          riderName,
-          checkId,
-          vehiclePlate: check.vehicleLicensePlate || check.vehiclePlate,
-          monthName,
-          year
-        });
-
         if (riderEmail) {
           try {
-            console.log('📧 [SEND NOTIFICATION] Calling sendMonthlyCheckReminder via SMTP...');
-
             await sendMonthlyCheckReminder({
               to: riderEmail,
               riderName,
@@ -110,21 +90,11 @@ module.exports = async (req, res) => {
               year,
               checkId
             });
-
             emailSent = true;
-            console.log(`✅ [SEND NOTIFICATION] Email sent successfully to ${riderName} (${riderEmail})`);
           } catch (err) {
             emailError = err.message;
-            console.error('❌ [SEND NOTIFICATION] Error sending email:', {
-              error: err.message,
-              stack: err.stack,
-              riderEmail,
-              riderName
-            });
-            // ממשיכים גם אם המייל נכשל - לפחות נעדכן את הרשומה
+            console.error('Error sending monthly check reminder:', err.message);
           }
-        } else {
-          console.log(`⚠️ [SEND NOTIFICATION] No email found for rider ${riderName}`);
         }
 
         // עדכון תאריך שליחת הודעה אחרונה
@@ -198,7 +168,7 @@ module.exports = async (req, res) => {
         // קביעת סטטוס - אם יש בעיות, סמן כ-issues
         let finalStatus = req.body.status;
         if (req.body.status === 'completed' && issues.length > 0) {
-          finalStatus = 'issues'; // סטטוס חדש לבקרה עם בעיות
+          finalStatus = 'issues';
         }
 
         const updateData = {
@@ -221,9 +191,8 @@ module.exports = async (req, res) => {
                 lastKilometerUpdate: admin.firestore.FieldValue.serverTimestamp(),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp()
               });
-              console.log(`✅ קילומטרז עודכן לכלי ${check.vehicleId}: ${req.body.currentKm} ק"מ`);
             } catch (kmError) {
-              console.error('❌ שגיאה בעדכון קילומטרז:', kmError.message);
+              console.error('Error updating vehicle kilometers:', kmError.message);
             }
           }
         }
@@ -232,9 +201,7 @@ module.exports = async (req, res) => {
         if (issues.length > 0 && req.body.status === 'completed') {
           try {
             const managerEmail = process.env.MANAGER_EMAIL;
-
             if (managerEmail) {
-              console.log(`📧 שליחת התראה ל-${managerEmail} על בעיות בבקרה`);
               try {
                 await sendCheckIssuesAlert({
                   managerEmail,
@@ -243,21 +210,18 @@ module.exports = async (req, res) => {
                   issues,
                   checkId
                 });
-                console.log(`✅ התראה נשלחה ל-${managerEmail}`);
               } catch (emailErr) {
-                console.error(`❌ שגיאה בשליחת התראה ל-${managerEmail}:`, emailErr.message);
+                console.error('Error sending check issues alert:', emailErr.message);
               }
-            } else {
-              console.log('⚠️ MANAGER_EMAIL לא הוגדר - לא נשלחה התראה');
             }
           } catch (alertError) {
-            console.error('❌ שגיאה בשליחת התראות למנהלים:', alertError.message);
+            console.error('Error in check issues alert flow:', alertError.message);
           }
         }
 
         const updatedDoc = await checkRef.get();
 
-        await writeAuditLog(db, user, { action: 'update', entityType: 'monthly_check', entityId: checkId, entityName: 'בקרה חודשית', description: 'בקרה חודשית עודכנה' });
+        writeAuditLog(db, user, { action: 'update', entityType: 'monthly_check', entityId: checkId, entityName: 'בקרה חודשית', description: 'בקרה חודשית עודכנה' });
         return res.status(200).json({
           success: true,
           message: issues.length > 0
@@ -274,7 +238,7 @@ module.exports = async (req, res) => {
         await checkPermission(user, db, 'monthly_checks', 'edit');
 
         await checkRef.delete();
-        await writeAuditLog(db, user, { action: 'delete', entityType: 'monthly_check', entityId: checkId, entityName: 'בקרה חודשית', description: 'בקרה חודשית נמחקה' });
+        writeAuditLog(db, user, { action: 'delete', entityType: 'monthly_check', entityId: checkId, entityName: 'בקרה חודשית', description: 'בקרה חודשית נמחקה' });
 
         return res.status(200).json({
           success: true,
@@ -289,19 +253,14 @@ module.exports = async (req, res) => {
       const { search, status, vehicleId, riderId, limit = 100 } = req.query;
       const limitNum = Math.min(parseInt(limit), 500);
 
-      console.log('📋 [GET CHECKS] Query params:', { search, status, vehicleId, riderId, limit: limitNum });
-
       let query = db.collection('monthly_checks');
 
       // סינונים - רק אחד בכל פעם כדי להימנע מבעיות אינדקס
       if (riderId) {
-        console.log('📋 [GET CHECKS] Filtering by riderId:', riderId);
         query = query.where('riderId', '==', riderId);
       } else if (vehicleId) {
-        console.log('📋 [GET CHECKS] Filtering by vehicleId:', vehicleId);
         query = query.where('vehicleId', '==', vehicleId);
       } else if (status) {
-        console.log('📋 [GET CHECKS] Filtering by status:', status);
         query = query.where('status', '==', status);
       }
 
@@ -310,14 +269,12 @@ module.exports = async (req, res) => {
 
       // אם לא הוגדר riderId וההרשאה היא self - סנן לפי riderId שלו
       if (!riderId && permLevel === 'self' && user.riderId) {
-        console.log('📋 [GET CHECKS] Rider filtering by own riderId:', user.riderId);
         query = db.collection('monthly_checks').where('riderId', '==', user.riderId);
       }
 
       query = query.limit(limitNum);
 
       const snapshot = await query.get();
-      console.log('📋 [GET CHECKS] Found', snapshot.docs.length, 'checks');
 
       let checks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
@@ -354,56 +311,37 @@ module.exports = async (req, res) => {
         const createdChecks = [];
         const errors = [];
 
-        console.log('📝 [CREATE CHECKS] Starting bulk creation:', {
-          riderCount: riderIds.length,
-          riderIds,
-          month,
-          year
-        });
-
         // פתיחת בקרות לכל הרוכבים הנבחרים
         for (const riderId of riderIds) {
           try {
-            console.log(`📝 [CREATE CHECKS] Processing rider: ${riderId}`);
-
             // מציאת הרוכב
             const riderDoc = await db.collection('riders').doc(riderId).get();
             if (!riderDoc.exists) {
-              console.log(`❌ [CREATE CHECKS] Rider not found: ${riderId}`);
               errors.push({ riderId, error: 'רוכב לא נמצא' });
               continue;
             }
             const rider = { id: riderDoc.id, ...riderDoc.data() };
-            console.log(`✅ [CREATE CHECKS] Rider found: ${rider.firstName} ${rider.lastName}`);
 
             // מציאת הכלי המשויך
-            console.log(`🔍 [CREATE CHECKS] Looking for vehicle assigned to: ${riderId}`);
             const vehiclesSnapshot = await db.collection('vehicles')
               .where('assignedTo', '==', riderId)
               .limit(1)
               .get();
 
             if (vehiclesSnapshot.empty) {
-              console.log(`❌ [CREATE CHECKS] No vehicle assigned to rider: ${riderId}`);
               errors.push({ riderId, error: 'לרוכב אין כלי משויך' });
               continue;
             }
 
             const vehicleDoc = vehiclesSnapshot.docs[0];
             const vehicle = { id: vehicleDoc.id, ...vehicleDoc.data() };
-            console.log(`✅ [CREATE CHECKS] Vehicle found: ${vehicle.licensePlate} (${vehicle.id})`);
 
-            // בדיקה אם כבר קיימת בקרה לחודש זה
+            // קביעת חודש ושנה
             const now = new Date();
             const checkMonth = month || now.getMonth() + 1;
             const checkYear = year || now.getFullYear();
-            const monthStart = new Date(checkYear, checkMonth - 1, 1);
-            const monthEnd = new Date(checkYear, checkMonth, 0, 23, 59, 59);
 
-            console.log(`📝 [CREATE CHECKS] Creating check for ${checkMonth}/${checkYear}`);
-
-            // יצירת בקרה חודשית - מותר ליצור מספר בקרות לאותו כלי
-            // יצירת תאריך באמצעות Firestore Timestamp
+            // יצירת בקרה חודשית
             const checkDateObj = new Date(checkYear, checkMonth - 1, 1);
             const checkData = {
               riderId: rider.id,
@@ -420,27 +358,18 @@ module.exports = async (req, res) => {
               updatedBy: user.id
             };
 
-            console.log(`💾 [CREATE CHECKS] Creating check document for ${rider.firstName} ${rider.lastName}`);
             const docRef = await db.collection('monthly_checks').add(checkData);
-            console.log(`✅ [CREATE CHECKS] Check created with ID: ${docRef.id}`);
 
-            // להחזיר עם תאריך תקין
             createdChecks.push({
               id: docRef.id,
               ...checkData,
-              checkDate: checkDateObj // להחזיר Date רגיל לצד לקוח
+              checkDate: checkDateObj
             });
           } catch (error) {
-            console.error(`❌ [CREATE CHECKS] Error for rider ${riderId}:`, error.message);
+            console.error(`Error creating check for rider ${riderId}:`, error.message);
             errors.push({ riderId, error: error.message });
           }
         }
-
-        console.log(`📊 [CREATE CHECKS] Summary:`, {
-          created: createdChecks.length,
-          errors: errors.length,
-          errorDetails: errors
-        });
 
         return res.status(201).json({
           success: true,
@@ -467,7 +396,7 @@ module.exports = async (req, res) => {
 
         const checkRef = await db.collection('monthly_checks').add(checkData);
         const checkDoc = await checkRef.get();
-        await writeAuditLog(db, user, { action: 'create', entityType: 'monthly_check', entityId: checkRef.id, entityName: 'בקרה חודשית', description: 'בקרה חודשית חדשה נוצרה' });
+        writeAuditLog(db, user, { action: 'create', entityType: 'monthly_check', entityId: checkRef.id, entityName: 'בקרה חודשית', description: 'בקרה חודשית חדשה נוצרה' });
 
         return res.status(201).json({
           success: true,
@@ -476,12 +405,6 @@ module.exports = async (req, res) => {
         });
       }
     }
-
-    console.error('❌ Monthly Checks: Method not allowed:', {
-      method: req.method,
-      url: req.url,
-      checkId
-    });
 
     return res.status(405).json({
       success: false,
@@ -493,12 +416,7 @@ module.exports = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Monthly Checks error:', {
-      message: error.message,
-      stack: error.stack,
-      url: req.url,
-      method: req.method
-    });
+    console.error('Monthly Checks error:', error.message);
 
     if (error.message.includes('token')) {
       return res.status(401).json({ success: false, message: error.message });
