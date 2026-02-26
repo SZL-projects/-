@@ -196,7 +196,6 @@ function ChangesPanel({ changes }) {
 
 function LogRow({ log, isMobile }) {
   const [open, setOpen] = useState(false);
-  const hasDetails = log.changes || log.metadata?.to || log.action === 'email_sent';
 
   const actionInfo = actionMap[log.action] || { label: log.action, color: '#64748b', bgcolor: 'rgba(100, 116, 139, 0.1)' };
 
@@ -222,11 +221,11 @@ function LogRow({ log, isMobile }) {
       <TableRow
         hover
         sx={{
-          cursor: hasDetails ? 'pointer' : 'default',
-          '&:hover': hasDetails ? { bgcolor: 'rgba(99,102,241,0.03)' } : {},
+          cursor: 'pointer',
+          '&:hover': { bgcolor: 'rgba(99,102,241,0.03)' },
           ...(open ? { bgcolor: 'rgba(99,102,241,0.04)' } : {}),
         }}
-        onClick={() => hasDetails && setOpen(p => !p)}
+        onClick={() => setOpen(p => !p)}
       >
         <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.82rem', py: 1 }}>
           {formatDate(log.timestamp)}
@@ -265,61 +264,92 @@ function LogRow({ log, isMobile }) {
             <Typography variant="body2" sx={{ color: '#475569', fontSize: '0.82rem', flex: 1 }}>
               {log.description || '-'}
             </Typography>
-            {hasDetails && (
-              <Tooltip title={open ? 'הסתר פרטים' : 'הצג פרטים'}>
-                <IconButton size="small" sx={{ p: 0.2 }} onClick={e => { e.stopPropagation(); setOpen(p => !p); }}>
-                  {open ? <KeyboardArrowUp fontSize="small" /> : <KeyboardArrowDown fontSize="small" />}
-                </IconButton>
-              </Tooltip>
-            )}
+            <Tooltip title={open ? 'הסתר פרטים' : 'הצג פרטים'}>
+              <IconButton size="small" sx={{ p: 0.2 }} onClick={e => { e.stopPropagation(); setOpen(p => !p); }}>
+                {open ? <KeyboardArrowUp fontSize="small" /> : <KeyboardArrowDown fontSize="small" />}
+              </IconButton>
+            </Tooltip>
           </Box>
         </TableCell>
       </TableRow>
 
-      {hasDetails && (
-        <TableRow>
-          <TableCell colSpan={isMobile ? 4 : 6} sx={{ py: 0, borderBottom: open ? '1px solid #e2e8f0' : 'none', bgcolor: 'rgba(241,245,249,0.6)' }}>
-            <Collapse in={open} timeout="auto" unmountOnExit>
-              <Box sx={{ px: 3, py: 1.5 }}>
+      <TableRow>
+        <TableCell colSpan={isMobile ? 4 : 6} sx={{ py: 0, borderBottom: open ? '1px solid #e2e8f0' : 'none', bgcolor: 'rgba(241,245,249,0.6)' }}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Box sx={{ px: 3, py: 1.5 }}>
 
-                {/* פרטי מייל */}
-                {log.action === 'email_sent' && (
-                  <Box sx={{ mb: log.changes ? 1.5 : 0 }}>
-                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', mb: 0.5 }}>
-                      פרטי המייל:
-                    </Typography>
-                    {log.metadata?.to && (
-                      <Typography variant="caption" sx={{ color: '#475569', display: 'block' }}>
-                        נמען: <strong>{log.metadata.to}</strong>
-                      </Typography>
-                    )}
-                    {log.metadata?.subject && (
-                      <Typography variant="caption" sx={{ color: '#475569', display: 'block' }}>
-                        נושא: <strong>{log.metadata.subject}</strong>
-                      </Typography>
-                    )}
-                    {log.metadata?.messageId && (
-                      <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block' }}>
-                        מזהה הודעה: {log.metadata.messageId}
-                      </Typography>
-                    )}
-                  </Box>
+              {/* פרטים בסיסיים - תמיד מוצגים */}
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 1 }}>
+                {log.entityType && (
+                  <Typography variant="caption" sx={{ color: '#64748b' }}>
+                    <strong>סוג:</strong> {entityTypeMap[log.entityType] || log.entityType}
+                  </Typography>
                 )}
-
-                {/* פרטי שינויים */}
-                <ChangesPanel changes={log.changes} />
-
-                {/* מטאדאטה - IP */}
-                {log.metadata?.ip && log.action !== 'email_sent' && (
-                  <Typography variant="caption" sx={{ color: '#94a3b8', mt: 1, display: 'block' }}>
-                    IP: {log.metadata.ip}
+                {log.entityName && (
+                  <Typography variant="caption" sx={{ color: '#64748b' }}>
+                    <strong>שם:</strong> {log.entityName}
+                  </Typography>
+                )}
+                {log.userName && (
+                  <Typography variant="caption" sx={{ color: '#64748b' }}>
+                    <strong>משתמש:</strong> {log.userName}
+                  </Typography>
+                )}
+                {log.entityId && (
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                    <strong>מזהה:</strong> {log.entityId}
                   </Typography>
                 )}
               </Box>
-            </Collapse>
-          </TableCell>
-        </TableRow>
-      )}
+
+              {/* פרטי מייל */}
+              {log.action === 'email_sent' && (
+                <Box sx={{ mb: 1 }}>
+                  <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', mb: 0.5 }}>
+                    פרטי המייל:
+                  </Typography>
+                  {log.metadata?.to && (
+                    <Typography variant="caption" sx={{ color: '#475569', display: 'block' }}>
+                      נמען: <strong>{log.metadata.to}</strong>
+                    </Typography>
+                  )}
+                  {log.entityName && !log.metadata?.to && (
+                    <Typography variant="caption" sx={{ color: '#475569', display: 'block' }}>
+                      נמען: <strong>{log.entityName}</strong>
+                    </Typography>
+                  )}
+                  {log.metadata?.subject && (
+                    <Typography variant="caption" sx={{ color: '#475569', display: 'block' }}>
+                      נושא: <strong>{log.metadata.subject}</strong>
+                    </Typography>
+                  )}
+                  {log.metadata?.messageId && (
+                    <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block' }}>
+                      מזהה הודעה: {log.metadata.messageId}
+                    </Typography>
+                  )}
+                </Box>
+              )}
+
+              {/* פרטי שינויים */}
+              {log.changes ? (
+                <ChangesPanel changes={log.changes} />
+              ) : log.action === 'update' ? (
+                <Typography variant="caption" sx={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                  פרטי שינויים לא נרשמו (לוג ישן)
+                </Typography>
+              ) : null}
+
+              {/* מטאדאטה - IP */}
+              {log.metadata?.ip && log.action !== 'email_sent' && (
+                <Typography variant="caption" sx={{ color: '#94a3b8', mt: 1, display: 'block' }}>
+                  IP: {log.metadata.ip}
+                </Typography>
+              )}
+            </Box>
+          </Collapse>
+        </TableCell>
+      </TableRow>
     </>
   );
 }
