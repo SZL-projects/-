@@ -428,7 +428,7 @@ function AppRoutes() {
           <Route path="tasks" element={<PermissionRoute entity="tasks" level="view"><Tasks /></PermissionRoute>} />
           {/* בדיקות חודשיות - דורש הרשאת צפייה */}
           <Route path="monthly-checks" element={<PermissionRoute entity="monthly_checks" level="view"><MonthlyChecks /></PermissionRoute>} />
-          <Route path="monthly-check/:id" element={<PermissionRoute entity="monthly_checks" level="view"><MonthlyCheckForm /></PermissionRoute>} />
+          <Route path="monthly-check/:id" element={<PermissionRoute entity="monthly_checks" level="self"><MonthlyCheckForm /></PermissionRoute>} />
           {/* תקלות - דורש הרשאת צפייה */}
           <Route path="faults" element={<PermissionRoute entity="faults" level="view"><Faults /></PermissionRoute>} />
           {/* טיפולים - דורש הרשאת צפייה */}
