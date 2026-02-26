@@ -1,23 +1,48 @@
 const AuditLogModel = require('../models/firestore/AuditLogModel');
 
+// שדות שיש להתעלם מהם בעת חישוב שינויים
+const IGNORE_FIELDS = [
+  'updatedAt', 'updatedBy', 'createdAt', 'createdBy', 'id', '_id',
+  'timestamp', '__v', 'password', 'token'
+];
+
 /**
- * רישום פעולה בלוג הפעילות (fire-and-forget)
- * שגיאות לא מונעות response - הלוג אינו קריטי
- *
- * @param {Object} req - Express request object (must have req.user)
- * @param {Object} options
- * @param {string} options.action - סוג הפעולה: create, update, delete, login, logout, status_change, assign, unassign
- * @param {string} options.entityType - סוג הישות: vehicle, rider, fault, task, maintenance, monthly_check, insurance_claim, user, permission
- * @param {string} [options.entityId] - מזהה הישות
- * @param {string} [options.entityName] - שם/תיאור הישות
- * @param {Object} [options.changes] - שינויים שבוצעו
- * @param {string} [options.description] - תיאור טקסטואלי של הפעולה
+ * חישוב הפרש בין נתונים ישנים לחדשים
+ * מחזיר: { fieldName: { old: '...', new: '...' } }
  */
-async function logAudit(req, { action, entityType, entityId, entityName, changes, description }) {
+function buildChanges(before, after) {
+  if (!before || !after) return after || null;
+
+  const changes = {};
+
+  for (const key of Object.keys(after)) {
+    if (IGNORE_FIELDS.includes(key)) continue;
+
+    const oldVal = before[key];
+    const newVal = after[key];
+
+    const oldStr = JSON.stringify(oldVal ?? null);
+    const newStr = JSON.stringify(newVal ?? null);
+
+    if (oldStr !== newStr) {
+      changes[key] = { old: oldVal ?? null, new: newVal ?? null };
+    }
+  }
+
+  return Object.keys(changes).length > 0 ? changes : null;
+}
+
+/**
+ * רישום פעולה בלוג הפעילות - דורש req (fire-and-forget)
+ * שגיאות לא מונעות response - הלוג אינו קריטי
+ */
+async function logAudit(req, { action, entityType, entityId, entityName, changes, description, metadata }) {
   try {
     await AuditLogModel.log({
       userId: req.user?.id || req.user?._id || null,
-      userName: req.user ? `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username : 'מערכת',
+      userName: req.user
+        ? `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'משתמש'
+        : 'מערכת',
       action,
       entityType,
       entityId,
@@ -27,6 +52,7 @@ async function logAudit(req, { action, entityType, entityId, entityName, changes
       metadata: {
         ip: req.ip,
         userAgent: req.get('user-agent'),
+        ...(metadata || {}),
       },
     });
   } catch (err) {
@@ -34,4 +60,26 @@ async function logAudit(req, { action, entityType, entityId, entityName, changes
   }
 }
 
-module.exports = { logAudit };
+/**
+ * רישום פעולה בלוג הפעילות - ללא req (לפעולות מערכת / schedulers / שליחת מיילים)
+ * fire-and-forget - שגיאות לא נזרקות
+ */
+async function logAuditDirect({ userId, userName, action, entityType, entityId, entityName, changes, description, metadata }) {
+  try {
+    await AuditLogModel.log({
+      userId: userId || null,
+      userName: userName || 'מערכת',
+      action,
+      entityType,
+      entityId: entityId || null,
+      entityName: entityName || null,
+      changes: changes || null,
+      description: description || null,
+      metadata: metadata || null,
+    });
+  } catch (err) {
+    console.error('Audit log (direct) error:', err.message);
+  }
+}
+
+module.exports = { logAudit, logAuditDirect, buildChanges };

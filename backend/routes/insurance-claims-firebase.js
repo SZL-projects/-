@@ -3,7 +3,7 @@ const router = express.Router();
 const InsuranceClaimModel = require('../models/firestore/InsuranceClaimModel');
 const { protect } = require('../middleware/auth-firebase');
 const { checkPermission } = require('../middleware/checkPermission');
-const { logAudit } = require('../middleware/auditLogger');
+const { logAudit, buildChanges } = require('../middleware/auditLogger');
 
 // כל הנתיבים מוגנים - דורשים אימות
 router.use(protect);
@@ -179,6 +179,7 @@ router.post('/', async (req, res) => {
 // @access  Private (מנהלים בלבד)
 router.put('/:id', checkPermission('insurance_claims', 'edit'), async (req, res) => {
   try {
+    const existingClaim = await InsuranceClaimModel.findById(req.params.id);
     const claim = await InsuranceClaimModel.update(req.params.id, req.body, req.user.id);
 
     if (!claim) {
@@ -188,7 +189,8 @@ router.put('/:id', checkPermission('insurance_claims', 'edit'), async (req, res)
       });
     }
 
-    await logAudit(req, { action: 'update', entityType: 'insurance_claim', entityId: req.params.id, entityName: claim.claimNumber, description: `תביעת ביטוח עודכנה: ${claim.claimNumber || ''}` });
+    const diff = buildChanges(existingClaim, req.body);
+    await logAudit(req, { action: 'update', entityType: 'insurance_claim', entityId: req.params.id, entityName: claim.claimNumber, changes: diff, description: `תביעת ביטוח עודכנה: ${claim.claimNumber || ''}` });
 
     res.json({
       success: true,

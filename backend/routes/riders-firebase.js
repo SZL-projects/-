@@ -5,7 +5,7 @@ const RiderModel = require('../models/firestore/RiderModel');
 const googleDriveService = require('../services/googleDriveService');
 const { protect, authorize } = require('../middleware/auth-firebase');
 const { checkPermission } = require('../middleware/checkPermission');
-const { logAudit } = require('../middleware/auditLogger');
+const { logAudit, buildChanges } = require('../middleware/auditLogger');
 
 // הגדרת multer לקבלת קבצים
 const upload = multer({
@@ -277,12 +277,13 @@ router.put('/:id', checkPermission('riders', 'edit'), async (req, res) => {
     const riderName = existingRider
       ? `${existingRider.firstName} ${existingRider.lastName}`.trim()
       : `${rider.firstName} ${rider.lastName}`.trim();
+    const diff = buildChanges(existingRider, req.body);
     await logAudit(req, {
       action: 'update',
       entityType: 'rider',
       entityId: req.params.id,
       entityName: riderName,
-      changes: req.body,
+      changes: diff,
       description: `רוכב עודכן: ${riderName}`
     });
 

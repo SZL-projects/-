@@ -3,7 +3,7 @@ const router = express.Router();
 const TaskModel = require('../models/firestore/TaskModel');
 const { protect } = require('../middleware/auth-firebase');
 const { checkPermission } = require('../middleware/checkPermission');
-const { logAudit } = require('../middleware/auditLogger');
+const { logAudit, buildChanges } = require('../middleware/auditLogger');
 
 // כל הנתיבים מוגנים - דורשים אימות
 router.use(protect);
@@ -110,6 +110,7 @@ router.post('/', checkPermission('tasks', 'edit'), async (req, res) => {
 // @access  Private (מנהלים בלבד)
 router.put('/:id', checkPermission('tasks', 'edit'), async (req, res) => {
   try {
+    const existingTask = await TaskModel.findById(req.params.id);
     const task = await TaskModel.update(req.params.id, req.body, req.user.id);
 
     if (!task) {
@@ -119,11 +120,13 @@ router.put('/:id', checkPermission('tasks', 'edit'), async (req, res) => {
       });
     }
 
+    const diff = buildChanges(existingTask, req.body);
     await logAudit(req, {
       action: 'update',
       entityType: 'task',
       entityId: task.id,
       entityName: task.title || 'משימה',
+      changes: diff,
       description: `משימה עודכנה: ${task.title || 'משימה'}`
     });
 

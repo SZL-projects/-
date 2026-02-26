@@ -3,7 +3,7 @@ const router = express.Router();
 const FaultModel = require('../models/firestore/FaultModel');
 const { protect } = require('../middleware/auth-firebase');
 const { checkPermission } = require('../middleware/checkPermission');
-const { logAudit } = require('../middleware/auditLogger');
+const { logAudit, buildChanges } = require('../middleware/auditLogger');
 
 // כל הנתיבים מוגנים - דורשים אימות
 router.use(protect);
@@ -110,6 +110,7 @@ router.post('/', async (req, res) => {
 // @access  Private (מנהלים בלבד)
 router.put('/:id', checkPermission('faults', 'edit'), async (req, res) => {
   try {
+    const existingFault = await FaultModel.findById(req.params.id);
     const fault = await FaultModel.update(req.params.id, req.body, req.user.id);
 
     if (!fault) {
@@ -119,11 +120,13 @@ router.put('/:id', checkPermission('faults', 'edit'), async (req, res) => {
       });
     }
 
+    const diff = buildChanges(existingFault, req.body);
     await logAudit(req, {
       action: 'update',
       entityType: 'fault',
       entityId: fault.id,
       entityName: fault.description?.substring(0, 40) || 'תקלה',
+      changes: diff,
       description: 'תקלה עודכנה'
     });
 

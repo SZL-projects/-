@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { logAuditDirect } = require('../middleware/auditLogger');
 
 // יצירת transporter
 const createTransporter = () => {
@@ -27,6 +28,16 @@ exports.sendEmail = async (options) => {
   try {
     const info = await transporter.sendMail(message);
     console.log('Email sent: %s', info.messageId);
+
+    // רישום שליחת מייל בלוג
+    logAuditDirect({
+      action: 'email_sent',
+      entityType: 'email',
+      entityName: options.email,
+      description: `מייל נשלח ל: ${options.email} | נושא: ${options.subject}`,
+      metadata: { messageId: info.messageId, to: options.email, subject: options.subject },
+    });
+
     return info;
   } catch (error) {
     console.error('Error sending email:', error);

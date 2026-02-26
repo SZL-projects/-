@@ -6,7 +6,7 @@ const VehicleModel = require('../models/firestore/VehicleModel');
 const googleDriveService = require('../services/googleDriveService');
 const { protect } = require('../middleware/auth-firebase');
 const { checkPermission } = require('../middleware/checkPermission');
-const { logAudit } = require('../middleware/auditLogger');
+const { logAudit, buildChanges } = require('../middleware/auditLogger');
 
 // הגדרת multer לטיפול בקבצים
 const upload = multer({
@@ -221,6 +221,7 @@ router.post('/', async (req, res) => {
 // @access  Private (מנהלים בלבד)
 router.put('/:id', checkPermission('maintenance', 'edit'), async (req, res) => {
   try {
+    const existingMaintenance = await MaintenanceModel.findById(req.params.id);
     const maintenance = await MaintenanceModel.update(req.params.id, req.body, req.user.id);
 
     if (!maintenance) {
@@ -230,11 +231,13 @@ router.put('/:id', checkPermission('maintenance', 'edit'), async (req, res) => {
       });
     }
 
+    const diff = buildChanges(existingMaintenance, req.body);
     await logAudit(req, {
       action: 'update',
       entityType: 'maintenance',
       entityId: req.params.id,
       entityName: maintenance.maintenanceNumber || req.params.id,
+      changes: diff,
       description: `טיפול עודכן: ${maintenance.maintenanceNumber || req.params.id}`
     });
 
