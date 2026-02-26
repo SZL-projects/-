@@ -650,7 +650,7 @@ export default function MonthlyCheckForm() {
                   inputProps={{ step: '0.5', min: '0' }}
                   value={formData.tirePressureFront}
                   onChange={handleChange('tirePressureFront')}
-                  helperText="לחץ מומלץ: 28-32 PSI"
+                  helperText={vehicle?.type === 'scooter' ? 'לחץ מומלץ: 36 PSI' : 'לפי הוראות האופנוע שלך'}
                   sx={textFieldSx}
                 />
               </Grid>
@@ -664,7 +664,7 @@ export default function MonthlyCheckForm() {
                   inputProps={{ step: '0.5', min: '0' }}
                   value={formData.tirePressureRear}
                   onChange={handleChange('tirePressureRear')}
-                  helperText="לחץ מומלץ: 32-36 PSI"
+                  helperText={vehicle?.type === 'scooter' ? 'לחץ מומלץ: 39 PSI' : 'לפי הוראות האופנוע שלך'}
                   sx={textFieldSx}
                 />
               </Grid>

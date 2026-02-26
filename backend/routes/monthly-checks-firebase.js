@@ -335,7 +335,7 @@ function checkForDefects(checkResults) {
 async function sendDefectAlert(rider, vehicle, defects, checkData) {
   // כתובת מייל של המנהל - כרגע למשתמש "אבי"
   // בעתיד ניתן לשנות למשתנה סביבה או הגדרה במערכת
-  const managerEmail = process.env.MANAGER_EMAIL || 'manager@example.com';
+  const managerEmail = process.env.MANAGER_EMAIL || 'bikes@yedidim-il.org';
 
   const defectsList = defects.map(d => `<li><strong>${d.field}:</strong> ${d.value}</li>`).join('');
 
