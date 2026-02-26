@@ -84,10 +84,6 @@ const valueMap = {
   // סוגי כלי
   motorcycle:          'אופנוע',
   scooter:             'קטנוע',
-  electric_scooter:    'קטנוע חשמלי',
-  moped:               'מופד',
-  bicycle:             'אופניים',
-  electric_bicycle:    'אופניים חשמליים',
   // תפקידים
   admin:               'מנהל',
   manager:             'מנהל יחידה',
