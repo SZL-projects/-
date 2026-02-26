@@ -122,6 +122,21 @@ module.exports = async (req, res) => {
     return res.status(200).json({ success: true, timestamp: Date.now() });
   }
 
+  // ========== Preview Email (תצוגה מקדימה) ==========
+  if (urlWithoutQuery.includes('preview-email')) {
+    const type = req.query.type || 'insurance';
+    const sampleInsurance = [
+      { riderName: 'ישראל ישראלי', licensePlate: '123-45-678', vehicleModel: 'הונדה CB500', expiryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) },
+      { riderName: 'משה כהן', licensePlate: '987-65-432', vehicleModel: 'קוואסאקי Z400', expiryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) },
+      { riderName: 'דוד לוי', licensePlate: '111-22-333', vehicleModel: 'יאמהה MT07', expiryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) },
+    ];
+    const html = type === 'license'
+      ? emailService.buildLicenseEmailHtml(sampleInsurance)
+      : emailService.buildInsuranceEmailHtml(sampleInsurance);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(200).send(html);
+  }
+
   // ========== Cron: Expiry Reminders (ללא אימות משתמש) ==========
   if (urlWithoutQuery.includes('cron-reminders')) {
     try {
