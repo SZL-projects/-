@@ -481,10 +481,12 @@ exports.buildInsuranceEmailHtml = (insuranceItems) => {
   const expiryDateStr = new Date(insuranceItems[0].expiryDate).toLocaleDateString('he-IL');
 
   const rowsHtml = insuranceItems.map((item, i) => `
-    <div style="background:#fff; border:1px solid #e2e8f0; border-right:4px solid #f59e0b; border-radius:8px; padding:12px 16px; margin-bottom:10px; text-align:right; direction:rtl;">
-      <span style="color:#f59e0b; font-weight:bold; font-size:15px;">${i + 1}.</span>
-      <strong style="font-size:15px; color:#1f2937;"> ${item.riderName}</strong>
-      <span style="color:#6b7280; font-size:14px;"> | ${item.licensePlate} | ${item.vehicleModel || ''} | תוקף: <strong style="color:#dc2626;">${new Date(item.expiryDate).toLocaleDateString('he-IL')}</strong></span>
+    <div style="background:#fff; border:1px solid #e2e8f0; border-right:4px solid #f59e0b; border-radius:8px; padding:12px 16px; margin-bottom:10px; text-align:right; direction:rtl; line-height:1.7; font-size:14px; color:#374151;">
+      <div style="font-weight:bold; color:#f59e0b; margin-bottom:4px;">${i + 1}.</div>
+      <div><span style="color:#6b7280;">מספר רכב:</span> <strong>${item.licensePlate}</strong></div>
+      <div><span style="color:#6b7280;">שם:</span> <strong>${item.riderName}</strong></div>
+      <div><span style="color:#6b7280;">דגם:</span> <strong>${item.vehicleModel || 'לא ידוע'}</strong></div>
+      <div><span style="color:#6b7280;">תאריך תפוגה:</span> <strong style="color:#dc2626;">${new Date(item.expiryDate).toLocaleDateString('he-IL')}</strong></div>
     </div>
   `).join('');
 
@@ -533,10 +535,13 @@ exports.buildLicenseEmailHtml = (licenseItems) => {
   const expiryDateStr = new Date(licenseItems[0].expiryDate).toLocaleDateString('he-IL');
 
   const rowsHtml = licenseItems.map((item, i) => `
-    <div style="background:#fff; border:1px solid #e2e8f0; border-right:4px solid #3b82f6; border-radius:8px; padding:12px 16px; margin-bottom:10px; text-align:right; direction:rtl;">
-      <span style="color:#3b82f6; font-weight:bold; font-size:15px;">${i + 1}.</span>
-      <strong style="font-size:15px; color:#1f2937;"> ${item.riderName}</strong>
-      <span style="color:#6b7280; font-size:14px;"> | ${item.licensePlate} | ${item.vehicleModel || ''} | תוקף: <strong style="color:#dc2626;">${new Date(item.expiryDate).toLocaleDateString('he-IL')}</strong></span>
+    <div style="background:#fff; border:1px solid #e2e8f0; border-right:4px solid #3b82f6; border-radius:8px; padding:12px 16px; margin-bottom:10px; text-align:right; direction:rtl; line-height:1.7; font-size:14px; color:#374151;">
+      <div style="font-weight:bold; color:#3b82f6; margin-bottom:4px;">${i + 1}.</div>
+      <div><span style="color:#6b7280;">מספר רכב:</span> <strong>${item.licensePlate}</strong></div>
+      ${item.riderIdNumber ? `<div><span style="color:#6b7280;">ת.ז.:</span> <strong>${item.riderIdNumber}</strong></div>` : ''}
+      <div><span style="color:#6b7280;">שם:</span> <strong>${item.riderName}</strong></div>
+      <div><span style="color:#6b7280;">דגם:</span> <strong>${item.vehicleModel || 'לא ידוע'}</strong></div>
+      <div><span style="color:#6b7280;">תאריך תפוגה:</span> <strong style="color:#dc2626;">${new Date(item.expiryDate).toLocaleDateString('he-IL')}</strong></div>
     </div>
   `).join('');
 

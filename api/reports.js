@@ -126,9 +126,9 @@ module.exports = async (req, res) => {
   if (urlWithoutQuery.includes('preview-email')) {
     const type = req.query.type || 'insurance';
     const sampleInsurance = [
-      { riderName: 'ישראל ישראלי', licensePlate: '123-45-678', vehicleModel: 'הונדה CB500', expiryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) },
-      { riderName: 'משה כהן', licensePlate: '987-65-432', vehicleModel: 'קוואסאקי Z400', expiryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) },
-      { riderName: 'דוד לוי', licensePlate: '111-22-333', vehicleModel: 'יאמהה MT07', expiryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) },
+      { riderName: 'ישראל ישראלי', licensePlate: '123-45-678', vehicleModel: 'הונדה CB500', riderIdNumber: '123456789', expiryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) },
+      { riderName: 'משה כהן', licensePlate: '987-65-432', vehicleModel: 'קוואסאקי Z400', riderIdNumber: '987654321', expiryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) },
+      { riderName: 'דוד לוי', licensePlate: '111-22-333', vehicleModel: 'יאמהה MT07', riderIdNumber: '111222333', expiryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) },
     ];
     const html = type === 'license'
       ? emailService.buildLicenseEmailHtml(sampleInsurance)
