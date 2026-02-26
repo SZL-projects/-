@@ -202,7 +202,14 @@ function LogRow({ log, isMobile }) {
 
   const formatDate = (date) => {
     if (!date) return '-';
-    const d = new Date(date);
+    let d;
+    if (date?._seconds !== undefined) {
+      d = new Date(date._seconds * 1000);
+    } else if (typeof date?.toDate === 'function') {
+      d = date.toDate();
+    } else {
+      d = new Date(date);
+    }
     if (isNaN(d.getTime())) return '-';
     return d.toLocaleDateString('he-IL', {
       day: '2-digit', month: '2-digit', year: 'numeric',
