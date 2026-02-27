@@ -133,7 +133,8 @@ router.get('/alerts', async (req, res) => {
       }
     }
 
-    res.set('Cache-Control', 'no-store');
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
     res.json({ success: true, alerts, count: alerts.length });
   } catch (error) {
     console.error('Error fetching notification alerts:', error);
