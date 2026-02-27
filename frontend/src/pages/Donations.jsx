@@ -446,7 +446,7 @@ export default function Donations() {
             filteredDonations.map((donation) => {
               const isExp = donation.type === 'expense';
               return (
-                <Paper key={donation.id} sx={{ p: 2, borderRight: `4px solid ${isExp ? '#ef4444' : '#10b981'}` }}>
+                <Paper key={donation.id} onClick={() => handleEdit(donation)} sx={{ p: 2, borderRight: `4px solid ${isExp ? '#ef4444' : '#10b981'}`, cursor: 'pointer' }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                     <Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -476,7 +476,7 @@ export default function Donations() {
                     <Typography variant="caption" color="text.secondary">
                       {formatDate(donation.donationDate)}
                     </Typography>
-                    <Box>
+                    <Box onClick={(e) => e.stopPropagation()}>
                       <IconButton size="small" onClick={() => handleViewDetails(donation)}>
                         <Visibility fontSize="small" />
                       </IconButton>
@@ -521,7 +521,7 @@ export default function Donations() {
                 filteredDonations.map((donation) => {
                   const isExp = donation.type === 'expense';
                   return (
-                    <TableRow key={donation.id} hover>
+                    <TableRow key={donation.id} hover onClick={() => handleEdit(donation)} sx={{ cursor: 'pointer' }}>
                       <TableCell>
                         <Chip
                           label={isExp ? 'הוצאה' : 'תרומה'}
@@ -581,7 +581,7 @@ export default function Donations() {
                           {donation.notes || '-'}
                         </Typography>
                       </TableCell>
-                      <TableCell align="center">
+                      <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                         <Tooltip title="צפייה">
                           <IconButton size="small" onClick={() => handleViewDetails(donation)}>
                             <Visibility fontSize="small" />

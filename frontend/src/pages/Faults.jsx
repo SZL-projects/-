@@ -47,6 +47,7 @@ import {
 } from '@mui/icons-material';
 import { faultsAPI, ridersAPI, vehiclesAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import FaultDialog from '../components/FaultDialog';
 
 export default function Faults() {
   const navigate = useNavigate();
@@ -63,6 +64,8 @@ export default function Faults() {
   const [viewMode, setViewMode] = useState(0); // 0: הכל, 1: פתוחות, 2: קריטיות
   const [selectedFault, setSelectedFault] = useState(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingFault, setEditingFault] = useState(null);
   useEffect(() => {
     loadData();
   }, []);
@@ -115,6 +118,23 @@ export default function Faults() {
     setSelectedFault(fault);
     setDetailsDialogOpen(true);
   }, []);
+
+  const handleOpenEdit = useCallback((fault) => {
+    setEditingFault(fault);
+    setEditDialogOpen(true);
+  }, []);
+
+  const handleSaveFault = useCallback(async (faultData) => {
+    try {
+      await faultsAPI.update(editingFault._id || editingFault.id, faultData);
+      setEditDialogOpen(false);
+      setEditingFault(null);
+      await loadData();
+    } catch (err) {
+      console.error('Error saving fault:', err);
+      setError('שגיאה בשמירת התקלה');
+    }
+  }, [editingFault]);
 
   const handleUpdateStatus = useCallback(async (faultId, newStatus) => {
     try {
@@ -643,7 +663,7 @@ export default function Faults() {
               filteredFaults.map((fault, index) => (
                 <TableRow
                   key={fault._id || fault.id}
-                  onClick={() => handleViewDetails(fault)}
+                  onClick={() => hasPermission('faults', 'edit') ? handleOpenEdit(fault) : handleViewDetails(fault)}
                   sx={{
                     cursor: 'pointer',
                     animation: `fadeIn 0.3s ease-out ${index * 0.03}s both`,
@@ -761,6 +781,14 @@ export default function Faults() {
           </Typography>
         </Box>
       )}
+
+      {/* Edit Fault Dialog */}
+      <FaultDialog
+        open={editDialogOpen}
+        onClose={() => { setEditDialogOpen(false); setEditingFault(null); }}
+        onSave={handleSaveFault}
+        fault={editingFault}
+      />
 
       {/* Modern Details Dialog */}
       <Dialog

@@ -243,11 +243,13 @@ export default function Users() {
   const renderMobileCard = (user) => (
     <Card
       key={user.id}
+      onClick={() => hasPermission('users', 'edit') && user.email !== 'b0583639333@gmail.com' && handleOpenDialog(user)}
       sx={{
         mb: 2,
         borderRadius: '16px',
         border: '1px solid #e2e8f0',
         boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        cursor: hasPermission('users', 'edit') && user.email !== 'b0583639333@gmail.com' ? 'pointer' : 'default',
         transition: 'all 0.2s ease-in-out',
         '&:hover': {
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
@@ -284,7 +286,7 @@ export default function Users() {
 
       <Divider />
 
-      <CardActions sx={{ justifyContent: 'flex-end', px: 2, py: 1.5, gap: 1 }}>
+      <CardActions sx={{ justifyContent: 'flex-end', px: 2, py: 1.5, gap: 1 }} onClick={(e) => e.stopPropagation()}>
         {hasPermission('users', 'edit') && user.isLocked && (
           <IconButton
             size="small"
@@ -564,7 +566,9 @@ export default function Users() {
                 users.map((user) => (
                   <TableRow
                     key={user.id}
+                    onClick={() => hasPermission('users', 'edit') && user.email !== 'b0583639333@gmail.com' && handleOpenDialog(user)}
                     sx={{
+                      cursor: hasPermission('users', 'edit') && user.email !== 'b0583639333@gmail.com' ? 'pointer' : 'default',
                       '&:hover': { bgcolor: '#f8fafc' },
                       transition: 'background-color 0.15s ease',
                     }}
@@ -586,7 +590,7 @@ export default function Users() {
                     <TableCell sx={{ borderBottom: '1px solid #f1f5f9', color: '#64748b' }}>
                       {user.createdAt ? new Date(user.createdAt).toLocaleDateString('he-IL') : '-'}
                     </TableCell>
-                    <TableCell align="center" sx={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <TableCell align="center" sx={{ borderBottom: '1px solid #f1f5f9' }} onClick={(e) => e.stopPropagation()}>
                       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
                         {hasPermission('users', 'edit') && user.isLocked && (
                           <IconButton

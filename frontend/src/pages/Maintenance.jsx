@@ -1022,7 +1022,7 @@ export default function Maintenance() {
               <Card
                 key={maintenance.id}
                 elevation={0}
-                onClick={() => handleViewDetails(maintenance)}
+                onClick={() => handleEdit(maintenance)}
                 sx={{
                   cursor: 'pointer',
                   borderRadius: '12px',
@@ -1160,7 +1160,7 @@ export default function Maintenance() {
                 filteredMaintenances.map((maintenance, index) => (
                   <TableRow
                     key={maintenance.id}
-                    onClick={() => handleViewDetails(maintenance)}
+                    onClick={() => handleEdit(maintenance)}
                     sx={{
                       cursor: 'pointer',
                       animation: `fadeIn 0.3s ease-out ${index * 0.03}s both`,
