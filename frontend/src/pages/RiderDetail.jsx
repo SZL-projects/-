@@ -566,7 +566,7 @@ export default function RiderDetail() {
                       <Button
                         variant="outlined"
                         startIcon={<Visibility />}
-                        onClick={() => navigate(`/vehicles/${vehicle._id}`)}
+                        onClick={() => navigate(`/vehicles/${vehicle.id}`)}
                         fullWidth
                         sx={{
                           mt: 1,
