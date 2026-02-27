@@ -14,7 +14,7 @@ import {
   Chip,
   Tooltip,
 } from '@mui/material';
-import { Notifications, Shield, DirectionsCar, Close } from '@mui/icons-material';
+import { Notifications, Shield, DirectionsCar, Close, Warning as WarningIcon } from '@mui/icons-material';
 import api from '../services/api';
 
 const READ_KEY = 'notifications_read_ids';
@@ -118,8 +118,9 @@ export default function NotificationBell() {
       saveReadIds(updated);
     }
     setAnchorEl(null);
-    // רוכב עם self - נווט לדף הרכב שלו, אחרים - לדף הרכב הספציפי
-    if (hasPermission('vehicles', 'view')) {
+    if (alert.type === 'fault') {
+      navigate('/faults');
+    } else if (hasPermission('vehicles', 'view')) {
       navigate(`/vehicles/${alert.vehicleId}`);
     } else {
       navigate('/my-vehicle');
@@ -147,6 +148,7 @@ export default function NotificationBell() {
 
   const getAlertIcon = (type) => {
     if (type === 'insurance') return <Shield sx={{ fontSize: 18, color: '#6366f1' }} />;
+    if (type === 'fault') return <WarningIcon sx={{ fontSize: 18, color: '#ef4444' }} />;
     return <DirectionsCar sx={{ fontSize: 18, color: '#3b82f6' }} />;
   };
 
@@ -154,7 +156,23 @@ export default function NotificationBell() {
     if (alert.type === 'insurance') {
       return alert.subType === 'mandatory' ? 'ביטוח חובה' : 'ביטוח מקיף';
     }
+    if (alert.type === 'fault') {
+      const severityMap = { critical: 'קריטית', high: 'גבוהה', medium: 'בינונית', low: 'נמוכה' };
+      const statusMap = { open: 'פתוחה', in_progress: 'בטיפול' };
+      return `תקלה ${severityMap[alert.severity] || ''} | ${statusMap[alert.status] || alert.status}${alert.canRide === false ? ' | ⚠️ לא ניתן לרכב' : ''}`;
+    }
     return 'טסט / רשיון רכב';
+  };
+
+  const getFaultDaysText = (alert) => {
+    if (alert.type !== 'fault') return null;
+    const created = new Date(alert.createdAt);
+    const diffMs = Date.now() - created.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    if (diffHours < 1) return 'לפני פחות משעה';
+    if (diffHours < 24) return `לפני ${diffHours} שעות`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `לפני ${diffDays} ימים`;
   };
 
   const isRead = (alert) => readIds.includes(alert.id);
@@ -261,7 +279,7 @@ export default function NotificationBell() {
                         primary={
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Typography variant="body2" sx={{ fontWeight: read ? 400 : 600, color: '#1e293b', lineHeight: 1.3 }}>
-                              {alert.licensePlate}
+                              {alert.type === 'fault' ? alert.title : alert.licensePlate}
                             </Typography>
                             {read && (
                               <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.65rem' }}>
@@ -275,14 +293,20 @@ export default function NotificationBell() {
                             <Typography component="span" variant="caption" color="text.secondary">
                               {getTypeLabel(alert)}
                             </Typography>
-                            <Typography
-                              component="span"
-                              variant="caption"
-                              sx={{ fontWeight: 700, color: getDaysColor(alert.daysLeft) }}
-                            >
-                              פוקע בעוד {alert.daysLeft} ימים •{' '}
-                              {new Date(alert.expiryDate).toLocaleDateString('he-IL')}
-                            </Typography>
+                            {alert.type === 'fault' ? (
+                              <Typography component="span" variant="caption" sx={{ color: '#64748b' }}>
+                                כלי: {alert.licensePlate} • {getFaultDaysText(alert)}
+                              </Typography>
+                            ) : (
+                              <Typography
+                                component="span"
+                                variant="caption"
+                                sx={{ fontWeight: 700, color: getDaysColor(alert.daysLeft) }}
+                              >
+                                פוקע בעוד {alert.daysLeft} ימים •{' '}
+                                {new Date(alert.expiryDate).toLocaleDateString('he-IL')}
+                              </Typography>
+                            )}
                           </Box>
                         }
                       />

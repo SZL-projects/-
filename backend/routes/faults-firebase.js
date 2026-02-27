@@ -4,6 +4,11 @@ const FaultModel = require('../models/firestore/FaultModel');
 const { protect } = require('../middleware/auth-firebase');
 const { checkPermission } = require('../middleware/checkPermission');
 const { logAudit, buildChanges } = require('../middleware/auditLogger');
+const emailService = require('../services/emailService');
+const VehicleModel = require('../models/firestore/VehicleModel');
+const RiderModel = require('../models/firestore/RiderModel');
+const vehicleModel = new VehicleModel();
+const riderModel = new RiderModel();
 
 // כל הנתיבים מוגנים - דורשים אימות
 router.use(protect);
@@ -91,6 +96,19 @@ router.post('/', async (req, res) => {
       entityId: fault.id,
       entityName: fault.description?.substring(0, 40) || 'תקלה חדשה',
       description: 'תקלה חדשה נוצרה'
+    });
+
+    // שליחת התראת מייל למנהלים (ברקע, לא חוסם את התגובה)
+    setImmediate(async () => {
+      try {
+        const [vehicle, rider] = await Promise.all([
+          fault.vehicleId ? vehicleModel.findById(fault.vehicleId).catch(() => null) : Promise.resolve(null),
+          fault.riderId ? riderModel.findById(fault.riderId).catch(() => null) : Promise.resolve(null),
+        ]);
+        await emailService.sendNewFaultNotification(fault, vehicle, rider);
+      } catch (emailErr) {
+        console.error('Error sending fault notification email:', emailErr);
+      }
     });
 
     res.status(201).json({

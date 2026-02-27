@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const VehicleModel = require('../models/firestore/VehicleModel');
+const FaultModel = require('../models/firestore/FaultModel');
 const { protect } = require('../middleware/auth-firebase');
 const PermissionModel = require('../models/firestore/PermissionModel');
 
@@ -105,6 +106,35 @@ router.get('/alerts', async (req, res) => {
 
     // מיון: הדחוף ביותר ראשון
     alerts.sort((a, b) => a.daysLeft - b.daysLeft);
+
+    // הוספת תקלות פתוחות ובטיפול (למנהלים בלבד)
+    const userRolesFault = Array.isArray(req.user.roles) ? req.user.roles : [req.user.role];
+    const { allowed: faultAllowed, level: faultLevel } = await PermissionModel.checkAccess(userRolesFault, 'faults', 'view');
+
+    if (faultAllowed && faultLevel !== 'self' && faultLevel !== 'none') {
+      try {
+        const [openFaults, inProgressFaults] = await Promise.all([
+          FaultModel.getAll({ status: 'open' }, 50),
+          FaultModel.getAll({ status: 'in_progress' }, 50),
+        ]);
+        const faultAlerts = [...openFaults, ...inProgressFaults].map(fault => ({
+          id: `fault-${fault.id || fault._id}`,
+          type: 'fault',
+          faultId: fault.id || fault._id,
+          vehicleId: fault.vehicleId,
+          licensePlate: fault.vehicleLicensePlate || fault.vehicleNumber || '-',
+          severity: fault.severity,
+          status: fault.status,
+          title: fault.title || fault.description?.substring(0, 50) || 'תקלה',
+          label: `תקלה: ${fault.title || fault.description?.substring(0, 40) || 'תקלה'} - ${fault.vehicleLicensePlate || '-'}`,
+          canRide: fault.canRide,
+          createdAt: fault.reportedDate || fault.createdAt,
+        }));
+        alerts.push(...faultAlerts);
+      } catch (faultErr) {
+        console.error('Error fetching fault alerts:', faultErr);
+      }
+    }
 
     res.json({ success: true, alerts, count: alerts.length });
   } catch (error) {
