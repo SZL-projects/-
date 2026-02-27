@@ -1,4 +1,4 @@
-// Vercel Serverless Function - /api/faults AND /api/donations (combined to save function count)
+// Vercel Serverless Function - /api/faults AND /api/donations AND /api/insurance-claims (combined to save function count)
 const { initFirebase, extractIdFromUrl } = require('./_utils/firebase');
 const { authenticateToken, checkPermission } = require('./_utils/auth');
 const getRawBody = require('raw-body');
@@ -29,6 +29,11 @@ module.exports = async (req, res) => {
     const user = await authenticateToken(req, db);
 
     const url = req.url.split('?')[0];
+
+    // ==================== INSURANCE CLAIMS ROUTES ====================
+    if (url.includes('/insurance-claims')) {
+      return handleInsuranceClaimsRequest(req, res, db, user, url);
+    }
 
     // ==================== DONATIONS ROUTES ====================
     if (url.includes('/donations')) {
@@ -478,6 +483,264 @@ async function handleFaultsRequest(req, res, db, user, url) {
       success: true,
       message: 'תקלה דווחה בהצלחה',
       fault: { id: faultRef.id, ...faultDoc.data() }
+    });
+  }
+
+  return res.status(405).json({ success: false, message: 'Method not allowed' });
+}
+
+// ==================== INSURANCE CLAIMS HANDLER ====================
+async function handleInsuranceClaimsRequest(req, res, db, user, url) {
+  const claimId = extractIdFromUrl(req.url, 'insurance-claims');
+
+  // GET /api/insurance-claims/statistics
+  if (url.endsWith('/statistics') && req.method === 'GET') {
+    const { vehicleId } = req.query;
+    let query = db.collection('insurance_claims');
+    if (vehicleId) query = query.where('vehicleId', '==', vehicleId);
+
+    const snapshot = await query.get();
+    let totalClaimAmount = 0;
+    let totalApprovedAmount = 0;
+    let totalPaidAmount = 0;
+    let countByStatus = {};
+    let countByEventType = {};
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      totalClaimAmount += data.claimAmount || 0;
+      totalApprovedAmount += data.approvedAmount || 0;
+      totalPaidAmount += data.paidAmount || 0;
+      countByStatus[data.status] = (countByStatus[data.status] || 0) + 1;
+      countByEventType[data.eventType] = (countByEventType[data.eventType] || 0) + 1;
+    });
+
+    return res.json({
+      success: true,
+      statistics: { totalCount: snapshot.size, totalClaimAmount, totalApprovedAmount, totalPaidAmount, countByStatus, countByEventType }
+    });
+  }
+
+  // GET /api/insurance-claims/vehicle/:vehicleId
+  if (url.includes('/vehicle/') && req.method === 'GET') {
+    const match = url.match(/\/vehicle\/([^/]+)/);
+    const vehicleId = match ? match[1] : null;
+    if (!vehicleId) return res.status(400).json({ success: false, message: 'מזהה כלי חסר' });
+
+    const { limit = 50 } = req.query;
+    let claims = [];
+    try {
+      const snapshot = await db.collection('insurance_claims')
+        .where('vehicleId', '==', vehicleId).orderBy('eventDate', 'desc').limit(parseInt(limit)).get();
+      claims = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (e) {
+      const snapshot = await db.collection('insurance_claims')
+        .where('vehicleId', '==', vehicleId).limit(parseInt(limit)).get();
+      claims = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+    return res.json({ success: true, count: claims.length, claims });
+  }
+
+  // GET /api/insurance-claims/rider/:riderId
+  if (url.includes('/rider/') && req.method === 'GET') {
+    const match = url.match(/\/rider\/([^/]+)/);
+    const riderId = match ? match[1] : null;
+    if (!riderId) return res.status(400).json({ success: false, message: 'מזהה רוכב חסר' });
+
+    const { limit = 50 } = req.query;
+    let claims = [];
+    try {
+      const snapshot = await db.collection('insurance_claims')
+        .where('riderId', '==', riderId).orderBy('eventDate', 'desc').limit(parseInt(limit)).get();
+      claims = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (e) {
+      const snapshot = await db.collection('insurance_claims')
+        .where('riderId', '==', riderId).limit(parseInt(limit)).get();
+      claims = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+    return res.json({ success: true, count: claims.length, claims });
+  }
+
+  // Single claim operations
+  if (claimId && !url.includes('/vehicle/') && !url.includes('/rider/') && !url.includes('/statistics')) {
+    const claimRef = db.collection('insurance_claims').doc(claimId);
+
+    // PUT /api/insurance-claims/:id/submit|approve|reject|close
+    const actionMatch = url.match(/\/insurance-claims\/[^/]+\/(submit|approve|reject|close)$/);
+    if (actionMatch && req.method === 'PUT') {
+      const action = actionMatch[1];
+      await checkPermission(user, db, 'insurance_claims', 'edit');
+
+      let updateData = { ...req.body, updatedBy: user.id, updatedAt: new Date() };
+
+      if (action === 'submit') {
+        updateData = { ...updateData, status: 'submitted', submittedAt: new Date() };
+      } else if (action === 'approve') {
+        if (!req.body.approvedAmount && req.body.approvedAmount !== 0) {
+          return res.status(400).json({ success: false, message: 'סכום מאושר הוא שדה חובה לאישור תביעה' });
+        }
+        updateData = { ...updateData, status: 'approved', approvedAt: new Date() };
+      } else if (action === 'reject') {
+        if (!req.body.rejectionReason) {
+          return res.status(400).json({ success: false, message: 'סיבת דחייה היא שדה חובה' });
+        }
+        updateData = { ...updateData, status: 'rejected', rejectedAt: new Date() };
+      } else if (action === 'close') {
+        updateData = { ...updateData, status: 'closed', closedAt: new Date(), closedBy: user.id };
+      }
+
+      await claimRef.update(updateData);
+      const updatedDoc = await claimRef.get();
+      await writeAuditLog(db, user, { action: 'status_change', entityType: 'insurance_claim', entityId: claimId, entityName: updatedDoc.data().claimNumber, description: `תביעת ביטוח - פעולה: ${action}` });
+      return res.json({ success: true, message: 'תביעה עודכנה בהצלחה', claim: { id: updatedDoc.id, ...updatedDoc.data() } });
+    }
+
+    const doc = await claimRef.get();
+    if (!doc.exists) {
+      return res.status(404).json({ success: false, message: 'תביעה לא נמצאה' });
+    }
+
+    if (req.method === 'GET') {
+      return res.json({ success: true, claim: { id: doc.id, ...doc.data() } });
+    }
+
+    if (req.method === 'PUT') {
+      await checkPermission(user, db, 'insurance_claims', 'edit');
+      const existingData = doc.data();
+      const updateData = { ...req.body, updatedBy: user.id, updatedAt: new Date() };
+      delete updateData.id;
+      delete updateData.claimNumber;
+      delete updateData.createdAt;
+      delete updateData.createdBy;
+
+      await claimRef.update(updateData);
+      const updatedDoc = await claimRef.get();
+      const diff = buildChanges(existingData, req.body);
+      await writeAuditLog(db, user, { action: 'update', entityType: 'insurance_claim', entityId: claimId, entityName: updatedDoc.data().claimNumber, changes: diff, description: `תביעת ביטוח עודכנה: ${updatedDoc.data().claimNumber || ''}` });
+      return res.json({ success: true, message: 'תביעה עודכנה בהצלחה', claim: { id: updatedDoc.id, ...updatedDoc.data() } });
+    }
+
+    if (req.method === 'DELETE') {
+      await checkPermission(user, db, 'insurance_claims', 'edit');
+      const deletedData = doc.data();
+      await claimRef.delete();
+      await writeAuditLog(db, user, { action: 'delete', entityType: 'insurance_claim', entityId: claimId, entityName: deletedData.claimNumber, description: `תביעת ביטוח נמחקה: ${deletedData.claimNumber || ''}` });
+      return res.json({ success: true, message: 'תביעה נמחקה בהצלחה' });
+    }
+  }
+
+  // Collection operations
+  if (req.method === 'GET') {
+    const { search, status, eventType, vehicleId, riderId, insuranceCompany, insuranceType, limit = 100 } = req.query;
+    const limitNum = Math.min(parseInt(limit), 500);
+
+    let query = db.collection('insurance_claims');
+    if (status) query = query.where('status', '==', status);
+    if (eventType) query = query.where('eventType', '==', eventType);
+    if (vehicleId) query = query.where('vehicleId', '==', vehicleId);
+    if (riderId) query = query.where('riderId', '==', riderId);
+    if (insuranceCompany) query = query.where('insuranceCompany', '==', insuranceCompany);
+    if (insuranceType) query = query.where('insuranceType', '==', insuranceType);
+
+    let claims = [];
+    try {
+      const snapshot = await query.orderBy('eventDate', 'desc').limit(limitNum).get();
+      claims = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (e) {
+      const snapshot = await query.limit(limitNum).get();
+      claims = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      claims = claims.filter(c =>
+        c.claimNumber?.toLowerCase().includes(searchLower) ||
+        c.externalClaimNumber?.toLowerCase().includes(searchLower) ||
+        c.description?.toLowerCase().includes(searchLower) ||
+        c.vehiclePlate?.toLowerCase().includes(searchLower) ||
+        c.riderName?.toLowerCase().includes(searchLower) ||
+        c.insuranceCompany?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    return res.json({ success: true, count: claims.length, claims });
+  }
+
+  if (req.method === 'POST') {
+    if (!req.body.vehicleId) return res.status(400).json({ success: false, message: 'כלי הוא שדה חובה' });
+    if (!req.body.eventType) return res.status(400).json({ success: false, message: 'סוג אירוע הוא שדה חובה' });
+    if (!req.body.eventDate) return res.status(400).json({ success: false, message: 'תאריך אירוע הוא שדה חובה' });
+    if (!req.body.description) return res.status(400).json({ success: false, message: 'תיאור האירוע הוא שדה חובה' });
+    if (!req.body.insuranceCompany) return res.status(400).json({ success: false, message: 'חברת ביטוח היא שדה חובה' });
+    if (!req.body.insuranceType) return res.status(400).json({ success: false, message: 'סוג ביטוח הוא שדה חובה' });
+
+    // Generate claim number
+    const year = new Date().getFullYear();
+    let count = 1;
+    try {
+      const countSnapshot = await db.collection('insurance_claims')
+        .where('createdAt', '>=', new Date(year, 0, 1))
+        .where('createdAt', '<', new Date(year + 1, 0, 1)).get();
+      count = countSnapshot.size + 1;
+    } catch (e) {
+      const allSnapshot = await db.collection('insurance_claims').get();
+      count = allSnapshot.size + 1;
+    }
+    const claimNumber = `IC-${year}-${String(count).padStart(5, '0')}`;
+
+    const claimData = {
+      claimNumber,
+      externalClaimNumber: req.body.externalClaimNumber || null,
+      vehicleId: req.body.vehicleId,
+      vehiclePlate: req.body.vehiclePlate || null,
+      riderId: req.body.riderId || null,
+      riderName: req.body.riderName || null,
+      eventType: req.body.eventType,
+      eventDate: req.body.eventDate ? new Date(req.body.eventDate) : new Date(),
+      description: req.body.description,
+      location: {
+        address: req.body.location?.address || '',
+        coordinates: { lat: req.body.location?.coordinates?.lat || null, lng: req.body.location?.coordinates?.lng || null }
+      },
+      insuranceCompany: req.body.insuranceCompany,
+      insuranceType: req.body.insuranceType,
+      policyNumber: req.body.policyNumber || '',
+      status: req.body.status || 'draft',
+      claimAmount: req.body.claimAmount || 0,
+      approvedAmount: req.body.approvedAmount || 0,
+      paidAmount: req.body.paidAmount || 0,
+      documents: req.body.documents || [],
+      appraiser: {
+        name: req.body.appraiser?.name || '',
+        phone: req.body.appraiser?.phone || '',
+        email: req.body.appraiser?.email || '',
+        appointmentDate: req.body.appraiser?.appointmentDate ? new Date(req.body.appraiser.appointmentDate) : null,
+        reportDate: req.body.appraiser?.reportDate ? new Date(req.body.appraiser.reportDate) : null
+      },
+      relatedMaintenanceId: req.body.relatedMaintenanceId || null,
+      relatedFaultId: req.body.relatedFaultId || null,
+      notes: req.body.notes || [],
+      submittedAt: null,
+      approvedAt: null,
+      rejectedAt: null,
+      closedAt: null,
+      rejectionReason: null,
+      openedBy: user.id,
+      closedBy: null,
+      createdBy: user.id,
+      createdAt: new Date(),
+      updatedBy: user.id,
+      updatedAt: new Date()
+    };
+
+    const claimRef = await db.collection('insurance_claims').add(claimData);
+    const claimDoc = await claimRef.get();
+    await writeAuditLog(db, user, { action: 'create', entityType: 'insurance_claim', entityId: claimRef.id, entityName: claimNumber, description: `תביעת ביטוח חדשה נוצרה: ${claimNumber}` });
+
+    return res.status(201).json({
+      success: true,
+      message: 'תביעת ביטוח נוצרה בהצלחה',
+      claim: { id: claimRef.id, ...claimDoc.data() }
     });
   }
 
