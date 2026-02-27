@@ -96,18 +96,16 @@ router.post('/', async (req, res) => {
       description: 'תקלה חדשה נוצרה'
     });
 
-    // שליחת התראת מייל למנהלים (ברקע, לא חוסם את התגובה)
-    setImmediate(async () => {
-      try {
-        const [vehicle, rider] = await Promise.all([
-          fault.vehicleId ? vehicleModel.findById(fault.vehicleId).catch(() => null) : Promise.resolve(null),
-          fault.riderId ? riderModel.findById(fault.riderId).catch(() => null) : Promise.resolve(null),
-        ]);
-        await emailService.sendNewFaultNotification(fault, vehicle, rider);
-      } catch (emailErr) {
-        console.error('Error sending fault notification email:', emailErr);
-      }
-    });
+    // שליחת התראת מייל למנהלים (לפני ה-response כי Vercel מקפיא את הפונקציה אחרי השליחה)
+    try {
+      const [vehicle, rider] = await Promise.all([
+        fault.vehicleId ? vehicleModel.findById(fault.vehicleId).catch(() => null) : Promise.resolve(null),
+        fault.riderId ? riderModel.findById(fault.riderId).catch(() => null) : Promise.resolve(null),
+      ]);
+      await emailService.sendNewFaultNotification(fault, vehicle, rider);
+    } catch (emailErr) {
+      console.error('Error sending fault notification email:', emailErr);
+    }
 
     res.status(201).json({
       success: true,

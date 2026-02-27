@@ -111,11 +111,10 @@ router.get('/alerts', async (req, res) => {
 
     if (faultAllowed && faultLevel !== 'self' && faultLevel !== 'none') {
       try {
-        const [openFaults, inProgressFaults] = await Promise.all([
-          FaultModel.getAll({ status: 'open' }, 50),
-          FaultModel.getAll({ status: 'in_progress' }, 50),
-        ]);
-        const faultAlerts = [...openFaults, ...inProgressFaults].map(fault => ({
+        // שליפה ללא פילטר סטטוס (כדי להימנע מ-composite index ב-Firestore) + סינון בזיכרון
+        const allFetchedFaults = await FaultModel.getAll({}, 100);
+        const activeFaults = allFetchedFaults.filter(f => f.status === 'open' || f.status === 'in_progress');
+        const faultAlerts = activeFaults.map(fault => ({
           id: `fault-${fault.id || fault._id}`,
           type: 'fault',
           faultId: fault.id || fault._id,
@@ -134,6 +133,7 @@ router.get('/alerts', async (req, res) => {
       }
     }
 
+    res.set('Cache-Control', 'no-store');
     res.json({ success: true, alerts, count: alerts.length });
   } catch (error) {
     console.error('Error fetching notification alerts:', error);
