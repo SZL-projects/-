@@ -379,7 +379,9 @@ setVehicles(vehiclesList);
             <Card
               key={vehicle.id}
               elevation={0}
+              onClick={() => navigate(`/vehicles/${vehicle.id}`)}
               sx={{
+                cursor: 'pointer',
                 dir: 'rtl',
                 borderRadius: '16px',
                 border: '1px solid #e2e8f0',
@@ -452,19 +454,7 @@ setVehicles(vehiclesList);
 
               <Divider sx={{ borderColor: '#f1f5f9' }} />
 
-              <CardActions sx={{ justifyContent: 'space-between', px: 2.5, py: 1.5 }}>
-                <Button
-                  size="small"
-                  startIcon={<Visibility />}
-                  onClick={() => navigate(`/vehicles/${vehicle.id}`)}
-                  sx={{
-                    color: '#6366f1',
-                    fontWeight: 600,
-                    '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.08)' },
-                  }}
-                >
-                  צפייה
-                </Button>
+              <CardActions sx={{ justifyContent: 'flex-end', px: 2.5, py: 1.5 }} onClick={(e) => e.stopPropagation()}>
                 <Box>
                   {hasPermission('vehicles', 'edit') && (
                     <IconButton
@@ -525,7 +515,9 @@ setVehicles(vehiclesList);
               {displayedVehicles.map((vehicle, index) => (
                 <TableRow
                   key={vehicle.id}
+                  onClick={() => navigate(`/vehicles/${vehicle.id}`)}
                   sx={{
+                    cursor: 'pointer',
                     animation: `fadeIn 0.3s ease-out ${index * 0.03}s both`,
                     '&:hover': {
                       bgcolor: 'rgba(99, 102, 241, 0.04)',
@@ -550,17 +542,7 @@ setVehicles(vehiclesList);
                     {vehicle.assignedRiderName || <Typography component="span" sx={{ color: '#94a3b8', fontSize: 'inherit' }}>—</Typography>}
                   </TableCell>
                   <TableCell>{getStatusChip(vehicle.status)}</TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      size="small"
-                      onClick={() => navigate(`/vehicles/${vehicle.id}`)}
-                      sx={{
-                        color: '#6366f1',
-                        '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.08)' },
-                      }}
-                    >
-                      <Visibility />
-                    </IconButton>
+                  <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                     {hasPermission('vehicles', 'edit') && (
                       <IconButton
                         size="small"

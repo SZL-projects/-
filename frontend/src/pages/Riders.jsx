@@ -342,7 +342,9 @@ export default function Riders() {
             <Card
               key={rider.id}
               elevation={0}
+              onClick={() => navigate(`/riders/${rider.id}`)}
               sx={{
+                cursor: 'pointer',
                 dir: 'rtl',
                 borderRadius: '16px',
                 border: '1px solid #e2e8f0',
@@ -401,19 +403,7 @@ export default function Riders() {
 
               <Divider sx={{ borderColor: '#f1f5f9' }} />
 
-              <CardActions sx={{ justifyContent: 'space-between', px: 2.5, py: 1.5 }}>
-                <Button
-                  size="small"
-                  startIcon={<Visibility />}
-                  onClick={() => navigate(`/riders/${rider.id}`)}
-                  sx={{
-                    color: '#6366f1',
-                    fontWeight: 600,
-                    '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.08)' },
-                  }}
-                >
-                  צפייה
-                </Button>
+              <CardActions sx={{ justifyContent: 'flex-end', px: 2.5, py: 1.5 }} onClick={(e) => e.stopPropagation()}>
                 <Box>
                   {hasPermission('riders', 'edit') && (
                     <IconButton
@@ -472,7 +462,9 @@ export default function Riders() {
               {riders.map((rider, index) => (
                 <TableRow
                   key={rider.id}
+                  onClick={() => navigate(`/riders/${rider.id}`)}
                   sx={{
+                    cursor: 'pointer',
                     animation: `fadeIn 0.3s ease-out ${index * 0.03}s both`,
                     '&:hover': {
                       bgcolor: 'rgba(99, 102, 241, 0.04)',
@@ -508,17 +500,7 @@ export default function Riders() {
                       }}
                     />
                   </TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      size="small"
-                      onClick={() => navigate(`/riders/${rider.id}`)}
-                      sx={{
-                        color: '#6366f1',
-                        '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.08)' },
-                      }}
-                    >
-                      <Visibility />
-                    </IconButton>
+                  <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                     {hasPermission('riders', 'edit') && (
                       <IconButton
                         size="small"

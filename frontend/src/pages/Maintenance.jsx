@@ -1022,7 +1022,9 @@ export default function Maintenance() {
               <Card
                 key={maintenance.id}
                 elevation={0}
+                onClick={() => handleViewDetails(maintenance)}
                 sx={{
+                  cursor: 'pointer',
                   borderRadius: '12px',
                   border: '1px solid #e2e8f0',
                   '&:active': { bgcolor: 'rgba(99, 102, 241, 0.04)' },
@@ -1061,10 +1063,7 @@ export default function Maintenance() {
                     <Typography variant="caption" sx={{ color: '#94a3b8' }}>
                       {formatDate(maintenance.maintenanceDate)}
                     </Typography>
-                    <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      <IconButton size="small" onClick={() => handleViewDetails(maintenance)} sx={{ color: '#6366f1' }}>
-                        <Visibility fontSize="small" />
-                      </IconButton>
+                    <Box sx={{ display: 'flex', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
                       {hasPermission('maintenance', 'edit') && (
                         <IconButton size="small" onClick={() => handleEdit(maintenance)} sx={{ color: '#64748b' }}>
                           <Edit fontSize="small" />
@@ -1161,7 +1160,9 @@ export default function Maintenance() {
                 filteredMaintenances.map((maintenance, index) => (
                   <TableRow
                     key={maintenance.id}
+                    onClick={() => handleViewDetails(maintenance)}
                     sx={{
+                      cursor: 'pointer',
                       animation: `fadeIn 0.3s ease-out ${index * 0.03}s both`,
                       '&:hover': {
                         bgcolor: 'rgba(99, 102, 241, 0.04)',
@@ -1199,16 +1200,7 @@ export default function Maintenance() {
                     <TableCell sx={{ color: '#64748b' }}>
                       {formatDate(maintenance.maintenanceDate)}
                     </TableCell>
-                    <TableCell align="center">
-                      <Tooltip title="צפה בפרטים">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleViewDetails(maintenance)}
-                          sx={{ color: '#6366f1', '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.08)' } }}
-                        >
-                          <Visibility />
-                        </IconButton>
-                      </Tooltip>
+                    <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                       {hasPermission('maintenance', 'edit') && (
                         <Tooltip title="ערוך">
                           <IconButton

@@ -417,8 +417,8 @@ export default function InsuranceClaims() {
                   return (
                     <TableRow
                       key={claim.id}
-                      hover
-                      sx={{ '&:nth-of-type(odd)': { bgcolor: 'rgba(248, 250, 252, 0.5)' } }}
+                      onClick={() => handleViewDetails(claim)}
+                      sx={{ cursor: 'pointer', '&:nth-of-type(odd)': { bgcolor: 'rgba(248, 250, 252, 0.5)' }, '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.04)' } }}
                     >
                       <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>
                         {claim.claimNumber || '-'}
@@ -453,13 +453,8 @@ export default function InsuranceClaims() {
                           }}
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          <Tooltip title="צפייה">
-                            <IconButton size="small" onClick={() => handleViewDetails(claim)} sx={{ color: '#6366f1' }}>
-                              <Visibility fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
                           {canEdit && (
                             <>
                               <Tooltip title="עריכה">

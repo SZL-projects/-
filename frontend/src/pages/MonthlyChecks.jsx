@@ -884,7 +884,9 @@ export default function MonthlyChecks() {
                     filteredChecks.map((check) => (
                       <TableRow
                         key={check._id || check.id}
+                        onClick={() => handleViewDetails(check)}
                         sx={{
+                          cursor: 'pointer',
                           '&:hover': { bgcolor: '#f8fafc' },
                           transition: 'background-color 0.15s ease',
                         }}
@@ -927,19 +929,8 @@ export default function MonthlyChecks() {
                           ) : '-'}
                         </TableCell>
                         <TableCell sx={{ borderBottom: '1px solid #f1f5f9' }}>{getStatusChip(check)}</TableCell>
-                        <TableCell align="center" sx={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <TableCell align="center" sx={{ borderBottom: '1px solid #f1f5f9' }} onClick={(e) => e.stopPropagation()}>
                           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleViewDetails(check)}
-                              title="צפה בפרטים"
-                              sx={{
-                                color: '#6366f1',
-                                '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.1)' },
-                              }}
-                            >
-                              <Visibility fontSize="small" />
-                            </IconButton>
                             {hasPermission('monthly_checks', 'edit') && check.status === 'pending' && (
                               <IconButton
                                 size="small"
@@ -1007,7 +998,9 @@ export default function MonthlyChecks() {
                   {filteredChecks.map((check) => (
                     <Card
                       key={check._id || check.id}
+                      onClick={() => handleViewDetails(check)}
                       sx={{
+                        cursor: 'pointer',
                         borderRadius: '16px',
                         border: '1px solid #e2e8f0',
                         boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
@@ -1071,19 +1064,7 @@ export default function MonthlyChecks() {
                         </Grid>
                       </CardContent>
                       <Divider />
-                      <CardActions sx={{ justifyContent: 'flex-end', px: 2, py: 1.5, gap: 1 }}>
-                        <Button
-                          size="small"
-                          startIcon={<Visibility />}
-                          onClick={() => handleViewDetails(check)}
-                          sx={{
-                            color: '#6366f1',
-                            fontWeight: 600,
-                            '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.1)' },
-                          }}
-                        >
-                          פרטים
-                        </Button>
+                      <CardActions sx={{ justifyContent: 'flex-end', px: 2, py: 1.5, gap: 1 }} onClick={(e) => e.stopPropagation()}>
                         {hasPermission('monthly_checks', 'edit') && check.status === 'pending' && (
                           <Button
                             size="small"

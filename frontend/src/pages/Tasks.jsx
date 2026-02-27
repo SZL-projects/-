@@ -371,7 +371,9 @@ export default function Tasks() {
             <Card
               key={task.id}
               elevation={0}
+              onClick={() => navigate(`/tasks/${task.id}`)}
               sx={{
+                cursor: 'pointer',
                 dir: 'rtl',
                 borderRadius: '16px',
                 border: '1px solid #e2e8f0',
@@ -425,19 +427,7 @@ export default function Tasks() {
 
               <Divider sx={{ borderColor: '#f1f5f9' }} />
 
-              <CardActions sx={{ justifyContent: 'space-between', px: 2.5, py: 1.5 }}>
-                <Button
-                  size="small"
-                  startIcon={<Visibility />}
-                  onClick={() => navigate(`/tasks/${task.id}`)}
-                  sx={{
-                    color: '#6366f1',
-                    fontWeight: 600,
-                    '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.08)' },
-                  }}
-                >
-                  צפייה
-                </Button>
+              <CardActions sx={{ justifyContent: 'flex-end', px: 2.5, py: 1.5 }} onClick={(e) => e.stopPropagation()}>
                 <Box>
                   {hasPermission('tasks', 'edit') && (
                     <IconButton
@@ -495,7 +485,9 @@ export default function Tasks() {
               {tasks.map((task, index) => (
                 <TableRow
                   key={task.id}
+                  onClick={() => navigate(`/tasks/${task.id}`)}
                   sx={{
+                    cursor: 'pointer',
                     animation: `fadeIn 0.3s ease-out ${index * 0.03}s both`,
                     '&:hover': {
                       bgcolor: 'rgba(99, 102, 241, 0.04)',
@@ -513,17 +505,7 @@ export default function Tasks() {
                   <TableCell>{getPriorityChip(task.priority)}</TableCell>
                   <TableCell>{getStatusChip(task.status)}</TableCell>
                   <TableCell sx={{ color: '#64748b' }}>{formatDate(task.dueDate)}</TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      size="small"
-                      onClick={() => navigate(`/tasks/${task.id}`)}
-                      sx={{
-                        color: '#6366f1',
-                        '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.08)' },
-                      }}
-                    >
-                      <Visibility />
-                    </IconButton>
+                  <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                     {hasPermission('tasks', 'edit') && (
                       <IconButton
                         size="small"

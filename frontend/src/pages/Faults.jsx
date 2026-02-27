@@ -643,7 +643,9 @@ export default function Faults() {
               filteredFaults.map((fault, index) => (
                 <TableRow
                   key={fault._id || fault.id}
+                  onClick={() => handleViewDetails(fault)}
                   sx={{
+                    cursor: 'pointer',
                     animation: `fadeIn 0.3s ease-out ${index * 0.03}s both`,
                     bgcolor: fault.canRide === false ? 'rgba(239, 68, 68, 0.04)' : 'inherit',
                     '&:hover': {
@@ -717,17 +719,7 @@ export default function Faults() {
                   <TableCell sx={{ color: '#64748b' }}>
                     {formatDate(fault.reportedDate || fault.createdAt)}
                   </TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleViewDetails(fault)}
-                      sx={{
-                        color: '#6366f1',
-                        '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.08)' },
-                      }}
-                    >
-                      <Visibility />
-                    </IconButton>
+                  <TableCell align="center" onClick={(e) => e.stopPropagation()}>
                     {hasPermission('faults', 'edit') && fault.status === 'open' && (
                       <IconButton
                         size="small"

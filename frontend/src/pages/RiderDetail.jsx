@@ -558,7 +558,7 @@ export default function RiderDetail() {
                     <Grid item xs={6}>
                       <Typography variant="caption" sx={{ color: '#94a3b8' }}>סוג</Typography>
                       <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
-                        {vehicle.type === 'scooter' ? 'סקוטר' : 'אופנוע'}
+                        {vehicle.type === 'scooter' ? 'קטנוע' : 'אופנוע'}
                       </Typography>
                     </Grid>
                     <Grid item xs={12}>
