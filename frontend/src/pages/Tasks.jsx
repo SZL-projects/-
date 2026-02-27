@@ -371,7 +371,7 @@ export default function Tasks() {
             <Card
               key={task.id}
               elevation={0}
-              onClick={() => navigate(`/tasks/${task.id}`)}
+              onClick={() => handleOpenDialog(task)}
               sx={{
                 cursor: 'pointer',
                 dir: 'rtl',
@@ -485,7 +485,7 @@ export default function Tasks() {
               {tasks.map((task, index) => (
                 <TableRow
                   key={task.id}
-                  onClick={() => navigate(`/tasks/${task.id}`)}
+                  onClick={() => handleOpenDialog(task)}
                   sx={{
                     cursor: 'pointer',
                     animation: `fadeIn 0.3s ease-out ${index * 0.03}s both`,
