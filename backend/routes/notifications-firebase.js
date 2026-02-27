@@ -1,11 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const VehicleModel = require('../models/firestore/VehicleModel');
+const vehicleModel = require('../models/firestore/VehicleModel');
 const FaultModel = require('../models/firestore/FaultModel');
 const { protect } = require('../middleware/auth-firebase');
 const PermissionModel = require('../models/firestore/PermissionModel');
-
-const vehicleModel = new VehicleModel();
 
 // כל הנתיבים מוגנים
 router.use(protect);

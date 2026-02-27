@@ -44,6 +44,7 @@ import {
   Refresh,
   ErrorOutline,
   TwoWheeler,
+  Delete,
 } from '@mui/icons-material';
 import { faultsAPI, ridersAPI, vehiclesAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -66,6 +67,8 @@ export default function Faults() {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingFault, setEditingFault] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [faultToDelete, setFaultToDelete] = useState(null);
   useEffect(() => {
     loadData();
   }, []);
@@ -135,6 +138,24 @@ export default function Faults() {
       setError('שגיאה בשמירת התקלה');
     }
   }, [editingFault]);
+
+  const handleDeleteClick = useCallback((fault) => {
+    setFaultToDelete(fault);
+    setDeleteDialogOpen(true);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!faultToDelete) return;
+    try {
+      await faultsAPI.delete(faultToDelete._id || faultToDelete.id);
+      setDeleteDialogOpen(false);
+      setFaultToDelete(null);
+      await loadData();
+    } catch (err) {
+      console.error('Error deleting fault:', err);
+      setError('שגיאה במחיקת התקלה');
+    }
+  }, [faultToDelete]);
 
   const handleUpdateStatus = useCallback(async (faultId, newStatus) => {
     try {
@@ -766,6 +787,19 @@ export default function Faults() {
                         <CheckCircle />
                       </IconButton>
                     )}
+                    {hasPermission('faults', 'edit') && (
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDeleteClick(fault)}
+                        title="מחק תקלה"
+                        sx={{
+                          color: '#ef4444',
+                          '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.08)' },
+                        }}
+                      >
+                        <Delete />
+                      </IconButton>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -789,6 +823,44 @@ export default function Faults() {
         onSave={handleSaveFault}
         fault={editingFault}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => { setDeleteDialogOpen(false); setFaultToDelete(null); }}
+        dir="rtl"
+        PaperProps={{ sx: { borderRadius: '16px', p: 1 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, color: '#1e293b' }}>מחיקת תקלה</DialogTitle>
+        <DialogContent>
+          <Typography>
+            האם למחוק את התקלה{faultToDelete ? `: "${faultToDelete.title || faultToDelete.description?.substring(0, 40) || ''}"` : ''}?
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#ef4444', mt: 1 }}>
+            פעולה זו אינה ניתנת לביטול.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 2, gap: 1 }}>
+          <Button
+            onClick={() => { setDeleteDialogOpen(false); setFaultToDelete(null); }}
+            sx={{ borderRadius: '10px', fontWeight: 600, color: '#64748b' }}
+          >
+            ביטול
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            sx={{
+              borderRadius: '10px',
+              fontWeight: 600,
+              bgcolor: '#ef4444',
+              '&:hover': { bgcolor: '#dc2626' },
+            }}
+          >
+            מחק
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Modern Details Dialog */}
       <Dialog

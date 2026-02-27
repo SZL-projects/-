@@ -5,10 +5,8 @@ const { protect } = require('../middleware/auth-firebase');
 const { checkPermission } = require('../middleware/checkPermission');
 const { logAudit, buildChanges } = require('../middleware/auditLogger');
 const emailService = require('../services/emailService');
-const VehicleModel = require('../models/firestore/VehicleModel');
-const RiderModel = require('../models/firestore/RiderModel');
-const vehicleModel = new VehicleModel();
-const riderModel = new RiderModel();
+const vehicleModel = require('../models/firestore/VehicleModel');
+const riderModel = require('../models/firestore/RiderModel');
 
 // כל הנתיבים מוגנים - דורשים אימות
 router.use(protect);
