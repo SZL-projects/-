@@ -20,18 +20,17 @@ const upload = multer({
 router.use(protect);
 
 // פונקציית עזר: הוספת שם רוכב משויך לכלים
-// שולף את כל הרוכבים (ללא פילטר Firestore) ומסנן ב-JS כדי להימנע מבעיית index
+// שולף רק רוכבים משויכים במקום כולם
 async function enrichVehiclesWithRiderNames(vehicles) {
   if (vehicles.length === 0) return vehicles;
 
   try {
-    const allRiders = await RiderModel.getAll({}, 500);
+    const assignedRiders = await RiderModel.getAll({ assignmentStatus: 'assigned' }, 200);
 
-    // בנה מפה: vehicleId → שם מלא (תומך בשתי שמות השדה האפשריות)
     const vehicleRiderMap = {};
-    for (const rider of allRiders) {
+    for (const rider of assignedRiders) {
       const vehicleId = rider.assignedVehicleId || rider.assignedVehicle || null;
-      if (vehicleId && rider.assignmentStatus === 'assigned') {
+      if (vehicleId) {
         vehicleRiderMap[vehicleId] = {
           name: `${rider.firstName} ${rider.lastName}`.trim(),
           riderId: rider.id,
@@ -214,18 +213,14 @@ router.get('/:id', checkPermission('vehicles', 'view'), async (req, res) => {
       });
     }
 
-    // הוספת שם רוכב משויך — שולף כל הרוכבים ומסנן ב-JS
+    // הוספת שם רוכב משויך — שאילתה ישירה לפי vehicleId
     let assignedRiderName = null;
     let assignedRiderId = null;
     try {
-      const allRiders = await RiderModel.getAll({}, 500);
-      const match = allRiders.find(r =>
-        r.assignmentStatus === 'assigned' &&
-        ((r.assignedVehicleId === vehicle.id) || (r.assignedVehicle === vehicle.id))
-      );
-      if (match) {
-        assignedRiderName = `${match.firstName} ${match.lastName}`.trim();
-        assignedRiderId = match.id;
+      const rider = await RiderModel.findByAssignedVehicleId(vehicle.id);
+      if (rider) {
+        assignedRiderName = `${rider.firstName} ${rider.lastName}`.trim();
+        assignedRiderId = rider.id;
       }
     } catch (err) {
       console.error('rider lookup error:', err.message);

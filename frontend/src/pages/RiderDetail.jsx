@@ -70,19 +70,18 @@ export default function RiderDetail() {
     loadRider();
   }, [id]);
 
-  useEffect(() => {
-    if (rider?.assignedVehicleId) {
-      loadVehicle(rider.assignedVehicleId);
-    }
-  }, [rider]);
-
   const loadRider = async () => {
     try {
       setLoading(true);
       const response = await ridersAPI.getById(id);
-      setRider(response.data.rider);
-      setEmail(response.data.rider.email || '');
+      const riderData = response.data.rider;
+      setRider(riderData);
+      setEmail(riderData.email || '');
       setError('');
+      // טעינת הכלי מיד עם קבלת הרוכב - ללא המתנה ל-render נוסף
+      if (riderData?.assignedVehicleId) {
+        loadVehicle(riderData.assignedVehicleId);
+      }
     } catch (err) {
       console.error('Error loading rider:', err);
       setError('שגיאה בטעינת פרטי הרוכב');

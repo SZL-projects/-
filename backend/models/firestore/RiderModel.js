@@ -213,6 +213,23 @@ class RiderModel {
     return /^\d{9}$/.test(idNumber);
   }
 
+  // חיפוש רוכב לפי כלי משויך
+  async findByAssignedVehicleId(vehicleId) {
+    try {
+      const snapshot = await this.collection
+        .where('assignedVehicleId', '==', vehicleId)
+        .where('assignmentStatus', '==', 'assigned')
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) return null;
+      const doc = snapshot.docs[0];
+      return { id: doc.id, ...doc.data() };
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // עדכון סטטוס שיוך
   async updateAssignmentStatus(riderId, status, updatedByUserId) {
     try {
