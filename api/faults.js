@@ -460,6 +460,25 @@ async function handleFaultsRequest(req, res, db, user, url) {
     if (req.method === 'DELETE') {
       await checkPermission(user, db, 'faults', 'edit');
       const deletedFaultData = doc.data();
+
+      // מחיקת תמונות מ-Google Drive
+      const photos = deletedFaultData.photos || [];
+      if (photos.length > 0) {
+        try {
+          const googleDriveService = require('./_services/googleDriveService');
+          googleDriveService.setFirestore(db);
+          await googleDriveService.initialize();
+          for (const photo of photos) {
+            const fileId = photo.fileId || photo.id;
+            if (fileId) {
+              try { await googleDriveService.deleteFile(fileId); } catch (e) { console.warn('Failed to delete photo from Drive:', fileId, e.message); }
+            }
+          }
+        } catch (driveErr) {
+          console.error('Error initializing Drive for photo deletion:', driveErr.message);
+        }
+      }
+
       await faultRef.delete();
       await writeAuditLog(db, user, { action: 'delete', entityType: 'fault', entityId: faultId, entityName: deletedFaultData.description?.substring(0, 40) || 'תקלה', description: 'תקלה נמחקה' });
       return res.status(200).json({ success: true, message: 'תקלה נמחקה בהצלחה' });
