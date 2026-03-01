@@ -595,3 +595,53 @@ exports.sendLicenseExpiryEmail = async (licenseItems) => {
     });
   }
 };
+
+// שליחת הודעה על תקלה חדשה למנהלים
+exports.sendNewFaultNotification = async (fault, vehicle, rider) => {
+  const severityLabels = { critical: 'קריטית', high: 'גבוהה', medium: 'בינונית', low: 'נמוכה' };
+  const categoryLabels = { engine: 'מנוע', brakes: 'בלמים', electrical: 'חשמל ותאורה', tires: 'צמיגים', bodywork: 'מרכב', other: 'אחר' };
+  const severity = severityLabels[fault.severity] || fault.severity || 'לא ידוע';
+  const category = categoryLabels[fault.category] || fault.category || 'לא ידוע';
+  const severityColor = (fault.severity === 'critical' || fault.severity === 'high') ? '#dc2626' : fault.severity === 'medium' ? '#d97706' : '#64748b';
+  const canRideText = fault.canRide === false ? '<span style="color:#dc2626;font-weight:bold;">לא ניתן לרכב ⚠️</span>' : 'ניתן לרכב';
+  const riderName = rider ? `${rider.firstName || ''} ${rider.lastName || ''}`.trim() : (fault.riderName || 'לא ידוע');
+  const licensePlate = vehicle?.licensePlate || fault.vehicleLicensePlate || fault.vehiclePlate || '-';
+
+  const html = `<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="UTF-8">
+<style>
+body{font-family:Arial,sans-serif;background:#f4f4f4;padding:20px;margin:0}
+.container{max-width:620px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);overflow:hidden}
+.header{background:linear-gradient(135deg,#ef4444,#f97316);padding:28px 30px;text-align:center}
+.header h1{color:#fff;margin:0;font-size:22px}
+.header p{color:rgba(255,255,255,.85);margin:8px 0 0;font-size:14px}
+.body{padding:24px 30px}
+.field{background:#f8fafc;border:1px solid #e2e8f0;border-right:4px solid #6366f1;border-radius:8px;padding:12px 16px;margin-bottom:10px}
+.field-label{color:#64748b;font-size:12px}
+.field-value{color:#1e293b;font-size:15px;font-weight:600;margin-top:2px}
+.footer{padding:16px 30px;border-top:1px solid #e2e8f0;text-align:center;font-size:12px;color:#94a3b8}
+</style></head><body><div class="container">
+<div class="header"><h1>⚠️ תקלה חדשה דווחה</h1><p>כלי: ${licensePlate}</p></div>
+<div class="body">
+<div class="field"><div class="field-label">רוכב מדווח</div><div class="field-value">${riderName}</div></div>
+<div class="field"><div class="field-label">כותרת התקלה</div><div class="field-value">${fault.title || (fault.description || '').substring(0, 60) || 'לא צוין'}</div></div>
+<div class="field"><div class="field-label">קטגוריה</div><div class="field-value">${category}</div></div>
+<div class="field"><div class="field-label">חומרה</div><div class="field-value" style="color:${severityColor}">${severity}</div></div>
+<div class="field"><div class="field-label">ניתן לרכב?</div><div class="field-value">${canRideText}</div></div>
+<div class="field"><div class="field-label">תיאור</div><div class="field-value" style="font-weight:400">${fault.description || '-'}</div></div>
+${fault.location ? `<div class="field"><div class="field-label">מיקום</div><div class="field-value">${fault.location}</div></div>` : ''}
+<div class="field"><div class="field-label">תאריך דיווח</div><div class="field-value">${new Date(fault.reportedDate || fault.createdAt || Date.now()).toLocaleString('he-IL')}</div></div>
+</div>
+<div class="footer"><p>© ${new Date().getFullYear()} צי לוג ידידים | יש לטפל בתקלה במערכת</p></div>
+</div></body></html>`;
+
+  const adminEmails = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(',') : [];
+  const targets = adminEmails.length > 0 ? adminEmails : (process.env.FROM_EMAIL ? [process.env.FROM_EMAIL] : []);
+
+  for (const email of targets) {
+    await exports.sendEmail({
+      email: email.trim(),
+      subject: `תקלה חדשה: ${fault.title || (fault.description || '').substring(0, 40) || 'תקלה'} - ${licensePlate}`,
+      html,
+    });
+  }
+};

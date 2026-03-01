@@ -425,6 +425,42 @@ module.exports = async (req, res) => {
         }
       }
       alerts.sort((a, b) => a.daysLeft - b.daysLeft);
+
+      // הוספת תקלות פתוחות/בטיפול (למנהלים בלבד - לא self)
+      try {
+        const faultPermLevel = await checkPermission(user, db, 'faults', 'view');
+        if (faultPermLevel !== 'self' && faultPermLevel !== 'none') {
+          const [openSnap, inProgressSnap] = await Promise.all([
+            db.collection('faults').where('status', '==', 'open').get(),
+            db.collection('faults').where('status', '==', 'in_progress').get(),
+          ]);
+          const activeFaults = [
+            ...openSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+            ...inProgressSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+          ];
+          activeFaults.forEach(fault => {
+            alerts.push({
+              id: `fault-${fault.id}`,
+              type: 'fault',
+              faultId: fault.id,
+              vehicleId: fault.vehicleId,
+              licensePlate: fault.vehicleLicensePlate || fault.vehiclePlate || '-',
+              severity: fault.severity,
+              status: fault.status,
+              title: fault.title || (fault.description || '').substring(0, 50) || 'תקלה',
+              label: `תקלה: ${fault.title || (fault.description || '').substring(0, 40) || 'תקלה'} - ${fault.vehicleLicensePlate || '-'}`,
+              canRide: fault.canRide,
+              createdAt: fault.reportedDate || fault.createdAt,
+              daysLeft: 0,
+            });
+          });
+        }
+      } catch (faultErr) {
+        console.error('Error fetching fault alerts:', faultErr.message);
+      }
+
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
       return res.status(200).json({ success: true, alerts, count: alerts.length });
     }
 

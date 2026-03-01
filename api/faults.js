@@ -4,6 +4,7 @@ const { authenticateToken, checkPermission } = require('./_utils/auth');
 const getRawBody = require('raw-body');
 const { setCorsHeaders } = require('./_utils/cors');
 const { writeAuditLog, buildChanges } = require('./_utils/auditLog');
+const emailService = require('./_utils/emailService');
 
 module.exports = async (req, res) => {
   // CORS Headers
@@ -478,6 +479,24 @@ async function handleFaultsRequest(req, res, db, user, url) {
     const faultRef = await db.collection('faults').add(faultData);
     const faultDoc = await faultRef.get();
     await writeAuditLog(db, user, { action: 'create', entityType: 'fault', entityId: faultRef.id, entityName: req.body.description?.substring(0, 40) || 'תקלה חדשה', description: 'תקלה חדשה דווחה' });
+
+    // שליחת מייל התראה למנהלים
+    try {
+      const fault = { id: faultRef.id, ...faultDoc.data() };
+      let vehicle = null;
+      let rider = null;
+      if (fault.vehicleId) {
+        const vehicleDoc = await db.collection('vehicles').doc(fault.vehicleId).get();
+        if (vehicleDoc.exists) vehicle = { id: vehicleDoc.id, ...vehicleDoc.data() };
+      }
+      if (fault.riderId) {
+        const riderDoc = await db.collection('riders').doc(fault.riderId).get();
+        if (riderDoc.exists) rider = { id: riderDoc.id, ...riderDoc.data() };
+      }
+      await emailService.sendNewFaultNotification(fault, vehicle, rider);
+    } catch (emailErr) {
+      console.error('Error sending fault notification email:', emailErr.message);
+    }
 
     return res.status(201).json({
       success: true,
