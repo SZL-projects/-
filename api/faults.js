@@ -349,6 +349,88 @@ async function handleDonationsRequest(req, res, db, user, url) {
 
 // ==================== FAULTS HANDLER ====================
 async function handleFaultsRequest(req, res, db, user, url) {
+
+  // POST /api/faults/upload-photo → העלאת תמונת תקלה ל-Google Drive
+  if (url.endsWith('/upload-photo') && req.method === 'POST') {
+    const Busboy = require('busboy');
+    const { Readable } = require('stream');
+
+    return new Promise(async (resolve) => {
+      try {
+        const googleDriveService = require('./_services/googleDriveService');
+        googleDriveService.setFirestore(db);
+        await googleDriveService.initialize();
+
+        const rawBody = await getRawBody(req, {
+          length: req.headers['content-length'],
+          limit: '15mb'
+        });
+
+        const bufferStream = Readable.from(rawBody);
+        const busboy = Busboy({ headers: req.headers });
+
+        let fileBuffer = null;
+        let fileName = 'photo.jpg';
+        let mimeType = 'image/jpeg';
+        let fileReceived = false;
+
+        busboy.on('file', (fieldname, file, info) => {
+          try {
+            fileName = Buffer.from(info.filename, 'latin1').toString('utf8');
+          } catch (e) {
+            fileName = info.filename || 'photo.jpg';
+          }
+          mimeType = info.mimeType || 'image/jpeg';
+          fileReceived = true;
+          const chunks = [];
+          file.on('data', (data) => chunks.push(data));
+          file.on('end', () => { fileBuffer = Buffer.concat(chunks); });
+        });
+
+        busboy.on('finish', async () => {
+          try {
+            if (!fileReceived || !fileBuffer) {
+              res.status(400).json({ success: false, message: 'לא הועלה קובץ' });
+              return resolve();
+            }
+
+            // תיקייה ייעודית לתקלות (נפרדת מתרומות)
+            const faultsFolder = await googleDriveService.findOrCreateFolder('תקלות', googleDriveService.rootFolderId);
+            const fileData = await googleDriveService.uploadFile(fileName, fileBuffer, faultsFolder.id, mimeType);
+
+            // URL לתצוגה ישירה
+            const viewUrl = `https://drive.google.com/thumbnail?id=${fileData.id}&sz=w1200`;
+
+            res.json({
+              success: true,
+              file: {
+                fileId: fileData.id,
+                url: viewUrl,
+                webViewLink: fileData.webViewLink,
+                name: fileData.name,
+              }
+            });
+            resolve();
+          } catch (error) {
+            console.error('Error uploading fault photo to Drive:', error);
+            res.status(500).json({ success: false, message: error.message });
+            resolve();
+          }
+        });
+
+        busboy.on('error', (error) => {
+          res.status(500).json({ success: false, message: 'שגיאה בעיבוד הקובץ: ' + error.message });
+          resolve();
+        });
+
+        bufferStream.pipe(busboy);
+      } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+        resolve();
+      }
+    });
+  }
+
   const faultId = extractIdFromUrl(req.url, 'faults');
 
   // Single fault operations

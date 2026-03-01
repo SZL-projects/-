@@ -330,6 +330,9 @@ export const faultsAPI = {
     invalidateCache('/faults');
     return api.delete(`/faults/${id}`);
   },
+  uploadPhoto: (formData) => api.post('/faults/upload-photo', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
 };
 
 // Maintenance API - טיפולים

@@ -199,16 +199,22 @@ export default function MyFaults() {
     });
   };
 
-  const handleImageSelect = (event) => {
+  const handleImageSelect = async (event) => {
     const files = Array.from(event.target.files);
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImages(prev => [...prev, { data: e.target.result, name: file.name, type: file.type }]);
-      };
-      reader.readAsDataURL(file);
-    });
     event.target.value = '';
+    if (!files.length) return;
+    showSnackbar('מעלה תמונות...', 'info');
+    for (const file of files) {
+      try {
+        const formData = new FormData();
+        formData.append('photo', file);
+        const response = await faultsAPI.uploadPhoto(formData);
+        setImages(prev => [...prev, response.data.file]);
+      } catch (err) {
+        console.error('Error uploading photo:', err);
+        showSnackbar('שגיאה בהעלאת תמונה', 'error');
+      }
+    }
   };
 
   const handleRemoveImage = (index) => {
@@ -762,7 +768,7 @@ export default function MyFaults() {
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
                 {images.map((img, index) => (
                   <Box key={index} sx={{ position: 'relative', width: 72, height: 72 }}>
-                    <Box component="img" src={img.data} alt={img.name}
+                    <Box component="img" src={img.url || img.data} alt={img.name}
                       sx={{ width: 72, height: 72, objectFit: 'cover', borderRadius: '10px', border: '2px solid #e2e8f0' }} />
                     <Box onClick={() => handleRemoveImage(index)} sx={{
                       position: 'absolute', top: -7, right: -7,

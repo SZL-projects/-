@@ -35,7 +35,7 @@ import {
   PhotoCamera,
   Delete,
 } from '@mui/icons-material';
-import { vehiclesAPI, ridersAPI, authAPI } from '../services/api';
+import { vehiclesAPI, ridersAPI, authAPI, faultsAPI } from '../services/api';
 
 // ---- נתוני הקטגוריות ----
 const FAULT_AREAS = [
@@ -120,7 +120,8 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
     notes: '',
   });
 
-  const [images, setImages] = useState([]);  // { data: base64, name, type }
+  const [images, setImages] = useState([]);  // { url, fileId, webViewLink, name } or legacy { data: base64 }
+  const [uploadingImages, setUploadingImages] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState(null); // src of enlarged photo
   const [vehicles, setVehicles] = useState([]);
   const [riders, setRiders] = useState([]);
@@ -230,18 +231,23 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
     }
   };
 
-  // Image upload
-  const handleImageSelect = (event) => {
+  // Image upload → Google Drive
+  const handleImageSelect = async (event) => {
     const files = Array.from(event.target.files);
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImages(prev => [...prev, { data: e.target.result, name: file.name, type: file.type }]);
-      };
-      reader.readAsDataURL(file);
-    });
-    // Reset input so same file can be re-selected
     event.target.value = '';
+    if (!files.length) return;
+    setUploadingImages(true);
+    for (const file of files) {
+      try {
+        const formData = new FormData();
+        formData.append('photo', file);
+        const response = await faultsAPI.uploadPhoto(formData);
+        setImages(prev => [...prev, response.data.file]);
+      } catch (err) {
+        console.error('Error uploading photo to Drive:', err);
+      }
+    }
+    setUploadingImages(false);
   };
 
   const handleRemoveImage = (index) => {
@@ -516,14 +522,21 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
               onChange={handleImageSelect}
             />
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
-              {images.map((img, index) => (
+              {uploadingImages && (
+                <Box sx={{ width: 80, height: 80, borderRadius: '10px', border: '2px dashed #c7d2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1' }}>
+                  <Typography variant="caption" align="center">מעלה...</Typography>
+                </Box>
+              )}
+              {images.map((img, index) => {
+                const src = img.url || img.data || img;
+                return (
                 <Box key={index} sx={{ position: 'relative', width: 80, height: 80 }}>
                   <Tooltip title="לחץ להגדלה">
                     <Box
                       component="img"
-                      src={img.data || img}
+                      src={src}
                       alt={img.name || `תמונה ${index + 1}`}
-                      onClick={() => setLightboxSrc(img.data || img)}
+                      onClick={() => setLightboxSrc(img.webViewLink || src)}
                       sx={{
                         width: 80, height: 80, objectFit: 'cover',
                         borderRadius: '10px', border: '2px solid #e2e8f0',
@@ -545,7 +558,8 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
                     <Close sx={{ fontSize: 14 }} />
                   </IconButton>
                 </Box>
-              ))}
+                );
+              })}
               <Button
                 variant="outlined"
                 startIcon={<PhotoCamera />}
@@ -623,14 +637,23 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
         open={!!lightboxSrc}
         onClose={() => setLightboxSrc(null)}
         maxWidth="lg"
-        PaperProps={{ sx: { bgcolor: '#000', borderRadius: '12px', p: 0, m: 1 } }}
+        PaperProps={{ sx: { bgcolor: '#000', borderRadius: '12px', p: 0, m: 1, overflow: 'hidden' } }}
       >
-        <IconButton
-          onClick={() => setLightboxSrc(null)}
-          sx={{ position: 'absolute', top: 8, right: 8, bgcolor: 'rgba(0,0,0,0.5)', color: '#fff', zIndex: 1 }}
-        >
-          <Close />
-        </IconButton>
+        <Box sx={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 1, zIndex: 1 }}>
+          <IconButton
+            onClick={() => window.open(lightboxSrc, '_blank')}
+            sx={{ bgcolor: 'rgba(0,0,0,0.5)', color: '#fff' }}
+            title="פתח ב-Drive"
+          >
+            <PhotoCamera sx={{ fontSize: 18 }} />
+          </IconButton>
+          <IconButton
+            onClick={() => setLightboxSrc(null)}
+            sx={{ bgcolor: 'rgba(0,0,0,0.5)', color: '#fff' }}
+          >
+            <Close />
+          </IconButton>
+        </Box>
         {lightboxSrc && (
           <Box
             component="img"
