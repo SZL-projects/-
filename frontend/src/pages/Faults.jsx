@@ -45,6 +45,7 @@ import {
   ErrorOutline,
   TwoWheeler,
   Delete,
+  Add,
 } from '@mui/icons-material';
 import { faultsAPI, ridersAPI, vehiclesAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -69,6 +70,8 @@ export default function Faults() {
   const [editingFault, setEditingFault] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [faultToDelete, setFaultToDelete] = useState(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -139,6 +142,17 @@ export default function Faults() {
     }
   }, [editingFault]);
 
+  const handleCreateFault = useCallback(async (faultData) => {
+    try {
+      await faultsAPI.create(faultData);
+      setCreateDialogOpen(false);
+      await loadData();
+    } catch (err) {
+      console.error('Error creating fault:', err);
+      setError('שגיאה ביצירת התקלה');
+    }
+  }, []);
+
   const handleDeleteClick = useCallback((fault) => {
     setFaultToDelete(fault);
     setDeleteDialogOpen(true);
@@ -198,6 +212,11 @@ export default function Faults() {
   }), []);
 
   const categoryMap = useMemo(() => ({
+    // ערכים חדשים
+    scooter: 'קטנוע',
+    personal_equipment: 'ציוד רוכב',
+    assistance_equipment: 'ציוד סיוע',
+    // ערכים ישנים לתאימות לאחור
     engine: 'מנוע',
     brakes: 'בלמים',
     electrical: 'חשמל ותאורה',
@@ -310,25 +329,45 @@ export default function Faults() {
             </Typography>
           </Box>
         </Box>
-        <Button
-          variant="outlined"
-          startIcon={<Refresh />}
-          onClick={loadData}
-          disabled={loading}
-          sx={{
-            borderRadius: '12px',
-            borderColor: '#e2e8f0',
-            color: '#64748b',
-            fontWeight: 600,
-            '&:hover': {
-              borderColor: '#6366f1',
-              color: '#6366f1',
-              bgcolor: 'rgba(99, 102, 241, 0.04)',
-            },
-          }}
-        >
-          רענן
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          {hasPermission('faults', 'edit') && (
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={() => setCreateDialogOpen(true)}
+              sx={{
+                borderRadius: '12px',
+                fontWeight: 600,
+                background: 'linear-gradient(135deg, #ef4444 0%, #f97316 100%)',
+                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+                '&:hover': {
+                  boxShadow: '0 6px 16px rgba(239, 68, 68, 0.4)',
+                },
+              }}
+            >
+              דווח תקלה
+            </Button>
+          )}
+          <Button
+            variant="outlined"
+            startIcon={<Refresh />}
+            onClick={loadData}
+            disabled={loading}
+            sx={{
+              borderRadius: '12px',
+              borderColor: '#e2e8f0',
+              color: '#64748b',
+              fontWeight: 600,
+              '&:hover': {
+                borderColor: '#6366f1',
+                color: '#6366f1',
+                bgcolor: 'rgba(99, 102, 241, 0.04)',
+              },
+            }}
+          >
+            רענן
+          </Button>
+        </Box>
       </Box>
 
       {error && (
@@ -815,6 +854,14 @@ export default function Faults() {
           </Typography>
         </Box>
       )}
+
+      {/* Create Fault Dialog */}
+      <FaultDialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        onSave={handleCreateFault}
+        fault={null}
+      />
 
       {/* Edit Fault Dialog */}
       <FaultDialog

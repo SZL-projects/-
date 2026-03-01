@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -21,6 +21,7 @@ import {
   CircularProgress,
   Grid,
   Divider,
+  IconButton,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -33,48 +34,92 @@ import {
   ArrowBack,
   ArrowForward,
   Send,
+  PhotoCamera,
+  Close,
 } from '@mui/icons-material';
 import { faultsAPI, vehiclesAPI, ridersAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
-const severityLevels = [
-  { value: 'low', label: 'נמוכה', description: 'בעיה קטנה, אין דחיפות', bgcolor: 'rgba(100, 116, 139, 0.1)', color: '#64748b' },
-  { value: 'medium', label: 'בינונית', description: 'דורש טיפול בימים הקרובים', bgcolor: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' },
-  { value: 'high', label: 'גבוהה', description: 'דורש טיפול דחוף', bgcolor: 'rgba(245, 158, 11, 0.1)', color: '#d97706' },
-  { value: 'critical', label: 'קריטית', description: 'מסכן חיים או מונע נסיעה', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#dc2626' },
+const FAULT_AREAS = [
+  { value: 'scooter', label: 'בקטנוע' },
+  { value: 'personal_equipment', label: 'ציוד רוכב אישי (כגון מעיל, קסדה)' },
+  { value: 'assistance_equipment', label: 'ציוד סיוע לאחר (כגון ג\'ק, ערכת פתיחה)' },
 ];
 
-const faultCategories = [
-  { value: 'engine', label: 'מנוע' },
-  { value: 'brakes', label: 'בלמים' },
-  { value: 'electrical', label: 'חשמל ותאורה' },
-  { value: 'tires', label: 'צמיגים' },
-  { value: 'bodywork', label: 'מרכב ופחחות' },
-  { value: 'other', label: 'אחר' },
-];
+const SUB_CATEGORIES = {
+  scooter: [
+    'ברקסים',
+    'צמיג לא תקין',
+    'טיפול תקופתי (1000 / 12000 / 24000 / 36000)',
+    'מדבקות מיתוג',
+    'פליקרים',
+    'פנצ\'ר',
+    'רעש מוזר מלמטה',
+    'ידית ברקס',
+    'תופסן לאופנוע',
+    'אחר',
+  ],
+  personal_equipment: [
+    'קסדה',
+    'מעיל גשם/סערה',
+    'כפפות',
+    'שרשרת',
+    'מנעול',
+    'מעיל',
+    'דיבורית',
+    'מנעול דיסק',
+    'מתקן טלפון',
+    'אחר',
+  ],
+  assistance_equipment: [
+    'בוסטר נוקו GB150',
+    'ערכת פתיחה',
+    'ג\'ק מספריים',
+    'ג\'ק בקבוק 4 טון',
+    'בוקסות מגנזיום',
+    'בוקסות שחוקים',
+    'פטיש',
+    'מפתח T',
+    'קומפרסור',
+    'ספריי שמן',
+    'ספריי קרבורטור',
+    'סכין יפני',
+    'פיוזים',
+    'מודד מתח',
+    'מפתח ונטילים',
+    'כפפות עבודה',
+    'ערכת תולעים',
+    'ברגי סיליקון',
+    'חולץ מפתחות',
+    'חותך טבעות',
+    'אחר',
+  ],
+};
 
-const steps = ['פרטי כלי', 'סוג התקלה', 'תיאור מפורט', 'סיכום'];
+const steps = ['פרטי כלי', 'סוג התקלה', 'תיאור ותמונות', 'סיכום'];
 
 export default function FaultReport() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const fileInputRef = useRef(null);
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [vehicle, setVehicle] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [images, setImages] = useState([]);
 
   const [formData, setFormData] = useState({
     vehicleId: '',
     vehicleLicensePlate: '',
     riderId: '',
     currentKm: '',
-    category: '',
-    title: '',
+    urgencyLevel: '',         // 'cannot_ride' | 'needs_treatment'
+    faultArea: '',            // 'scooter' | 'personal_equipment' | 'assistance_equipment'
+    subCategory: '',
+    customSubCategory: '',
     description: '',
-    severity: 'medium',
-    canRide: '',
     location: '',
     reportedDate: new Date().toISOString(),
   });
@@ -169,8 +214,35 @@ export default function FaultReport() {
   };
 
   const handleChange = (field) => (event) => {
-    setFormData({ ...formData, [field]: event.target.value });
+    const value = event.target.value;
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      if (field === 'faultArea') {
+        updated.subCategory = '';
+        updated.customSubCategory = '';
+      }
+      if (field === 'subCategory') {
+        updated.customSubCategory = '';
+      }
+      return updated;
+    });
     setError('');
+  };
+
+  const handleImageSelect = (event) => {
+    const files = Array.from(event.target.files);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImages(prev => [...prev, { data: e.target.result, name: file.name, type: file.type }]);
+      };
+      reader.readAsDataURL(file);
+    });
+    event.target.value = '';
+  };
+
+  const handleRemoveImage = (index) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const validateStep = (step) => {
@@ -182,16 +254,20 @@ export default function FaultReport() {
         }
         break;
       case 1:
-        if (!formData.category) {
-          setError('נא לבחור קטגוריית תקלה');
+        if (!formData.urgencyLevel) {
+          setError('נא לציין את רמת הדחיפות');
           return false;
         }
-        if (!formData.title || formData.title.length < 5) {
-          setError('נא להזין כותרת תקלה (לפחות 5 תווים)');
+        if (!formData.faultArea) {
+          setError('נא לבחור במה הבעיה');
           return false;
         }
-        if (!formData.canRide) {
-          setError('נא לציין האם ניתן לרכב על הכלי');
+        if (!formData.subCategory) {
+          setError('נא לבחור את סוג הבעיה');
+          return false;
+        }
+        if (formData.subCategory === 'אחר' && !formData.customSubCategory.trim()) {
+          setError('נא לפרט את הבעיה');
           return false;
         }
         break;
@@ -223,21 +299,30 @@ export default function FaultReport() {
     try {
       setSubmitting(true);
 
+      const title = formData.subCategory === 'אחר'
+        ? formData.customSubCategory
+        : formData.subCategory;
+
       const faultData = {
         vehicleId: formData.vehicleId,
         vehicleLicensePlate: formData.vehicleLicensePlate,
         vehicleNumber: formData.vehicleLicensePlate,
         riderId: formData.riderId,
-        category: formData.category,
-        title: formData.title,
+        urgencyLevel: formData.urgencyLevel,
+        canRide: formData.urgencyLevel === 'cannot_ride' ? false : true,
+        category: formData.faultArea,
+        faultArea: formData.faultArea,
+        subCategory: formData.subCategory,
+        customSubCategory: formData.customSubCategory,
+        title,
         description: formData.description,
-        severity: formData.severity,
-        canRide: formData.canRide === 'yes',
+        severity: formData.urgencyLevel === 'cannot_ride' ? 'critical' : 'moderate',
         currentKm: parseInt(formData.currentKm),
         location: formData.location || '',
         reportedDate: formData.reportedDate,
         status: 'open',
         reportedBy: user._id || user.id,
+        photos: images,
       };
 
       await faultsAPI.create(faultData);
@@ -252,12 +337,20 @@ export default function FaultReport() {
     }
   };
 
-  const getSeverityInfo = (severity) => {
-    return severityLevels.find(s => s.value === severity);
+  const getFaultAreaLabel = (area) => {
+    return FAULT_AREAS.find(a => a.value === area)?.label || area;
   };
 
-  const getCategoryLabel = (category) => {
-    return faultCategories.find(c => c.value === category)?.label || category;
+  const getSubCategoryLabel = () => {
+    if (formData.subCategory === 'אחר') return formData.customSubCategory || 'אחר';
+    return formData.subCategory;
+  };
+
+  const getUrgencyInfo = () => {
+    if (formData.urgencyLevel === 'cannot_ride') {
+      return { label: 'לא ניתן לרכב', color: '#dc2626', bgcolor: 'rgba(239,68,68,0.1)' };
+    }
+    return { label: 'ניתן לרכב - מצריך טיפול', color: '#d97706', bgcolor: 'rgba(245,158,11,0.1)' };
   };
 
   if (loading) {
@@ -302,15 +395,15 @@ export default function FaultReport() {
             תודה על הדיווח על התקלה בכלי {formData.vehicleLicensePlate}
           </Typography>
           <Alert
-            severity={formData.canRide === 'no' ? 'error' : 'info'}
+            severity={formData.urgencyLevel === 'cannot_ride' ? 'error' : 'info'}
             sx={{
               mt: 2,
               borderRadius: '12px',
-              bgcolor: formData.canRide === 'no' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(99, 102, 241, 0.1)',
-              border: `1px solid ${formData.canRide === 'no' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.2)'}`,
+              bgcolor: formData.urgencyLevel === 'cannot_ride' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(99, 102, 241, 0.1)',
+              border: `1px solid ${formData.urgencyLevel === 'cannot_ride' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.2)'}`,
             }}
           >
-            {formData.canRide === 'no' ? (
+            {formData.urgencyLevel === 'cannot_ride' ? (
               <Typography variant="body2" sx={{ color: '#dc2626' }}>
                 <strong>שים לב:</strong> דיווחת שלא ניתן לרכב על הכלי. אנא המתן להוראות מהמנהל.
               </Typography>
@@ -437,134 +530,107 @@ export default function FaultReport() {
       case 1:
         return (
           <Box>
-            <Alert
-              severity="warning"
-              sx={{
-                mb: 3,
-                borderRadius: '12px',
-                bgcolor: 'rgba(245, 158, 11, 0.1)',
-                border: '1px solid rgba(245, 158, 11, 0.2)',
-                '& .MuiAlert-icon': { color: '#d97706' },
-              }}
-            >
-              <Typography variant="body2" fontWeight="500" sx={{ color: '#d97706' }}>
-                חשוב מאוד לציין האם ניתן לרכב על הכלי
-              </Typography>
-            </Alert>
-
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <FormControl component="fieldset" fullWidth>
-                  <FormLabel
-                    component="legend"
-                    sx={{
-                      mb: 1,
-                      fontWeight: 'bold',
-                      color: '#dc2626',
-                      '&.Mui-focused': { color: '#dc2626' },
-                    }}
-                  >
-                    האם ניתן לרכב על הכלי? *
-                  </FormLabel>
-                  <RadioGroup
-                    value={formData.canRide}
-                    onChange={handleChange('canRide')}
-                  >
-                    <FormControlLabel
-                      value="yes"
-                      control={<Radio sx={{ '&.Mui-checked': { color: '#059669' } }} />}
-                      label={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <CheckCircle sx={{ color: '#059669' }} />
-                          <Typography>כן - ניתן לרכב בבטחה</Typography>
-                        </Box>
-                      }
-                    />
-                    <FormControlLabel
-                      value="no"
-                      control={<Radio sx={{ '&.Mui-checked': { color: '#dc2626' } }} />}
-                      label={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Cancel sx={{ color: '#dc2626' }} />
-                          <Typography>לא - מסוכן לרכב או הכלי לא נוסע</Typography>
-                        </Box>
-                      }
-                    />
-                    <FormControlLabel
-                      value="unsure"
-                      control={<Radio sx={{ '&.Mui-checked': { color: '#d97706' } }} />}
-                      label={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Warning sx={{ color: '#d97706' }} />
-                          <Typography>לא בטוח - צריך הערכה</Typography>
-                        </Box>
-                      }
-                    />
-                  </RadioGroup>
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={12}>
-                <Divider sx={{ borderColor: '#e2e8f0' }} />
-              </Grid>
-
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  select
-                  label="קטגוריית תקלה"
-                  required
-                  value={formData.category}
-                  onChange={handleChange('category')}
-                  helperText="בחר את הקטגוריה המתאימה ביותר"
-                  sx={textFieldSx}
-                >
-                  {faultCategories.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="כותרת התקלה"
-                  required
-                  value={formData.title}
-                  onChange={handleChange('title')}
-                  placeholder="תאר בקצרה את התקלה"
-                  helperText="לדוגמה: בלם אחורי לא עובד, פנס קדמי שבור"
-                  sx={textFieldSx}
+            {/* רמת דחיפות */}
+            <FormControl component="fieldset" fullWidth sx={{ mb: 3 }}>
+              <FormLabel component="legend" sx={{
+                fontWeight: 700, color: '#dc2626', mb: 1.5, fontSize: '1rem',
+                '&.Mui-focused': { color: '#dc2626' },
+              }}>
+                רמת דחיפות *
+              </FormLabel>
+              <RadioGroup value={formData.urgencyLevel} onChange={handleChange('urgencyLevel')}>
+                <FormControlLabel
+                  value="cannot_ride"
+                  control={<Radio sx={{ '&.Mui-checked': { color: '#dc2626' } }} />}
+                  label={
+                    <Box sx={{
+                      display: 'flex', alignItems: 'center', gap: 1,
+                      p: 1.5, borderRadius: '10px',
+                      bgcolor: formData.urgencyLevel === 'cannot_ride' ? 'rgba(239,68,68,0.08)' : 'transparent',
+                    }}>
+                      <Cancel sx={{ color: '#dc2626', fontSize: 22 }} />
+                      <Typography fontWeight={600} color="#dc2626">
+                        לא ניתן לרכב עם הקטנוע במצב הזה
+                      </Typography>
+                    </Box>
+                  }
                 />
-              </Grid>
+                <FormControlLabel
+                  value="needs_treatment"
+                  control={<Radio sx={{ '&.Mui-checked': { color: '#d97706' } }} />}
+                  label={
+                    <Box sx={{
+                      display: 'flex', alignItems: 'center', gap: 1,
+                      p: 1.5, borderRadius: '10px',
+                      bgcolor: formData.urgencyLevel === 'needs_treatment' ? 'rgba(245,158,11,0.08)' : 'transparent',
+                    }}>
+                      <Warning sx={{ color: '#d97706', fontSize: 22 }} />
+                      <Typography fontWeight={600} color="#d97706">
+                        ניתן לרכב עם הקטנוע אבל מצריך טיפול
+                      </Typography>
+                    </Box>
+                  }
+                />
+              </RadioGroup>
+            </FormControl>
 
-              <Grid item xs={12}>
+            <Divider sx={{ borderColor: '#e2e8f0', mb: 3 }} />
+
+            {/* במה הבעיה? */}
+            <FormControl component="fieldset" fullWidth sx={{ mb: 3 }}>
+              <FormLabel component="legend" sx={{
+                fontWeight: 700, color: '#1e293b', mb: 1.5, fontSize: '1rem',
+                '&.Mui-focused': { color: '#6366f1' },
+              }}>
+                במה הבעיה? *
+              </FormLabel>
+              <RadioGroup value={formData.faultArea} onChange={handleChange('faultArea')}>
+                {FAULT_AREAS.map(area => (
+                  <FormControlLabel
+                    key={area.value}
+                    value={area.value}
+                    control={<Radio sx={{ '&.Mui-checked': { color: '#6366f1' } }} />}
+                    label={
+                      <Box sx={{
+                        display: 'flex', alignItems: 'center', gap: 1,
+                        p: 1, borderRadius: '8px',
+                        bgcolor: formData.faultArea === area.value ? 'rgba(99,102,241,0.08)' : 'transparent',
+                      }}>
+                        <Typography>{area.label}</Typography>
+                      </Box>
+                    }
+                  />
+                ))}
+              </RadioGroup>
+            </FormControl>
+
+            {/* סוג הבעיה - דינמי */}
+            {formData.faultArea && (
+              <>
+                <Divider sx={{ borderColor: '#e2e8f0', mb: 3 }} />
                 <TextField
-                  fullWidth
-                  select
-                  label="רמת חומרה"
-                  required
-                  value={formData.severity}
-                  onChange={handleChange('severity')}
+                  fullWidth select label="סוג הבעיה" required
+                  value={formData.subCategory}
+                  onChange={handleChange('subCategory')}
+                  helperText="בחר את הסוג המתאים"
                   sx={textFieldSx}
                 >
-                  {severityLevels.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      <Box>
-                        <Typography variant="body1" fontWeight="500" sx={{ color: option.color }}>
-                          {option.label}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: '#64748b' }}>
-                          {option.description}
-                        </Typography>
-                      </Box>
-                    </MenuItem>
+                  {SUB_CATEGORIES[formData.faultArea].map(opt => (
+                    <MenuItem key={opt} value={opt}>{opt}</MenuItem>
                   ))}
                 </TextField>
-              </Grid>
-            </Grid>
+
+                {formData.subCategory === 'אחר' && (
+                  <TextField
+                    fullWidth label="פרט את הבעיה" required
+                    value={formData.customSubCategory}
+                    onChange={handleChange('customSubCategory')}
+                    placeholder="תאר בקצרה את הבעיה..."
+                    sx={{ ...textFieldSx, mt: 2 }}
+                  />
+                )}
+              </>
+            )}
           </Box>
         );
 
@@ -574,8 +640,7 @@ export default function FaultReport() {
             <Alert
               severity="info"
               sx={{
-                mb: 3,
-                borderRadius: '12px',
+                mb: 3, borderRadius: '12px',
                 bgcolor: 'rgba(99, 102, 241, 0.1)',
                 border: '1px solid rgba(99, 102, 241, 0.2)',
                 '& .MuiAlert-icon': { color: '#6366f1' },
@@ -586,17 +651,70 @@ export default function FaultReport() {
             </Alert>
 
             <TextField
-              fullWidth
-              label="תיאור מפורט של התקלה"
-              required
-              multiline
-              rows={8}
+              fullWidth label="תיאור מפורט של התקלה" required multiline rows={6}
               value={formData.description}
               onChange={handleChange('description')}
-              placeholder="תאר בפירוט:&#10;• מה בדיוק קרה?&#10;• מתי זה התחיל?&#10;• האם זה קרה פתאום או בהדרגה?&#10;• מה ניסית לעשות?&#10;• האם יש צלילים מוזרים או ריחות?"
+              placeholder="תאר בפירוט:&#10;• מה בדיוק קרה?&#10;• מתי זה התחיל?&#10;• האם זה קרה פתאום או בהדרגה?&#10;• האם יש צלילים מוזרים או ריחות?"
               helperText={`${formData.description.length} תווים (מינימום 10)`}
               sx={textFieldSx}
             />
+
+            {/* העלאת תמונות */}
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="body2" fontWeight={600} color="#475569" sx={{ mb: 1.5 }}>
+                תמונות (אופציונלי)
+              </Typography>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                style={{ display: 'none' }}
+                onChange={handleImageSelect}
+              />
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
+                {images.map((img, index) => (
+                  <Box key={index} sx={{ position: 'relative', width: 90, height: 90 }}>
+                    <Box
+                      component="img"
+                      src={img.data}
+                      alt={img.name}
+                      sx={{
+                        width: 90, height: 90, objectFit: 'cover',
+                        borderRadius: '12px', border: '2px solid #e2e8f0',
+                      }}
+                    />
+                    <Box
+                      onClick={() => handleRemoveImage(index)}
+                      sx={{
+                        position: 'absolute', top: -8, right: -8,
+                        bgcolor: '#ef4444', borderRadius: '50%',
+                        width: 24, height: 24, display: 'flex',
+                        alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                        '&:hover': { bgcolor: '#dc2626' },
+                      }}
+                    >
+                      <Close sx={{ fontSize: 14, color: '#fff' }} />
+                    </Box>
+                  </Box>
+                ))}
+                <Box
+                  onClick={() => fileInputRef.current?.click()}
+                  sx={{
+                    width: 90, height: 90, borderRadius: '12px',
+                    border: '2px dashed #c7d2fe', display: 'flex',
+                    flexDirection: 'column', alignItems: 'center',
+                    justifyContent: 'center', cursor: 'pointer', gap: 0.5,
+                    color: '#6366f1',
+                    '&:hover': { bgcolor: 'rgba(99,102,241,0.05)', borderColor: '#6366f1' },
+                  }}
+                >
+                  <PhotoCamera sx={{ fontSize: 26 }} />
+                  <Typography variant="caption" fontWeight={600}>הוסף</Typography>
+                </Box>
+              </Box>
+            </Box>
           </Box>
         );
 
@@ -650,56 +768,50 @@ export default function FaultReport() {
                   <CardContent>
                     <Typography variant="h6" gutterBottom sx={{ color: '#1e293b', fontWeight: 600 }}>פרטי תקלה</Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                      <Chip
-                        icon={formData.canRide === 'no' ? <Cancel sx={{ fontSize: 16 }} /> : formData.canRide === 'unsure' ? <Warning sx={{ fontSize: 16 }} /> : <CheckCircle sx={{ fontSize: 16 }} />}
-                        label={
-                          formData.canRide === 'yes' ? 'ניתן לרכב' :
-                          formData.canRide === 'no' ? 'לא ניתן לרכב' :
-                          'לא בטוח'
-                        }
-                        sx={{
-                          bgcolor: formData.canRide === 'yes' ? 'rgba(16, 185, 129, 0.1)' :
-                                   formData.canRide === 'no' ? 'rgba(239, 68, 68, 0.1)' :
-                                   'rgba(245, 158, 11, 0.1)',
-                          color: formData.canRide === 'yes' ? '#059669' :
-                                 formData.canRide === 'no' ? '#dc2626' :
-                                 '#d97706',
-                          fontWeight: 500,
-                          '& .MuiChip-icon': {
-                            color: formData.canRide === 'yes' ? '#059669' :
-                                   formData.canRide === 'no' ? '#dc2626' :
-                                   '#d97706',
-                          },
-                        }}
-                      />
-                      <Chip
-                        label={getCategoryLabel(formData.category)}
-                        sx={{
-                          bgcolor: 'rgba(99, 102, 241, 0.1)',
-                          color: '#6366f1',
-                          fontWeight: 500,
-                        }}
-                      />
-                      <Chip
-                        label={getSeverityInfo(formData.severity)?.label || formData.severity}
-                        sx={{
-                          bgcolor: getSeverityInfo(formData.severity)?.bgcolor || 'rgba(100, 116, 139, 0.1)',
-                          color: getSeverityInfo(formData.severity)?.color || '#64748b',
-                          fontWeight: 500,
-                        }}
-                      />
+                      {formData.urgencyLevel && (
+                        <Chip
+                          icon={formData.urgencyLevel === 'cannot_ride'
+                            ? <Cancel sx={{ fontSize: 16 }} />
+                            : <Warning sx={{ fontSize: 16 }} />}
+                          label={getUrgencyInfo().label}
+                          sx={{
+                            bgcolor: getUrgencyInfo().bgcolor,
+                            color: getUrgencyInfo().color,
+                            fontWeight: 600,
+                            '& .MuiChip-icon': { color: 'inherit' },
+                          }}
+                        />
+                      )}
+                      {formData.faultArea && (
+                        <Chip
+                          label={getFaultAreaLabel(formData.faultArea)}
+                          sx={{ bgcolor: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', fontWeight: 500 }}
+                        />
+                      )}
+                      {formData.subCategory && (
+                        <Chip
+                          label={getSubCategoryLabel()}
+                          sx={{ bgcolor: 'rgba(100, 116, 139, 0.1)', color: '#475569', fontWeight: 500 }}
+                        />
+                      )}
                     </Box>
-                    <Typography variant="subtitle1" fontWeight="600" gutterBottom sx={{ color: '#1e293b' }}>
-                      {formData.title}
-                    </Typography>
                     <Typography variant="body2" sx={{ color: '#64748b' }}>
                       {formData.description}
                     </Typography>
+                    {images.length > 0 && (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
+                        {images.map((img, i) => (
+                          <Box key={i} component="img" src={img.data} alt={img.name}
+                            sx={{ width: 60, height: 60, objectFit: 'cover', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                          />
+                        ))}
+                      </Box>
+                    )}
                   </CardContent>
                 </Card>
               </Grid>
 
-              {formData.canRide === 'no' && (
+              {formData.urgencyLevel === 'cannot_ride' && (
                 <Grid item xs={12}>
                   <Alert
                     severity="error"
@@ -839,14 +951,14 @@ export default function FaultReport() {
                   px: 3,
                   fontWeight: 600,
                   textTransform: 'none',
-                  background: formData.canRide === 'no'
+                  background: formData.urgencyLevel === 'cannot_ride'
                     ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
                     : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                  boxShadow: formData.canRide === 'no'
+                  boxShadow: formData.urgencyLevel === 'cannot_ride'
                     ? '0 4px 12px rgba(239, 68, 68, 0.3)'
                     : '0 4px 12px rgba(99, 102, 241, 0.3)',
                   '&:hover': {
-                    background: formData.canRide === 'no'
+                    background: formData.urgencyLevel === 'cannot_ride'
                       ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
                       : 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
                   },
