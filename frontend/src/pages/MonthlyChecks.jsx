@@ -1281,6 +1281,60 @@ export default function MonthlyChecks() {
                           }}
                         />
                       )}
+                      {selectedCheck.checkResults.mirrorsCondition && (
+                        <Chip
+                          label={`מראות: ${selectedCheck.checkResults.mirrorsCondition === 'good' ? 'תקין' : selectedCheck.checkResults.mirrorsCondition === 'fair' ? 'בינוני' : 'לא תקין'}`}
+                          sx={{
+                            bgcolor: selectedCheck.checkResults.mirrorsCondition === 'good' ? 'rgba(16, 185, 129, 0.1)' :
+                                    selectedCheck.checkResults.mirrorsCondition === 'fair' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                            color: selectedCheck.checkResults.mirrorsCondition === 'good' ? '#059669' :
+                                  selectedCheck.checkResults.mirrorsCondition === 'fair' ? '#d97706' : '#dc2626',
+                            fontWeight: 600,
+                          }}
+                        />
+                      )}
+                      {selectedCheck.checkResults.helmetCondition && (
+                        <Chip
+                          label={`קסדה: ${selectedCheck.checkResults.helmetCondition === 'good' ? 'תקין' : selectedCheck.checkResults.helmetCondition === 'fair' ? 'בינוני' : 'לא תקין'}`}
+                          sx={{
+                            bgcolor: selectedCheck.checkResults.helmetCondition === 'good' ? 'rgba(16, 185, 129, 0.1)' :
+                                    selectedCheck.checkResults.helmetCondition === 'fair' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                            color: selectedCheck.checkResults.helmetCondition === 'good' ? '#059669' :
+                                  selectedCheck.checkResults.helmetCondition === 'fair' ? '#d97706' : '#dc2626',
+                            fontWeight: 600,
+                          }}
+                        />
+                      )}
+                      {selectedCheck.checkResults.chainLubrication && (
+                        <Chip
+                          label={`שרשרת: ${selectedCheck.checkResults.chainLubrication === 'done' ? 'בוצע' : 'לא בוצע'}`}
+                          sx={{
+                            bgcolor: selectedCheck.checkResults.chainLubrication === 'done' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                            color: selectedCheck.checkResults.chainLubrication === 'done' ? '#059669' : '#d97706',
+                            fontWeight: 600,
+                          }}
+                        />
+                      )}
+                      {selectedCheck.checkResults.boxScrewsTightening && (
+                        <Chip
+                          label={`ברגי ארגז: ${selectedCheck.checkResults.boxScrewsTightening === 'done' ? 'בוצע' : 'לא בוצע'}`}
+                          sx={{
+                            bgcolor: selectedCheck.checkResults.boxScrewsTightening === 'done' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                            color: selectedCheck.checkResults.boxScrewsTightening === 'done' ? '#059669' : '#d97706',
+                            fontWeight: 600,
+                          }}
+                        />
+                      )}
+                      {selectedCheck.checkResults.boxRailLubrication && (
+                        <Chip
+                          label={`מסילות ארגז: ${selectedCheck.checkResults.boxRailLubrication === 'done' ? 'בוצע' : 'לא בוצע'}`}
+                          sx={{
+                            bgcolor: selectedCheck.checkResults.boxRailLubrication === 'done' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                            color: selectedCheck.checkResults.boxRailLubrication === 'done' ? '#059669' : '#d97706',
+                            fontWeight: 600,
+                          }}
+                        />
+                      )}
                     </Box>
                   </Grid>
                 </>

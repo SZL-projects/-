@@ -208,7 +208,10 @@ module.exports = async (req, res) => {
                   riderName: check.riderName || 'לא ידוע',
                   vehiclePlate: check.vehicleLicensePlate || check.vehiclePlate,
                   issues,
-                  checkId
+                  checkId,
+                  checkResults,
+                  currentKm: req.body.currentKm,
+                  notes: req.body.notes,
                 });
               } catch (emailErr) {
                 console.error('Error sending check issues alert:', emailErr.message);

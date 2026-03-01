@@ -258,103 +258,63 @@ exports.sendMonthlyCheckReminder = async ({ to, riderName, vehiclePlate, monthNa
 };
 
 // שליחת התראה למנהל על בעיות בבקרה חודשית
-exports.sendCheckIssuesAlert = async ({ managerEmail, riderName, vehiclePlate, issues, checkId }) => {
+exports.sendCheckIssuesAlert = async ({ managerEmail, riderName, vehiclePlate, issues, checkId, checkResults, currentKm, notes }) => {
   const checkUrl = `${process.env.FRONTEND_URL}/monthly-checks`;
 
-  const html = `
-    <!DOCTYPE html>
-    <html dir="rtl" lang="he">
-    <head>
-      <meta charset="UTF-8">
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          background-color: #f4f4f4;
-          padding: 20px;
-        }
-        .container {
-          max-width: 600px;
-          margin: 0 auto;
-          background-color: #ffffff;
-          padding: 30px;
-          border-radius: 8px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        h1 {
-          color: #f44336;
-          text-align: center;
-        }
-        p {
-          color: #333;
-          line-height: 1.6;
-          font-size: 16px;
-        }
-        .alert-box {
-          background-color: #ffebee;
-          border-right: 4px solid #f44336;
-          padding: 15px;
-          margin: 20px 0;
-        }
-        .issues-list {
-          background-color: #fff3e0;
-          padding: 15px;
-          border-radius: 5px;
-          margin: 15px 0;
-        }
-        .issue-item {
-          padding: 5px 0;
-          border-bottom: 1px solid #ffe0b2;
-        }
-        .button {
-          display: inline-block;
-          background-color: #1976d2;
-          color: #ffffff !important;
-          padding: 12px 30px;
-          text-decoration: none;
-          border-radius: 5px;
-          margin: 20px 0;
-          font-weight: bold;
-        }
-        .footer {
-          margin-top: 30px;
-          padding-top: 20px;
-          border-top: 1px solid #ddd;
-          text-align: center;
-          font-size: 14px;
-          color: #777;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <h1>⚠️ התראה: בעיות בבקרה חודשית</h1>
-        <p>שלום,</p>
-        <p>התקבלה בקרה חודשית עם בעיות שדורשות טיפול:</p>
+  const conditionLabel = (val) => val === 'good' ? 'תקין' : val === 'fair' ? 'בינוני' : val === 'poor' ? 'לא תקין' : val === 'bad' ? 'לא תקין' : val || '-';
+  const checkLabel = (val) => val === 'ok' ? 'תקין' : val === 'low' ? 'נמוך' : val === 'not_ok' ? 'לא תקין' : val === 'na' ? 'לא רלוונטי' : val || '-';
+  const doneLabel = (val) => val === 'done' ? 'בוצע' : val === 'not_done' ? 'לא בוצע' : val || '-';
+  const conditionColor = (val) => val === 'good' ? '#059669' : (val === 'fair') ? '#d97706' : '#dc2626';
+  const checkColor = (val) => val === 'ok' ? '#059669' : val === 'low' ? '#d97706' : val === 'na' ? '#64748b' : '#dc2626';
+  const doneColor = (val) => val === 'done' ? '#059669' : '#d97706';
 
-        <div class="alert-box">
-          <strong>פרטי הבקרה:</strong><br/>
-          רוכב: ${riderName}<br/>
-          מספר רישוי: ${vehiclePlate || 'לא צוין'}
-        </div>
+  const cr = checkResults || {};
 
-        <div class="issues-list">
-          <strong>בעיות שנמצאו:</strong>
-          ${issues.map(issue => `<div class="issue-item">• ${issue}</div>`).join('')}
-        </div>
-
-        <p>אנא בדוק את הבקרה ונקוט פעולה בהתאם.</p>
-
-        <center>
-          <a href="${checkUrl}" class="button">צפה בבקרות</a>
-        </center>
-
-        <div class="footer">
-          <p>© ${new Date().getFullYear()} מערכת CRM צי לוג ידידים</p>
-        </div>
-      </div>
-    </body>
-    </html>
+  const allResultsHtml = `
+    <table style="width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;">
+      <tr><th style="text-align:right;padding:6px 10px;background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;">פריט</th><th style="text-align:right;padding:6px 10px;background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;">תוצאה</th></tr>
+      ${cr.oilCheck ? `<tr><td style="padding:6px 10px;border:1px solid #e2e8f0;">שמן</td><td style="padding:6px 10px;border:1px solid #e2e8f0;color:${checkColor(cr.oilCheck)};font-weight:600;">${checkLabel(cr.oilCheck)}</td></tr>` : ''}
+      ${cr.waterCheck ? `<tr><td style="padding:6px 10px;border:1px solid #e2e8f0;">מים / קירור</td><td style="padding:6px 10px;border:1px solid #e2e8f0;color:${checkColor(cr.waterCheck)};font-weight:600;">${checkLabel(cr.waterCheck)}</td></tr>` : ''}
+      ${cr.tirePressureFront ? `<tr><td style="padding:6px 10px;border:1px solid #e2e8f0;">לחץ צמיג קדמי</td><td style="padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;">${cr.tirePressureFront} PSI</td></tr>` : ''}
+      ${cr.tirePressureRear ? `<tr><td style="padding:6px 10px;border:1px solid #e2e8f0;">לחץ צמיג אחורי</td><td style="padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;">${cr.tirePressureRear} PSI</td></tr>` : ''}
+      ${cr.chainLubrication ? `<tr><td style="padding:6px 10px;border:1px solid #e2e8f0;">שימון שרשרת</td><td style="padding:6px 10px;border:1px solid #e2e8f0;color:${doneColor(cr.chainLubrication)};font-weight:600;">${doneLabel(cr.chainLubrication)}</td></tr>` : ''}
+      ${cr.boxScrewsTightening ? `<tr><td style="padding:6px 10px;border:1px solid #e2e8f0;">חיזוק ברגי ארגז</td><td style="padding:6px 10px;border:1px solid #e2e8f0;color:${doneColor(cr.boxScrewsTightening)};font-weight:600;">${doneLabel(cr.boxScrewsTightening)}</td></tr>` : ''}
+      ${cr.boxRailLubrication ? `<tr><td style="padding:6px 10px;border:1px solid #e2e8f0;">שימון מסילות ארגז</td><td style="padding:6px 10px;border:1px solid #e2e8f0;color:${doneColor(cr.boxRailLubrication)};font-weight:600;">${doneLabel(cr.boxRailLubrication)}</td></tr>` : ''}
+      ${cr.brakesCondition ? `<tr><td style="padding:6px 10px;border:1px solid #e2e8f0;">בלמים</td><td style="padding:6px 10px;border:1px solid #e2e8f0;color:${conditionColor(cr.brakesCondition)};font-weight:600;">${conditionLabel(cr.brakesCondition)}</td></tr>` : ''}
+      ${cr.lightsCondition ? `<tr><td style="padding:6px 10px;border:1px solid #e2e8f0;">פנסים</td><td style="padding:6px 10px;border:1px solid #e2e8f0;color:${conditionColor(cr.lightsCondition)};font-weight:600;">${conditionLabel(cr.lightsCondition)}</td></tr>` : ''}
+      ${cr.mirrorsCondition ? `<tr><td style="padding:6px 10px;border:1px solid #e2e8f0;">מראות</td><td style="padding:6px 10px;border:1px solid #e2e8f0;color:${conditionColor(cr.mirrorsCondition)};font-weight:600;">${conditionLabel(cr.mirrorsCondition)}</td></tr>` : ''}
+      ${cr.helmetCondition ? `<tr><td style="padding:6px 10px;border:1px solid #e2e8f0;">קסדה</td><td style="padding:6px 10px;border:1px solid #e2e8f0;color:${conditionColor(cr.helmetCondition)};font-weight:600;">${conditionLabel(cr.helmetCondition)}</td></tr>` : ''}
+      ${currentKm ? `<tr><td style="padding:6px 10px;border:1px solid #e2e8f0;">קילומטראז'</td><td style="padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;">${parseInt(currentKm).toLocaleString('he-IL')} ק"מ</td></tr>` : ''}
+    </table>
   `;
+
+  const html = `<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="UTF-8">
+<style>
+body{font-family:Arial,sans-serif;background:#f4f4f4;padding:20px;margin:0;direction:rtl}
+.container{max-width:620px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);overflow:hidden}
+.header{background:linear-gradient(135deg,#f44336,#e53935);padding:28px 30px;text-align:center}
+.header h1{color:#fff;margin:0;font-size:22px}
+.header p{color:rgba(255,255,255,.85);margin:8px 0 0;font-size:14px}
+.body{padding:24px 30px}
+.alert-box{background:#ffebee;border-right:4px solid #f44336;border-radius:8px;padding:15px;margin:16px 0}
+.issues-list{background:#fff3e0;border-right:4px solid #f59e0b;border-radius:8px;padding:15px;margin:16px 0}
+.issue-item{padding:4px 0;color:#92400e}
+.footer{padding:16px 30px;border-top:1px solid #e2e8f0;text-align:center;font-size:12px;color:#94a3b8}
+.button{display:inline-block;background:#1976d2;color:#fff!important;padding:12px 30px;text-decoration:none;border-radius:5px;margin:16px 0;font-weight:bold}
+</style></head><body>
+<div class="container">
+<div class="header"><h1>⚠️ התראה: בעיות בבקרה חודשית</h1><p>כלי: ${vehiclePlate || 'לא צוין'} | רוכב: ${riderName}</p></div>
+<div class="body">
+<div class="alert-box"><strong>פרטי הבקרה:</strong><br/>רוכב: ${riderName}<br/>מספר רישוי: ${vehiclePlate || 'לא צוין'}</div>
+<p><strong>פירוט תוצאות הבקרה:</strong></p>
+${allResultsHtml}
+<div class="issues-list"><strong>⚠️ בעיות שנמצאו:</strong><br/>${issues.map(issue => `<div class="issue-item">• ${issue}</div>`).join('')}</div>
+${notes ? `<p><strong>הערות הרוכב:</strong> ${notes}</p>` : ''}
+<p>אנא בדוק את הבקרה ונקוט פעולה בהתאם.</p>
+<center><a href="${checkUrl}" class="button">צפה בבקרות</a></center>
+</div>
+<div class="footer"><p>© ${new Date().getFullYear()} מערכת CRM צי לוג ידידים</p></div>
+</div></body></html>`;
 
   await exports.sendEmail({
     email: managerEmail,
