@@ -1069,9 +1069,9 @@ export default function Faults() {
                             <Box
                               key={i}
                               component="img"
-                              src={photo.data || photo}
+                              src={photo.url || photo.data || (typeof photo === 'string' ? photo : '')}
                               alt={`תמונה ${i + 1}`}
-                              onClick={() => window.open(photo.data || photo, '_blank')}
+                              onClick={() => window.open(photo.webViewLink || photo.url || photo.data || (typeof photo === 'string' ? photo : ''), '_blank')}
                               sx={{
                                 width: 90, height: 90, objectFit: 'cover',
                                 borderRadius: '10px', border: '2px solid #e2e8f0',
