@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -23,12 +23,15 @@ import {
   DialogActions,
   TextField,
   FormControl,
-  InputLabel,
-  Select,
+  FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
   MenuItem,
   Snackbar,
   Tabs,
   Tab,
+  Divider,
 } from '@mui/material';
 import {
   Warning,
@@ -39,13 +42,42 @@ import {
   TwoWheeler,
   Build,
   Schedule,
+  Cancel,
+  PhotoCamera,
+  Close,
 } from '@mui/icons-material';
+
+const FAULT_AREAS = [
+  { value: 'scooter', label: 'בקטנוע' },
+  { value: 'personal_equipment', label: 'ציוד רוכב אישי (כגון מעיל, קסדה)' },
+  { value: 'assistance_equipment', label: 'ציוד סיוע לאחר (כגון ג\'ק, ערכת פתיחה)' },
+];
+
+const SUB_CATEGORIES = {
+  scooter: [
+    'ברקסים', 'צמיג לא תקין', 'טיפול תקופתי (1000 / 12000 / 24000 / 36000)',
+    'מדבקות מיתוג', 'פליקרים', 'פנצ\'ר', 'רעש מוזר מלמטה',
+    'ידית ברקס', 'תופסן לאופנוע', 'אחר',
+  ],
+  personal_equipment: [
+    'קסדה', 'מעיל גשם/סערה', 'כפפות', 'שרשרת', 'מנעול', 'מעיל',
+    'דיבורית', 'מנעול דיסק', 'מתקן טלפון', 'אחר',
+  ],
+  assistance_equipment: [
+    'בוסטר נוקו GB150', 'ערכת פתיחה', 'ג\'ק מספריים', 'ג\'ק בקבוק 4 טון',
+    'בוקסות מגנזיום', 'בוקסות שחוקים', 'פטיש', 'מפתח T', 'קומפרסור',
+    'ספריי שמן', 'ספריי קרבורטור', 'סכין יפני', 'פיוזים', 'מודד מתח',
+    'מפתח ונטילים', 'כפפות עבודה', 'ערכת תולעים', 'ברגי סיליקון',
+    'חולץ מפתחות', 'חותך טבעות', 'אחר',
+  ],
+};
 import { useAuth } from '../contexts/AuthContext';
 import { faultsAPI, ridersAPI, vehiclesAPI } from '../services/api';
 
 export default function MyFaults() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const fileInputRef = useRef(null);
   const [faults, setFaults] = useState([]);
   const [rider, setRider] = useState(null);
   const [vehicle, setVehicle] = useState(null);
@@ -54,12 +86,14 @@ export default function MyFaults() {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportingFault, setReportingFault] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [activeTab, setActiveTab] = useState(0); // 0 = פתוחות, 1 = כל התקלות
+  const [activeTab, setActiveTab] = useState(0);
+  const [images, setImages] = useState([]);
   const [newFault, setNewFault] = useState({
+    urgencyLevel: '',
+    faultArea: '',
+    subCategory: '',
+    customSubCategory: '',
     description: '',
-    severity: 'medium',
-    location: '',
-    notes: '',
   });
 
   const statusMap = useMemo(() => ({
@@ -155,22 +189,59 @@ export default function MyFaults() {
     setSnackbar({ open: true, message, severity });
   };
 
+  const handleFaultFieldChange = (field) => (event) => {
+    const value = event.target.value;
+    setNewFault(prev => {
+      const updated = { ...prev, [field]: value };
+      if (field === 'faultArea') { updated.subCategory = ''; updated.customSubCategory = ''; }
+      if (field === 'subCategory') { updated.customSubCategory = ''; }
+      return updated;
+    });
+  };
+
+  const handleImageSelect = (event) => {
+    const files = Array.from(event.target.files);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImages(prev => [...prev, { data: e.target.result, name: file.name, type: file.type }]);
+      };
+      reader.readAsDataURL(file);
+    });
+    event.target.value = '';
+  };
+
+  const handleRemoveImage = (index) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleReportFault = async () => {
-    if (!newFault.description.trim()) {
-      showSnackbar('נא למלא תיאור תקלה', 'warning');
-      return;
+    if (!newFault.urgencyLevel) { showSnackbar('נא לציין את רמת הדחיפות', 'warning'); return; }
+    if (!newFault.faultArea) { showSnackbar('נא לבחור במה הבעיה', 'warning'); return; }
+    if (!newFault.subCategory) { showSnackbar('נא לבחור את סוג הבעיה', 'warning'); return; }
+    if (newFault.subCategory === 'אחר' && !newFault.customSubCategory.trim()) {
+      showSnackbar('נא לפרט את הבעיה', 'warning'); return;
     }
+    if (!newFault.description.trim()) { showSnackbar('נא למלא תיאור מפורט', 'warning'); return; }
 
     try {
       setReportingFault(true);
 
+      const title = newFault.subCategory === 'אחר' ? newFault.customSubCategory : newFault.subCategory;
+
       await faultsAPI.create({
         vehicleId: vehicle.id,
         riderId: rider.id,
+        urgencyLevel: newFault.urgencyLevel,
+        canRide: newFault.urgencyLevel === 'cannot_ride' ? false : true,
+        category: newFault.faultArea,
+        faultArea: newFault.faultArea,
+        subCategory: newFault.subCategory,
+        customSubCategory: newFault.customSubCategory,
+        title,
         description: newFault.description,
-        severity: newFault.severity,
-        location: newFault.location,
-        notes: newFault.notes,
+        severity: newFault.urgencyLevel === 'cannot_ride' ? 'critical' : 'moderate',
+        photos: images,
         status: 'open',
         reportedDate: new Date().toISOString(),
         reportedBy: user.id,
@@ -178,12 +249,8 @@ export default function MyFaults() {
 
       showSnackbar('תקלה דווחה בהצלחה', 'success');
       setReportDialogOpen(false);
-      setNewFault({
-        description: '',
-        severity: 'medium',
-        location: '',
-        notes: '',
-      });
+      setNewFault({ urgencyLevel: '', faultArea: '', subCategory: '', customSubCategory: '', description: '' });
+      setImages([]);
       loadMyFaults();
     } catch (err) {
       console.error('Error reporting fault:', err);
@@ -539,9 +606,14 @@ export default function MyFaults() {
                   }}
                 >
                   <TableCell>
-                    <Typography variant="body2" fontWeight="500" sx={{ color: '#1e293b' }}>
-                      {fault.description || 'ללא תיאור'}
+                    <Typography variant="body2" fontWeight="600" sx={{ color: '#1e293b' }}>
+                      {fault.title || fault.subCategory || ''}
                     </Typography>
+                    {fault.description && (
+                      <Typography variant="caption" sx={{ color: '#64748b', display: 'block' }}>
+                        {fault.description.substring(0, 60)}{fault.description.length > 60 ? '...' : ''}
+                      </Typography>
+                    )}
                   </TableCell>
                   <TableCell>{getSeverityChip(fault.severity)}</TableCell>
                   <TableCell>{getStatusChip(fault.status)}</TableCell>
@@ -572,113 +644,168 @@ export default function MyFaults() {
       {/* Report Fault Dialog */}
       <Dialog
         open={reportDialogOpen}
-        onClose={() => setReportDialogOpen(false)}
+        onClose={() => { setReportDialogOpen(false); setImages([]); setNewFault({ urgencyLevel: '', faultArea: '', subCategory: '', customSubCategory: '', description: '' }); }}
         maxWidth="sm"
         fullWidth
         dir="rtl"
-        PaperProps={{
-          sx: {
-            borderRadius: '20px',
-            p: 1,
-          },
-        }}
+        PaperProps={{ sx: { borderRadius: '20px', p: 1 } }}
       >
         <DialogTitle sx={{ fontWeight: 700, color: '#1e293b', pb: 1 }}>
           דיווח תקלה
         </DialogTitle>
         <DialogContent>
-          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-            <Alert
-              severity="info"
-              sx={{
-                borderRadius: '12px',
-                bgcolor: 'rgba(99, 102, 241, 0.1)',
-                border: '1px solid rgba(99, 102, 241, 0.2)',
-                '& .MuiAlert-icon': { color: '#6366f1' },
-                '& .MuiAlert-message': { color: '#6366f1' },
-              }}
-            >
+          <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+
+            <Alert severity="info" sx={{
+              borderRadius: '12px', bgcolor: 'rgba(99,102,241,0.1)',
+              border: '1px solid rgba(99,102,241,0.2)',
+              '& .MuiAlert-icon': { color: '#6366f1' },
+              '& .MuiAlert-message': { color: '#6366f1' },
+            }}>
               כלי: {vehicle.vehicleNumber || vehicle.internalNumber}
             </Alert>
 
-            <TextField
-              label="תיאור התקלה"
-              value={newFault.description}
-              onChange={(e) => setNewFault({ ...newFault, description: e.target.value })}
-              multiline
-              rows={3}
-              required
-              fullWidth
-              sx={textFieldSx}
-            />
-
-            <FormControl fullWidth>
-              <InputLabel sx={{ '&.Mui-focused': { color: '#6366f1' } }}>חומרת התקלה</InputLabel>
-              <Select
-                value={newFault.severity}
-                onChange={(e) => setNewFault({ ...newFault, severity: e.target.value })}
-                label="חומרת התקלה"
-                sx={{
-                  borderRadius: '12px',
-                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#6366f1' },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#6366f1', borderWidth: 2 },
-                }}
-              >
-                <MenuItem value="low">נמוכה</MenuItem>
-                <MenuItem value="medium">בינונית</MenuItem>
-                <MenuItem value="high">גבוהה</MenuItem>
-                <MenuItem value="critical">קריטית</MenuItem>
-              </Select>
+            {/* רמת דחיפות */}
+            <FormControl component="fieldset">
+              <FormLabel component="legend" sx={{ fontWeight: 700, color: '#dc2626', mb: 1, '&.Mui-focused': { color: '#dc2626' } }}>
+                רמת דחיפות *
+              </FormLabel>
+              <RadioGroup value={newFault.urgencyLevel} onChange={handleFaultFieldChange('urgencyLevel')}>
+                <FormControlLabel
+                  value="cannot_ride"
+                  control={<Radio sx={{ '&.Mui-checked': { color: '#dc2626' } }} />}
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1, borderRadius: '8px', bgcolor: newFault.urgencyLevel === 'cannot_ride' ? 'rgba(239,68,68,0.08)' : 'transparent' }}>
+                      <Cancel sx={{ color: '#dc2626', fontSize: 20 }} />
+                      <Typography fontWeight={600} color="#dc2626" variant="body2">לא ניתן לרכב עם הקטנוע במצב הזה</Typography>
+                    </Box>
+                  }
+                />
+                <FormControlLabel
+                  value="needs_treatment"
+                  control={<Radio sx={{ '&.Mui-checked': { color: '#d97706' } }} />}
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1, borderRadius: '8px', bgcolor: newFault.urgencyLevel === 'needs_treatment' ? 'rgba(245,158,11,0.08)' : 'transparent' }}>
+                      <Warning sx={{ color: '#d97706', fontSize: 20 }} />
+                      <Typography fontWeight={600} color="#d97706" variant="body2">ניתן לרכב אבל מצריך טיפול</Typography>
+                    </Box>
+                  }
+                />
+              </RadioGroup>
             </FormControl>
 
+            <Divider sx={{ borderColor: '#e2e8f0' }} />
+
+            {/* במה הבעיה? */}
+            <FormControl component="fieldset">
+              <FormLabel component="legend" sx={{ fontWeight: 700, color: '#1e293b', mb: 1, '&.Mui-focused': { color: '#6366f1' } }}>
+                במה הבעיה? *
+              </FormLabel>
+              <RadioGroup value={newFault.faultArea} onChange={handleFaultFieldChange('faultArea')}>
+                {FAULT_AREAS.map(area => (
+                  <FormControlLabel
+                    key={area.value} value={area.value}
+                    control={<Radio sx={{ '&.Mui-checked': { color: '#6366f1' } }} />}
+                    label={
+                      <Box sx={{ p: 0.5, borderRadius: '6px', bgcolor: newFault.faultArea === area.value ? 'rgba(99,102,241,0.08)' : 'transparent' }}>
+                        <Typography variant="body2">{area.label}</Typography>
+                      </Box>
+                    }
+                  />
+                ))}
+              </RadioGroup>
+            </FormControl>
+
+            {/* סוג הבעיה - דינמי */}
+            {newFault.faultArea && (
+              <>
+                <TextField
+                  select fullWidth label="סוג הבעיה" required
+                  value={newFault.subCategory}
+                  onChange={handleFaultFieldChange('subCategory')}
+                  sx={textFieldSx}
+                >
+                  {SUB_CATEGORIES[newFault.faultArea].map(opt => (
+                    <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                  ))}
+                </TextField>
+
+                {newFault.subCategory === 'אחר' && (
+                  <TextField
+                    fullWidth label="פרט את הבעיה" required
+                    value={newFault.customSubCategory}
+                    onChange={handleFaultFieldChange('customSubCategory')}
+                    placeholder="תאר בקצרה את הבעיה..."
+                    sx={textFieldSx}
+                  />
+                )}
+              </>
+            )}
+
+            <Divider sx={{ borderColor: '#e2e8f0' }} />
+
+            {/* פירוט */}
             <TextField
-              label="מיקום התקלה"
-              value={newFault.location}
-              onChange={(e) => setNewFault({ ...newFault, location: e.target.value })}
-              fullWidth
-              placeholder="לדוגמה: גלגל קדמי, בלמים, מנוע..."
-              sx={textFieldSx}
+              label="פירוט התקלה" required multiline rows={3}
+              value={newFault.description}
+              onChange={handleFaultFieldChange('description')}
+              placeholder="תאר בפירוט את הבעיה..."
+              fullWidth sx={textFieldSx}
             />
 
-            <TextField
-              label="הערות נוספות"
-              value={newFault.notes}
-              onChange={(e) => setNewFault({ ...newFault, notes: e.target.value })}
-              multiline
-              rows={2}
-              fullWidth
-              sx={textFieldSx}
-            />
+            {/* תמונות */}
+            <Box>
+              <Typography variant="body2" fontWeight={600} color="#475569" sx={{ mb: 1 }}>
+                תמונות (אופציונלי)
+              </Typography>
+              <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleImageSelect} />
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+                {images.map((img, index) => (
+                  <Box key={index} sx={{ position: 'relative', width: 72, height: 72 }}>
+                    <Box component="img" src={img.data} alt={img.name}
+                      sx={{ width: 72, height: 72, objectFit: 'cover', borderRadius: '10px', border: '2px solid #e2e8f0' }} />
+                    <Box onClick={() => handleRemoveImage(index)} sx={{
+                      position: 'absolute', top: -7, right: -7,
+                      bgcolor: '#ef4444', borderRadius: '50%', width: 20, height: 20,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', '&:hover': { bgcolor: '#dc2626' },
+                    }}>
+                      <Close sx={{ fontSize: 12, color: '#fff' }} />
+                    </Box>
+                  </Box>
+                ))}
+                <Box onClick={() => fileInputRef.current?.click()} sx={{
+                  width: 72, height: 72, borderRadius: '10px',
+                  border: '2px dashed #c7d2fe', display: 'flex',
+                  flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', color: '#6366f1', gap: 0.5,
+                  '&:hover': { bgcolor: 'rgba(99,102,241,0.05)' },
+                }}>
+                  <PhotoCamera sx={{ fontSize: 22 }} />
+                  <Typography variant="caption" fontWeight={600}>הוסף</Typography>
+                </Box>
+              </Box>
+            </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
+        <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
           <Button
-            onClick={() => setReportDialogOpen(false)}
-            sx={{
-              color: '#64748b',
-              borderRadius: '10px',
-              px: 3,
-              textTransform: 'none',
-              fontWeight: 600,
-              '&:hover': { bgcolor: 'rgba(100, 116, 139, 0.08)' },
-            }}
+            onClick={() => { setReportDialogOpen(false); setImages([]); setNewFault({ urgencyLevel: '', faultArea: '', subCategory: '', customSubCategory: '', description: '' }); }}
+            sx={{ color: '#64748b', borderRadius: '10px', px: 3, fontWeight: 600 }}
           >
             ביטול
           </Button>
           <Button
             onClick={handleReportFault}
             variant="contained"
-            disabled={reportingFault || !newFault.description.trim()}
+            disabled={reportingFault}
             sx={{
-              borderRadius: '10px',
-              px: 3,
-              fontWeight: 600,
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
-              textTransform: 'none',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-              },
+              borderRadius: '10px', px: 3, fontWeight: 600,
+              background: newFault.urgencyLevel === 'cannot_ride'
+                ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              boxShadow: '0 4px 12px rgba(99,102,241,0.3)',
+              '&:hover': { opacity: 0.9 },
               '&:disabled': { background: '#e2e8f0', color: '#94a3b8' },
             }}
           >
