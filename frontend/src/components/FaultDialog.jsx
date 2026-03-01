@@ -23,6 +23,7 @@ import {
   Divider,
   Box,
   Chip,
+  Tooltip,
 } from '@mui/material';
 import {
   Close,
@@ -120,6 +121,7 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
   });
 
   const [images, setImages] = useState([]);  // { data: base64, name, type }
+  const [lightboxSrc, setLightboxSrc] = useState(null); // src of enlarged photo
   const [vehicles, setVehicles] = useState([]);
   const [riders, setRiders] = useState([]);
   const [users, setUsers] = useState([]);
@@ -516,15 +518,21 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
               {images.map((img, index) => (
                 <Box key={index} sx={{ position: 'relative', width: 80, height: 80 }}>
-                  <Box
-                    component="img"
-                    src={img.data || img}
-                    alt={img.name || `תמונה ${index + 1}`}
-                    sx={{
-                      width: 80, height: 80, objectFit: 'cover',
-                      borderRadius: '10px', border: '2px solid #e2e8f0',
-                    }}
-                  />
+                  <Tooltip title="לחץ להגדלה">
+                    <Box
+                      component="img"
+                      src={img.data || img}
+                      alt={img.name || `תמונה ${index + 1}`}
+                      onClick={() => setLightboxSrc(img.data || img)}
+                      sx={{
+                        width: 80, height: 80, objectFit: 'cover',
+                        borderRadius: '10px', border: '2px solid #e2e8f0',
+                        cursor: 'pointer',
+                        '&:hover': { opacity: 0.85, border: '2px solid #6366f1' },
+                        transition: 'all 0.15s',
+                      }}
+                    />
+                  </Tooltip>
                   <IconButton
                     size="small"
                     onClick={() => handleRemoveImage(index)}
@@ -609,6 +617,28 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
           </Button>
         </DialogActions>
       )}
+
+      {/* Lightbox */}
+      <Dialog
+        open={!!lightboxSrc}
+        onClose={() => setLightboxSrc(null)}
+        maxWidth="lg"
+        PaperProps={{ sx: { bgcolor: '#000', borderRadius: '12px', p: 0, m: 1 } }}
+      >
+        <IconButton
+          onClick={() => setLightboxSrc(null)}
+          sx={{ position: 'absolute', top: 8, right: 8, bgcolor: 'rgba(0,0,0,0.5)', color: '#fff', zIndex: 1 }}
+        >
+          <Close />
+        </IconButton>
+        {lightboxSrc && (
+          <Box
+            component="img"
+            src={lightboxSrc}
+            sx={{ maxWidth: '90vw', maxHeight: '85vh', objectFit: 'contain', display: 'block' }}
+          />
+        )}
+      </Dialog>
     </Dialog>
   );
 }

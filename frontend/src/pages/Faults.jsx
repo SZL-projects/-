@@ -962,7 +962,10 @@ export default function Faults() {
                   <CardContent sx={{ py: 2 }}>
                     <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>כלי</Typography>
                     <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
-                      {selectedFault.vehicleLicensePlate || selectedFault.vehicleNumber}
+                      {(() => {
+                        const v = vehicles.find(v => (v.id || v._id) === selectedFault.vehicleId);
+                        return v?.licensePlate || v?.vehicleNumber || v?.internalNumber || selectedFault.vehicleLicensePlate || '-';
+                      })()}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -1054,6 +1057,31 @@ export default function Faults() {
                         <Divider sx={{ my: 2, borderColor: '#e2e8f0' }} />
                         <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>קילומטראז':</Typography>
                         <Typography variant="body2" sx={{ color: '#1e293b' }}>{selectedFault.currentKm.toLocaleString()} ק"מ</Typography>
+                      </>
+                    )}
+
+                    {selectedFault.photos?.length > 0 && (
+                      <>
+                        <Divider sx={{ my: 2, borderColor: '#e2e8f0' }} />
+                        <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>תמונות ({selectedFault.photos.length}):</Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                          {selectedFault.photos.map((photo, i) => (
+                            <Box
+                              key={i}
+                              component="img"
+                              src={photo.data || photo}
+                              alt={`תמונה ${i + 1}`}
+                              onClick={() => window.open(photo.data || photo, '_blank')}
+                              sx={{
+                                width: 90, height: 90, objectFit: 'cover',
+                                borderRadius: '10px', border: '2px solid #e2e8f0',
+                                cursor: 'pointer',
+                                '&:hover': { opacity: 0.85, border: '2px solid #6366f1' },
+                                transition: 'all 0.15s',
+                              }}
+                            />
+                          ))}
+                        </Box>
                       </>
                     )}
                   </CardContent>
