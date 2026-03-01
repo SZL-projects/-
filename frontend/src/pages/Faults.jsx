@@ -736,7 +736,10 @@ export default function Faults() {
                 >
                   <TableCell>
                     <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
-                      {fault.vehicleLicensePlate || fault.vehicleNumber || '-'}
+                      {(() => {
+                        const v = vehicles.find(v => (v.id || v._id) === fault.vehicleId);
+                        return v?.licensePlate || v?.vehicleNumber || v?.internalNumber || fault.vehicleLicensePlate || '-';
+                      })()}
                     </Typography>
                   </TableCell>
                   <TableCell>
@@ -745,17 +748,21 @@ export default function Faults() {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      label={getCategoryLabel(fault.category)}
-                      size="small"
-                      sx={{
-                        bgcolor: 'rgba(99, 102, 241, 0.1)',
-                        color: '#6366f1',
-                        fontWeight: 600,
-                        fontSize: '0.75rem',
-                        border: 'none',
-                      }}
-                    />
+                    {fault.category || fault.faultArea ? (
+                      <Chip
+                        label={getCategoryLabel(fault.category || fault.faultArea)}
+                        size="small"
+                        sx={{
+                          bgcolor: 'rgba(99, 102, 241, 0.1)',
+                          color: '#6366f1',
+                          fontWeight: 600,
+                          fontSize: '0.75rem',
+                          border: 'none',
+                        }}
+                      />
+                    ) : (
+                      <Typography variant="body2" sx={{ color: '#94a3b8' }}>-</Typography>
+                    )}
                   </TableCell>
                   <TableCell>{getSeverityChip(fault.severity)}</TableCell>
                   <TableCell>

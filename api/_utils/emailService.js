@@ -559,9 +559,17 @@ exports.sendLicenseExpiryEmail = async (licenseItems) => {
 // שליחת הודעה על תקלה חדשה למנהלים
 exports.sendNewFaultNotification = async (fault, vehicle, rider) => {
   const severityLabels = { critical: 'קריטית', high: 'גבוהה', medium: 'בינונית', low: 'נמוכה' };
-  const categoryLabels = { engine: 'מנוע', brakes: 'בלמים', electrical: 'חשמל ותאורה', tires: 'צמיגים', bodywork: 'מרכב', other: 'אחר' };
+  const categoryLabels = {
+    scooter: 'קטנוע',
+    personal_equipment: 'ציוד רוכב אישי',
+    assistance_equipment: 'ציוד סיוע לאחר',
+    engine: 'מנוע', brakes: 'בלמים', electrical: 'חשמל ותאורה',
+    tires: 'צמיגים', bodywork: 'מרכב', other: 'אחר',
+  };
+  const urgencyLabels = { cannot_ride: 'לא ניתן לרכב', needs_treatment: 'מצריך טיפול' };
   const severity = severityLabels[fault.severity] || fault.severity || 'לא ידוע';
-  const category = categoryLabels[fault.category] || fault.category || 'לא ידוע';
+  const category = categoryLabels[fault.faultArea || fault.category] || fault.faultArea || fault.category || 'לא ידוע';
+  const urgencyText = urgencyLabels[fault.urgencyLevel] || '';
   const severityColor = (fault.severity === 'critical' || fault.severity === 'high') ? '#dc2626' : fault.severity === 'medium' ? '#d97706' : '#64748b';
   const canRideText = fault.canRide === false ? '<span style="color:#dc2626;font-weight:bold;">לא ניתן לרכב ⚠️</span>' : 'ניתן לרכב';
   const riderName = rider ? `${rider.firstName || ''} ${rider.lastName || ''}`.trim() : (fault.riderName || 'לא ידוע');
@@ -585,6 +593,8 @@ body{font-family:Arial,sans-serif;background:#f4f4f4;padding:20px;margin:0}
 <div class="field"><div class="field-label">רוכב מדווח</div><div class="field-value">${riderName}</div></div>
 <div class="field"><div class="field-label">כותרת התקלה</div><div class="field-value">${fault.title || (fault.description || '').substring(0, 60) || 'לא צוין'}</div></div>
 <div class="field"><div class="field-label">קטגוריה</div><div class="field-value">${category}</div></div>
+${fault.subCategory ? `<div class="field"><div class="field-label">סוג בעיה</div><div class="field-value">${fault.subCategory === 'אחר' && fault.customSubCategory ? fault.customSubCategory : fault.subCategory}</div></div>` : ''}
+${urgencyText ? `<div class="field"><div class="field-label">רמת דחיפות</div><div class="field-value">${urgencyText}</div></div>` : ''}
 <div class="field"><div class="field-label">חומרה</div><div class="field-value" style="color:${severityColor}">${severity}</div></div>
 <div class="field"><div class="field-label">ניתן לרכב?</div><div class="field-value">${canRideText}</div></div>
 <div class="field"><div class="field-label">תיאור</div><div class="field-value" style="font-weight:400">${fault.description || '-'}</div></div>

@@ -338,7 +338,7 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
           <Grid item xs={12} sm={6}>
             <Autocomplete
               options={vehicles}
-              getOptionLabel={(option) => option.licensePlate || ''}
+              getOptionLabel={(option) => option.licensePlate || option.vehicleNumber || option.internalNumber || ''}
               value={vehicles.find(v => (v.id || v._id) === formData.vehicleId) || null}
               onChange={handleAutocompleteChange('vehicleId')}
               renderInput={(params) => (
