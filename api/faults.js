@@ -31,21 +31,20 @@ module.exports = async (req, res) => {
     const fileId = req.query?.fileId || new URL(req.url, 'http://localhost').searchParams.get('fileId');
     if (!fileId) return res.status(400).json({ success: false, message: 'fileId חסר' });
     try {
-      const { db: dbProxy } = require('./_utils/firebase').initFirebase();
+      const { db: dbProxy } = initFirebase();
       const googleDriveService = require('./_services/googleDriveService');
       googleDriveService.setFirestore(dbProxy);
       await googleDriveService.initialize();
       const driveRes = await googleDriveService.drive.files.get(
         { fileId, alt: 'media', supportsAllDrives: true },
-        { responseType: 'stream' }
+        { responseType: 'arraybuffer' }
       );
-      res.setHeader('Content-Type', driveRes.headers['content-type'] || 'image/jpeg');
+      const contentType = driveRes.headers['content-type'] || 'image/jpeg';
+      const buffer = Buffer.from(driveRes.data);
+      res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'public, max-age=86400');
-      return new Promise((resolve) => {
-        driveRes.data.pipe(res);
-        driveRes.data.on('end', resolve);
-        driveRes.data.on('error', (e) => { console.error('stream err:', e); resolve(); });
-      });
+      res.setHeader('Content-Length', buffer.length);
+      return res.end(buffer);
     } catch (err) {
       console.error('Photo proxy error:', err);
       return res.status(500).json({ success: false, message: err.message });

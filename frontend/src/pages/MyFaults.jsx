@@ -199,6 +199,32 @@ export default function MyFaults() {
     });
   };
 
+  const compressImage = (file) =>
+    new Promise((resolve) => {
+      const maxDim = 1920;
+      const quality = 0.75;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) { height = Math.round((height * maxDim) / width); width = maxDim; }
+            else { width = Math.round((width * maxDim) / height); height = maxDim; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })),
+            'image/jpeg', quality
+          );
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
   const handleImageSelect = async (event) => {
     const files = Array.from(event.target.files);
     event.target.value = '';
@@ -206,8 +232,9 @@ export default function MyFaults() {
     showSnackbar('מעלה תמונות...', 'info');
     for (const file of files) {
       try {
+        const compressed = await compressImage(file);
         const formData = new FormData();
-        formData.append('photo', file);
+        formData.append('photo', compressed);
         const response = await faultsAPI.uploadPhoto(formData);
         setImages(prev => [...prev, response.data.file]);
       } catch (err) {
