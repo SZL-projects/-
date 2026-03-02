@@ -1065,13 +1065,18 @@ export default function Faults() {
                         <Divider sx={{ my: 2, borderColor: '#e2e8f0' }} />
                         <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>תמונות ({selectedFault.photos.length}):</Typography>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                          {selectedFault.photos.map((photo, i) => (
-                            <Box
+                          {selectedFault.photos.map((photo, i) => {
+                            const rawUrl = photo.url || photo.data || (typeof photo === 'string' ? photo : '');
+                            const idMatch = rawUrl.match && rawUrl.match(/[?&]id=([^&]+)/);
+                            const photoSrc = (rawUrl.includes('thumbnail?id=') && idMatch)
+                              ? `https://drive.google.com/uc?export=view&id=${idMatch[1]}`
+                              : rawUrl;
+                            return (<Box
                               key={i}
                               component="img"
-                              src={photo.url || photo.data || (typeof photo === 'string' ? photo : '')}
+                              src={photoSrc}
                               alt={`תמונה ${i + 1}`}
-                              onClick={() => window.open(photo.webViewLink || photo.url || photo.data || (typeof photo === 'string' ? photo : ''), '_blank')}
+                              onClick={() => window.open(photo.webViewLink || photoSrc, '_blank')}
                               sx={{
                                 width: 90, height: 90, objectFit: 'cover',
                                 borderRadius: '10px', border: '2px solid #e2e8f0',
@@ -1080,7 +1085,7 @@ export default function Faults() {
                                 transition: 'all 0.15s',
                               }}
                             />
-                          ))}
+                            );})}
                         </Box>
                       </>
                     )}
