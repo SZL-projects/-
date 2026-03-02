@@ -398,8 +398,8 @@ async function handleFaultsRequest(req, res, db, user, url) {
             const faultsFolder = await googleDriveService.findOrCreateFolder('תקלות', googleDriveService.rootFolderId);
             const fileData = await googleDriveService.uploadFile(fileName, fileBuffer, faultsFolder.id, mimeType);
 
-            // URL לתצוגה ישירה
-            const viewUrl = `https://drive.google.com/thumbnail?id=${fileData.id}&sz=w1200`;
+            // URL לתצוגה ישירה (uc?export=view עובד ב-img tag לקבצים ציבוריים)
+            const viewUrl = `https://drive.google.com/uc?export=view&id=${fileData.id}`;
 
             res.json({
               success: true,
