@@ -1068,8 +1068,8 @@ export default function Faults() {
                           {selectedFault.photos.map((photo, i) => {
                             const rawUrl = photo.url || photo.data || (typeof photo === 'string' ? photo : '');
                             const idMatch = rawUrl.match && rawUrl.match(/[?&]id=([^&]+)/);
-                            const photoSrc = (rawUrl.includes('thumbnail?id=') && idMatch)
-                              ? `https://drive.google.com/uc?export=view&id=${idMatch[1]}`
+                            const photoSrc = ((rawUrl.includes('thumbnail?id=') || rawUrl.includes('uc?export=view')) && idMatch)
+                              ? `/api/faults/photo-proxy?fileId=${idMatch[1]}`
                               : rawUrl;
                             return (<Box
                               key={i}

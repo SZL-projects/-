@@ -25,6 +25,33 @@ module.exports = async (req, res) => {
     }
   }
 
+  // ==================== PHOTO PROXY (no auth - fileId is the access key) ====================
+  const urlForProxy = req.url.split('?')[0];
+  if (urlForProxy.endsWith('/photo-proxy') && req.method === 'GET') {
+    const fileId = req.query?.fileId || new URL(req.url, 'http://localhost').searchParams.get('fileId');
+    if (!fileId) return res.status(400).json({ success: false, message: 'fileId חסר' });
+    try {
+      const { db: dbProxy } = require('./_utils/firebase').initFirebase();
+      const googleDriveService = require('./_services/googleDriveService');
+      googleDriveService.setFirestore(dbProxy);
+      await googleDriveService.initialize();
+      const driveRes = await googleDriveService.drive.files.get(
+        { fileId, alt: 'media', supportsAllDrives: true },
+        { responseType: 'stream' }
+      );
+      res.setHeader('Content-Type', driveRes.headers['content-type'] || 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return new Promise((resolve) => {
+        driveRes.data.pipe(res);
+        driveRes.data.on('end', resolve);
+        driveRes.data.on('error', (e) => { console.error('stream err:', e); resolve(); });
+      });
+    } catch (err) {
+      console.error('Photo proxy error:', err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
   try {
     const { db } = initFirebase();
     const user = await authenticateToken(req, db);
@@ -398,8 +425,8 @@ async function handleFaultsRequest(req, res, db, user, url) {
             const faultsFolder = await googleDriveService.findOrCreateFolder('תקלות', googleDriveService.rootFolderId);
             const fileData = await googleDriveService.uploadFile(fileName, fileBuffer, faultsFolder.id, mimeType);
 
-            // URL לתצוגה ישירה (uc?export=view עובד ב-img tag לקבצים ציבוריים)
-            const viewUrl = `https://drive.google.com/uc?export=view&id=${fileData.id}`;
+            // URL דרך ה-proxy שלנו (עוקף הגבלות Google Drive)
+            const viewUrl = `/api/faults/photo-proxy?fileId=${fileData.id}`;
 
             res.json({
               success: true,

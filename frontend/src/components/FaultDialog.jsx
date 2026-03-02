@@ -559,8 +559,8 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
               {images.map((img, index) => {
                 const rawUrl = img.url || img.data || (typeof img === 'string' ? img : '');
                 const idMatch = rawUrl.match && rawUrl.match(/[?&]id=([^&]+)/);
-                const src = (rawUrl.includes('thumbnail?id=') && idMatch)
-                  ? `https://drive.google.com/uc?export=view&id=${idMatch[1]}`
+                const src = ((rawUrl.includes('thumbnail?id=') || rawUrl.includes('uc?export=view')) && idMatch)
+                  ? `/api/faults/photo-proxy?fileId=${idMatch[1]}`
                   : rawUrl;
                 return (
                 <Box key={index} sx={{ position: 'relative', width: 80, height: 80 }}>
