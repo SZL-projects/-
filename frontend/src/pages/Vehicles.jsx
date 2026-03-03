@@ -159,7 +159,7 @@ setVehicles(vehiclesList);
           const exp = d.toDate ? d.toDate() : new Date(d);
           return exp >= now && exp <= fourteenDaysFromNow;
         };
-        return check(v.insurance?.mandatory?.expiryDate) || check(v.insurance?.comprehensive?.expiryDate);
+        return check(v.insurance?.mandatory?.expiryDate);
       });
     }
     return vehicles;

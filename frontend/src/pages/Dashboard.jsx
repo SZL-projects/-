@@ -222,24 +222,17 @@ export default function Dashboard() {
 
         // בדיקת ביטוח - 14 יום
         const mandatoryExpiry = v.insurance?.mandatory?.expiryDate;
-        const comprehensiveExpiry = v.insurance?.comprehensive?.expiryDate;
 
         const rider = riderByVehicleMap[v.id];
         const riderName = rider ? `${rider.firstName || ''} ${rider.lastName || ''}`.trim() : '';
         const vehicleModel = [v.manufacturer, v.model].filter(Boolean).join(' ');
 
-        // ביטוח - כלי אחד = כרטיס אחד, תוקף הקרוב ביותר
         const mandatoryDate = mandatoryExpiry ? (mandatoryExpiry.toDate ? mandatoryExpiry.toDate() : new Date(mandatoryExpiry)) : null;
-        const comprehensiveDate = comprehensiveExpiry ? (comprehensiveExpiry.toDate ? comprehensiveExpiry.toDate() : new Date(comprehensiveExpiry)) : null;
         const mandatoryExpiring = mandatoryDate && mandatoryDate >= now && mandatoryDate <= fourteenDaysFromNow;
-        const comprehensiveExpiring = comprehensiveDate && comprehensiveDate >= now && comprehensiveDate <= fourteenDaysFromNow;
 
-        if (mandatoryExpiring || comprehensiveExpiring) {
+        if (mandatoryExpiring) {
           expiringInsurance++;
-          // תוקף = התאריך הקרוב ביותר מבין מה שפוקע
-          const expiryDate = mandatoryExpiring && comprehensiveExpiring
-            ? (mandatoryDate < comprehensiveDate ? mandatoryDate : comprehensiveDate)
-            : mandatoryExpiring ? mandatoryDate : comprehensiveDate;
+          const expiryDate = mandatoryDate;
           insuranceExpiringList.push({
             id: v.id,
             licensePlate: v.licensePlate,

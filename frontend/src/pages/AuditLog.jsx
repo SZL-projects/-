@@ -151,7 +151,6 @@ const fieldLabelMap = {
   eventType:          'סוג אירוע',
   eventDate:          'תאריך אירוע',
   insuranceCompany:   'חברת ביטוח',
-  insuranceType:      'סוג ביטוח',
   claimNumber:        'מספר תביעה',
   approvedAmount:     'סכום מאושר',
   rejectionReason:    'סיבת דחייה',

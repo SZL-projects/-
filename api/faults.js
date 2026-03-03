@@ -782,7 +782,7 @@ async function handleInsuranceClaimsRequest(req, res, db, user, url) {
 
   // Collection operations
   if (req.method === 'GET') {
-    const { search, status, eventType, vehicleId, riderId, insuranceCompany, insuranceType, limit = 100 } = req.query;
+    const { search, status, eventType, vehicleId, riderId, insuranceCompany, limit = 100 } = req.query;
     const limitNum = Math.min(parseInt(limit), 500);
 
     let query = db.collection('insurance_claims');
@@ -791,7 +791,6 @@ async function handleInsuranceClaimsRequest(req, res, db, user, url) {
     if (vehicleId) query = query.where('vehicleId', '==', vehicleId);
     if (riderId) query = query.where('riderId', '==', riderId);
     if (insuranceCompany) query = query.where('insuranceCompany', '==', insuranceCompany);
-    if (insuranceType) query = query.where('insuranceType', '==', insuranceType);
 
     let claims = [];
     try {
@@ -823,7 +822,6 @@ async function handleInsuranceClaimsRequest(req, res, db, user, url) {
     if (!req.body.eventDate) return res.status(400).json({ success: false, message: 'תאריך אירוע הוא שדה חובה' });
     if (!req.body.description) return res.status(400).json({ success: false, message: 'תיאור האירוע הוא שדה חובה' });
     if (!req.body.insuranceCompany) return res.status(400).json({ success: false, message: 'חברת ביטוח היא שדה חובה' });
-    if (!req.body.insuranceType) return res.status(400).json({ success: false, message: 'סוג ביטוח הוא שדה חובה' });
 
     // Generate claim number
     const year = new Date().getFullYear();
@@ -854,7 +852,6 @@ async function handleInsuranceClaimsRequest(req, res, db, user, url) {
         coordinates: { lat: req.body.location?.coordinates?.lat || null, lng: req.body.location?.coordinates?.lng || null }
       },
       insuranceCompany: req.body.insuranceCompany,
-      insuranceType: req.body.insuranceType,
       policyNumber: req.body.policyNumber || '',
       status: req.body.status || 'draft',
       claimAmount: req.body.claimAmount || 0,

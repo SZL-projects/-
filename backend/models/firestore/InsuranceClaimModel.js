@@ -191,10 +191,6 @@ class InsuranceClaimModel {
       if (filters.insuranceCompany) {
         query = query.where('insuranceCompany', '==', filters.insuranceCompany);
       }
-      if (filters.insuranceType) {
-        query = query.where('insuranceType', '==', filters.insuranceType);
-      }
-
       query = query.orderBy('eventDate', 'desc').limit(limit);
 
       const snapshot = await query.get();
