@@ -13,7 +13,7 @@ router.use(protect);
 // @access  Private
 router.get('/', async (req, res) => {
   try {
-    const { search, status, eventType, vehicleId, riderId, insuranceCompany, insuranceType, limit = 100 } = req.query;
+    const { search, status, eventType, vehicleId, riderId, insuranceCompany, limit = 100 } = req.query;
 
     let claims;
     let filters = {};
@@ -23,7 +23,6 @@ router.get('/', async (req, res) => {
     if (vehicleId) filters.vehicleId = vehicleId;
     if (riderId) filters.riderId = riderId;
     if (insuranceCompany) filters.insuranceCompany = insuranceCompany;
-    if (insuranceType) filters.insuranceType = insuranceType;
 
     if (search) {
       claims = await InsuranceClaimModel.search(search, filters, parseInt(limit));
@@ -152,9 +151,6 @@ router.post('/', async (req, res) => {
     }
     if (!req.body.insuranceCompany) {
       return res.status(400).json({ success: false, message: 'חברת ביטוח היא שדה חובה' });
-    }
-    if (!req.body.insuranceType) {
-      return res.status(400).json({ success: false, message: 'סוג ביטוח הוא שדה חובה' });
     }
 
     const claim = await InsuranceClaimModel.create(req.body, req.user.id);

@@ -178,13 +178,9 @@ module.exports = async (req, res) => {
         const vehicleModel = `${vehicle.manufacturer || ''} ${vehicle.model || ''}`.trim();
 
         const mandatoryExpiry = toDate(vehicle.insurance?.mandatory?.expiryDate);
-        const comprehensiveExpiry = toDate(vehicle.insurance?.comprehensive?.expiryDate);
         const mandatoryInWindow = mandatoryExpiry && mandatoryExpiry >= target14Start && mandatoryExpiry <= target14End;
-        const comprehensiveInWindow = comprehensiveExpiry && comprehensiveExpiry >= target14Start && comprehensiveExpiry <= target14End;
-        if (mandatoryInWindow || comprehensiveInWindow) {
-          const expiry = mandatoryInWindow ? mandatoryExpiry : comprehensiveExpiry;
-          const type = mandatoryInWindow ? 'mandatory' : 'comprehensive';
-          insuranceItems.push({ licensePlate: vehicle.licensePlate, vehicleModel, riderName, riderIdNumber, expiryDate: expiry, insuranceType: type });
+        if (mandatoryInWindow) {
+          insuranceItems.push({ licensePlate: vehicle.licensePlate, vehicleModel, riderName, riderIdNumber, expiryDate: mandatoryExpiry });
         }
         const licenseExpiry = toDate(vehicle.vehicleLicense?.expiryDate);
         if (licenseExpiry && licenseExpiry >= target30Start && licenseExpiry <= target30End) {
@@ -388,25 +384,12 @@ module.exports = async (req, res) => {
           const expiry = toDate(vehicle.insurance.mandatory.expiryDate);
           if (expiry && expiry >= ins14Start && expiry <= ins14End) {
             alerts.push({
-              id: `ins-mandatory-${vehicle.id}`,
-              type: 'insurance', subType: 'mandatory',
+              id: `ins-${vehicle.id}`,
+              type: 'insurance',
               vehicleId: vehicle.id, licensePlate: vehicle.licensePlate,
               expiryDate: expiry.toISOString(),
               daysLeft: 14,
-              label: `ביטוח חובה - ${vehicle.licensePlate}`,
-            });
-          }
-        }
-        if (vehicle.insurance?.comprehensive?.expiryDate) {
-          const expiry = toDate(vehicle.insurance.comprehensive.expiryDate);
-          if (expiry && expiry >= ins14Start && expiry <= ins14End) {
-            alerts.push({
-              id: `ins-comprehensive-${vehicle.id}`,
-              type: 'insurance', subType: 'comprehensive',
-              vehicleId: vehicle.id, licensePlate: vehicle.licensePlate,
-              expiryDate: expiry.toISOString(),
-              daysLeft: 14,
-              label: `ביטוח מקיף - ${vehicle.licensePlate}`,
+              label: `ביטוח - ${vehicle.licensePlate}`,
             });
           }
         }

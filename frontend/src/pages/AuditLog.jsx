@@ -104,8 +104,6 @@ const valueMap = {
   fail:                'נכשל',
   na:                  'לא רלוונטי',
   // סוגי ביטוח
-  mandatory:           'חובה',
-  comprehensive:       'מקיף',
   third_party:         'צד שלישי',
   // תחנה
   station:             'תחנה',

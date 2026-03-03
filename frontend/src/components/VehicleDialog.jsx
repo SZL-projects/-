@@ -50,7 +50,6 @@ export default function VehicleDialog({ open, onClose, onSave, vehicle }) {
     status: 'active',
     insurance: {
       mandatory: { expiryDate: '' },
-      comprehensive: { expiryDate: '' },
     },
     vehicleLicense: { expiryDate: '' },
   });
@@ -73,9 +72,6 @@ export default function VehicleDialog({ open, onClose, onSave, vehicle }) {
           mandatory: {
             expiryDate: formatDateForInput(vehicle.insurance?.mandatory?.expiryDate)
           },
-          comprehensive: {
-            expiryDate: formatDateForInput(vehicle.insurance?.comprehensive?.expiryDate)
-          },
         },
         vehicleLicense: {
           expiryDate: formatDateForInput(vehicle.vehicleLicense?.expiryDate)
@@ -93,7 +89,6 @@ export default function VehicleDialog({ open, onClose, onSave, vehicle }) {
         status: 'active',
         insurance: {
           mandatory: { expiryDate: '' },
-          comprehensive: { expiryDate: '' },
         },
         vehicleLicense: { expiryDate: '' },
       });
@@ -122,13 +117,11 @@ export default function VehicleDialog({ open, onClose, onSave, vehicle }) {
     });
   };
 
-  // שדה ביטוח אחד מעדכן גם חובה וגם מקיף
   const handleInsuranceChange = (event) => {
     setFormData({
       ...formData,
       insurance: {
         mandatory: { expiryDate: event.target.value },
-        comprehensive: { expiryDate: event.target.value },
       },
     });
   };
@@ -306,7 +299,7 @@ export default function VehicleDialog({ open, onClose, onSave, vehicle }) {
               fullWidth
               label="תוקף ביטוח"
               type="date"
-              value={formData.insurance?.mandatory?.expiryDate || formData.insurance?.comprehensive?.expiryDate || ''}
+              value={formData.insurance?.mandatory?.expiryDate || ''}
               onChange={handleInsuranceChange}
               InputLabelProps={{ shrink: true }}
             />

@@ -66,7 +66,6 @@ export default function InsuranceClaims() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterEventType, setFilterEventType] = useState('all');
-  const [filterInsuranceType, setFilterInsuranceType] = useState('all');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingClaim, setEditingClaim] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -90,12 +89,6 @@ export default function InsuranceClaims() {
     vandalism: { label: 'ונדליזם', color: '#f59e0b' },
     natural_disaster: { label: 'אסון טבע', color: '#06b6d4' },
     other: { label: 'אחר', color: '#64748b' },
-  }), []);
-
-  const insuranceTypeMap = useMemo(() => ({
-    mandatory: 'חובה',
-    comprehensive: 'מקיף',
-    thirdParty: 'צד שלישי',
   }), []);
 
   const formatDate = useCallback((timestamp) => {
@@ -161,8 +154,6 @@ export default function InsuranceClaims() {
     return claims.filter(c => {
       if (filterStatus !== 'all' && c.status !== filterStatus) return false;
       if (filterEventType !== 'all' && c.eventType !== filterEventType) return false;
-      if (filterInsuranceType !== 'all' && c.insuranceType !== filterInsuranceType) return false;
-
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
         const match =
@@ -177,7 +168,7 @@ export default function InsuranceClaims() {
 
       return true;
     });
-  }, [claims, filterStatus, filterEventType, filterInsuranceType, searchTerm]);
+  }, [claims, filterStatus, filterEventType, searchTerm]);
 
   const handleAdd = useCallback(() => {
     setEditingClaim(null);
@@ -357,17 +348,6 @@ export default function InsuranceClaims() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={4} sm={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>סוג ביטוח</InputLabel>
-                  <Select value={filterInsuranceType} onChange={(e) => setFilterInsuranceType(e.target.value)} label="סוג ביטוח" sx={{ borderRadius: '10px' }}>
-                    <MenuItem value="all">הכל</MenuItem>
-                    {Object.entries(insuranceTypeMap).map(([key, val]) => (
-                      <MenuItem key={key} value={key}>{val}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
             </Grid>
           </Box>
         </Collapse>
@@ -383,7 +363,7 @@ export default function InsuranceClaims() {
           <Box sx={{ textAlign: 'center', p: 6 }}>
             <Gavel sx={{ fontSize: 64, color: '#e2e8f0', mb: 2 }} />
             <Typography variant="h6" sx={{ color: '#94a3b8', fontWeight: 600 }}>
-              {searchTerm || filterStatus !== 'all' || filterEventType !== 'all' || filterInsuranceType !== 'all'
+              {searchTerm || filterStatus !== 'all' || filterEventType !== 'all'
                 ? 'לא נמצאו תביעות התואמות את הסינון'
                 : 'אין תביעות ביטוח עדיין'}
             </Typography>
@@ -549,10 +529,6 @@ export default function InsuranceClaims() {
               <Grid item xs={6} sm={4}>
                 <Typography variant="caption" color="text.secondary">חברת ביטוח</Typography>
                 <Typography sx={{ fontWeight: 600 }}>{selectedClaim.insuranceCompany || '-'}</Typography>
-              </Grid>
-              <Grid item xs={6} sm={4}>
-                <Typography variant="caption" color="text.secondary">סוג ביטוח</Typography>
-                <Typography sx={{ fontWeight: 600 }}>{insuranceTypeMap[selectedClaim.insuranceType] || '-'}</Typography>
               </Grid>
               <Grid item xs={6} sm={4}>
                 <Typography variant="caption" color="text.secondary">מספר פוליסה</Typography>

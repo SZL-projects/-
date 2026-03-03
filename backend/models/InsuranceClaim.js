@@ -55,13 +55,6 @@ const insuranceClaimSchema = new mongoose.Schema({
     required: [true, 'חברת ביטוח היא שדה חובה']
   },
 
-  // סוג ביטוח
-  insuranceType: {
-    type: String,
-    enum: ['mandatory', 'comprehensive', 'thirdParty'],
-    required: true
-  },
-
   // מספר פוליסה
   policyNumber: String,
 

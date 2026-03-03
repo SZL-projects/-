@@ -112,21 +112,6 @@ const vehicleSchema = new mongoose.Schema({
         }
       }]
     },
-    comprehensive: {
-      company: String,
-      policyNumber: String,
-      startDate: Date,
-      expiryDate: Date,
-      files: [{
-        filename: String,
-        originalName: String,
-        uploadDate: Date,
-        uploadedBy: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'User'
-        }
-      }]
-    },
     thirdParty: {
       company: String,
       policyNumber: String,
@@ -148,7 +133,7 @@ const vehicleSchema = new mongoose.Schema({
   insuranceHistory: [{
     type: {
       type: String,
-      enum: ['mandatory', 'comprehensive', 'thirdParty']
+      enum: ['mandatory', 'thirdParty']
     },
     company: String,
     policyNumber: String,

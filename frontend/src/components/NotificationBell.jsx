@@ -154,7 +154,7 @@ export default function NotificationBell() {
 
   const getTypeLabel = (alert) => {
     if (alert.type === 'insurance') {
-      return alert.subType === 'mandatory' ? 'ביטוח חובה' : 'ביטוח מקיף';
+      return 'ביטוח';
     }
     if (alert.type === 'fault') {
       const severityMap = { critical: 'קריטית', high: 'גבוהה', medium: 'בינונית', low: 'נמוכה' };

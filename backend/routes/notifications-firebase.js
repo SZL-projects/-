@@ -48,38 +48,19 @@ router.get('/alerts', async (req, res) => {
     const alerts = [];
 
     for (const vehicle of allVehicles) {
-      // ביטוח חובה - פוקע תוך 14 יום
+      // ביטוח - פוקע תוך 14 יום
       if (vehicle.insurance?.mandatory?.expiryDate) {
         const expiry = new Date(vehicle.insurance.mandatory.expiryDate);
         if (expiry >= now && expiry <= in14Days) {
           const daysLeft = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
           alerts.push({
-            id: `ins-mandatory-${vehicle.id}`,
+            id: `ins-${vehicle.id}`,
             type: 'insurance',
-            subType: 'mandatory',
             vehicleId: vehicle.id,
             licensePlate: vehicle.licensePlate,
             expiryDate: vehicle.insurance.mandatory.expiryDate,
             daysLeft,
-            label: `ביטוח חובה - ${vehicle.licensePlate}`,
-          });
-        }
-      }
-
-      // ביטוח מקיף - פוקע תוך 14 יום
-      if (vehicle.insurance?.comprehensive?.expiryDate) {
-        const expiry = new Date(vehicle.insurance.comprehensive.expiryDate);
-        if (expiry >= now && expiry <= in14Days) {
-          const daysLeft = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
-          alerts.push({
-            id: `ins-comprehensive-${vehicle.id}`,
-            type: 'insurance',
-            subType: 'comprehensive',
-            vehicleId: vehicle.id,
-            licensePlate: vehicle.licensePlate,
-            expiryDate: vehicle.insurance.comprehensive.expiryDate,
-            daysLeft,
-            label: `ביטוח מקיף - ${vehicle.licensePlate}`,
+            label: `ביטוח - ${vehicle.licensePlate}`,
           });
         }
       }

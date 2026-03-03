@@ -53,10 +53,6 @@ class InsuranceClaimModel {
 
         // פרטי ביטוח
         insuranceCompany: claimData.insuranceCompany,
-        insuranceType: claimData.insuranceType,
-        // mandatory = חובה
-        // comprehensive = מקיף
-        // thirdParty = צד שלישי
         policyNumber: claimData.policyNumber || '',
 
         // סטטוס

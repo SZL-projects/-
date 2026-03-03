@@ -485,7 +485,7 @@ exports.sendInsuranceExpiryEmail = async (insuranceItems) => {
       </p>
       <p style="margin:0 0 8px 0; color:#374151; font-size:15px;">
         <span style="color:#6b7280; font-size:13px;">סוג ביטוח:</span><br>
-        <strong>${item.insuranceType === 'mandatory' ? 'ביטוח חובה' : 'ביטוח מקיף'}</strong>
+        <strong>ביטוח</strong>
       </p>
       <p style="margin:0; color:#374151; font-size:15px;">
         <span style="color:#6b7280; font-size:13px;">תאריך תפוגת הביטוח:</span><br>

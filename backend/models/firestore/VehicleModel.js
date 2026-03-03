@@ -28,7 +28,6 @@ class VehicleModel {
         kilometersHistory: [],
         insurance: vehicleData.insurance || {
           mandatory: {},
-          comprehensive: {},
           thirdParty: {}
         },
         insuranceHistory: [],

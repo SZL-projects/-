@@ -8,7 +8,7 @@ const { sendInsuranceExpiryEmail, sendLicenseExpiryEmail } = require('../service
  *
  * פועל כל יום בשעה 09:00 (שעון ישראל)
  * בודק:
- * - ביטוחים (חובה/מקיף) שפוקעים בדיוק עוד 14 יום (התראה פעם אחת)
+ * - ביטוחים שפוקעים בדיוק עוד 14 יום (התראה פעם אחת)
  * - רשיונות רכב/טסט שפוקעים בדיוק עוד 30 יום (התראה פעם אחת)
  * שולח מייל נפרד לכל סוג
  */
@@ -78,31 +78,12 @@ class ExpiryReminderScheduler {
         const riderIdNumber = rider?.idNumber || '';
         const vehicleModel = `${vehicle.manufacturer || ''} ${vehicle.model || ''}`.trim();
 
-        // ביטוח חובה - התראה בדיוק 14 יום לפני הפקיעה
+        // ביטוח - התראה בדיוק 14 יום לפני הפקיעה
         if (vehicle.insurance?.mandatory?.expiryDate) {
           const expiryDate = new Date(vehicle.insurance.mandatory.expiryDate);
           if (expiryDate >= target14 && expiryDate <= target14End) {
             expiringItems.push({
               type: 'insurance',
-              insuranceType: 'mandatory',
-              licensePlate: vehicle.licensePlate,
-              vehicleId: vehicle.id,
-              vehicleModel,
-              expiryDate,
-              daysLeft: 14,
-              riderName,
-              riderIdNumber,
-            });
-          }
-        }
-
-        // ביטוח מקיף - התראה בדיוק 14 יום לפני הפקיעה
-        if (vehicle.insurance?.comprehensive?.expiryDate) {
-          const expiryDate = new Date(vehicle.insurance.comprehensive.expiryDate);
-          if (expiryDate >= target14 && expiryDate <= target14End) {
-            expiringItems.push({
-              type: 'insurance',
-              insuranceType: 'comprehensive',
               licensePlate: vehicle.licensePlate,
               vehicleId: vehicle.id,
               vehicleModel,

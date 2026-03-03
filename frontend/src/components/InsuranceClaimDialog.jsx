@@ -40,7 +40,6 @@ export default function InsuranceClaimDialog({ open, onClose, claim, vehicles, r
     description: '',
     location: { address: '' },
     insuranceCompany: '',
-    insuranceType: 'comprehensive',
     policyNumber: '',
     claimAmount: 0,
     approvedAmount: 0,
@@ -91,7 +90,6 @@ export default function InsuranceClaimDialog({ open, onClose, claim, vehicles, r
           address: claim.location?.address || '',
         },
         insuranceCompany: claim.insuranceCompany || '',
-        insuranceType: claim.insuranceType || 'comprehensive',
         policyNumber: claim.policyNumber || '',
         claimAmount: claim.claimAmount || 0,
         approvedAmount: claim.approvedAmount || 0,
@@ -121,7 +119,6 @@ export default function InsuranceClaimDialog({ open, onClose, claim, vehicles, r
         description: '',
         location: { address: '' },
         insuranceCompany: '',
-        insuranceType: 'comprehensive',
         policyNumber: '',
         claimAmount: 0,
         approvedAmount: 0,
@@ -203,10 +200,6 @@ export default function InsuranceClaimDialog({ open, onClose, claim, vehicles, r
     }
     if (!formData.insuranceCompany) {
       setError('יש להזין חברת ביטוח');
-      return;
-    }
-    if (!formData.insuranceType) {
-      setError('יש לבחור סוג ביטוח');
       return;
     }
 
@@ -396,23 +389,6 @@ export default function InsuranceClaimDialog({ open, onClose, claim, vehicles, r
               onChange={handleChange}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
             />
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth size={isMobile ? "small" : "medium"}>
-              <InputLabel>סוג ביטוח *</InputLabel>
-              <Select
-                name="insuranceType"
-                value={formData.insuranceType}
-                onChange={handleChange}
-                label="סוג ביטוח *"
-                sx={{ borderRadius: '12px' }}
-              >
-                <MenuItem value="mandatory">חובה</MenuItem>
-                <MenuItem value="comprehensive">מקיף</MenuItem>
-                <MenuItem value="thirdParty">צד שלישי</MenuItem>
-              </Select>
-            </FormControl>
           </Grid>
 
           <Grid item xs={12} sm={6}>
