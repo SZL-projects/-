@@ -335,9 +335,13 @@ class GoogleDriveService {
     }
 
     try {
-      // תיקייה ראשית של הכלי - בתוך תיקיית ה-ROOT
-      const mainFolder = await this.createFolder(vehicleIdentifier, this.rootFolderId);
-      console.log(`Created main folder: ${mainFolder.name} (${mainFolder.id}) in root folder ${this.rootFolderId}`);
+      // קבלת/יצירת תיקיית "כלים" הראשית
+      const vehiclesFolderId = await this.getOrCreateVehiclesFolder();
+      console.log(`Using vehicles folder: ${vehiclesFolderId}`);
+
+      // תיקייה ראשית של הכלי - בתוך תיקיית "כלים"
+      const mainFolder = await this.createFolder(vehicleIdentifier, vehiclesFolderId);
+      console.log(`Created main folder: ${mainFolder.name} (${mainFolder.id}) in vehicles folder ${vehiclesFolderId}`);
 
       // תיקיית ביטוחים נוכחיים
       const insuranceFolder = await this.createFolder('ביטוחים נוכחיים', mainFolder.id);
