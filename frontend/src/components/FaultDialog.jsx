@@ -37,6 +37,20 @@ import {
 } from '@mui/icons-material';
 import { vehiclesAPI, ridersAPI, authAPI, faultsAPI } from '../services/api';
 
+// המרת אובייקט תמונה ל-URL תקין דרך ה-proxy
+function getPhotoSrc(photo) {
+  if (!photo) return '';
+  if (photo.fileId) return `/api/faults/photo-proxy?fileId=${photo.fileId}`;
+  const rawUrl = photo.url || photo.data || (typeof photo === 'string' ? photo : '');
+  if (!rawUrl) return '';
+  if (rawUrl.includes('/api/faults/photo-proxy')) return rawUrl;
+  const qIdMatch = rawUrl.match(/[?&]id=([^&]+)/);
+  if (qIdMatch) return `/api/faults/photo-proxy?fileId=${qIdMatch[1]}`;
+  const fileIdMatch = rawUrl.match(/\/file\/d\/([^/?]+)/);
+  if (fileIdMatch) return `/api/faults/photo-proxy?fileId=${fileIdMatch[1]}`;
+  return rawUrl;
+}
+
 // ---- נתוני הקטגוריות ----
 const FAULT_AREAS = [
   { value: 'scooter', label: 'בקטנוע', icon: <TwoWheeler sx={{ fontSize: 20 }} /> },
@@ -122,7 +136,8 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
 
   const [images, setImages] = useState([]);  // { url, fileId, webViewLink, name } or legacy { data: base64 }
   const [uploadingImages, setUploadingImages] = useState(false);
-  const [lightboxSrc, setLightboxSrc] = useState(null); // src of enlarged photo
+  const [lightboxSrc, setLightboxSrc] = useState(null);
+  const [lightboxLink, setLightboxLink] = useState(null);
   const [vehicles, setVehicles] = useState([]);
   const [riders, setRiders] = useState([]);
   const [users, setUsers] = useState([]);
@@ -557,11 +572,7 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
                 </Box>
               )}
               {images.map((img, index) => {
-                const rawUrl = img.url || img.data || (typeof img === 'string' ? img : '');
-                const idMatch = rawUrl.match && rawUrl.match(/[?&]id=([^&]+)/);
-                const src = ((rawUrl.includes('thumbnail?id=') || rawUrl.includes('uc?export=view')) && idMatch)
-                  ? `/api/faults/photo-proxy?fileId=${idMatch[1]}`
-                  : rawUrl;
+                const src = getPhotoSrc(img);
                 return (
                 <Box key={index} sx={{ position: 'relative', width: 80, height: 80 }}>
                   <Tooltip title="לחץ להגדלה">
@@ -569,7 +580,7 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
                       component="img"
                       src={src}
                       alt={img.name || `תמונה ${index + 1}`}
-                      onClick={() => setLightboxSrc(img.webViewLink || src)}
+                      onClick={() => { setLightboxSrc(src); setLightboxLink(img.webViewLink || src); }}
                       sx={{
                         width: 80, height: 80, objectFit: 'cover',
                         borderRadius: '10px', border: '2px solid #e2e8f0',
@@ -668,13 +679,13 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
       {/* Lightbox */}
       <Dialog
         open={!!lightboxSrc}
-        onClose={() => setLightboxSrc(null)}
+        onClose={() => { setLightboxSrc(null); setLightboxLink(null); }}
         maxWidth="lg"
         PaperProps={{ sx: { bgcolor: '#000', borderRadius: '12px', p: 0, m: 1, overflow: 'hidden' } }}
       >
         <Box sx={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 1, zIndex: 1 }}>
           <IconButton
-            onClick={() => window.open(lightboxSrc, '_blank')}
+            onClick={() => window.open(lightboxLink || lightboxSrc, '_blank')}
             sx={{ bgcolor: 'rgba(0,0,0,0.5)', color: '#fff' }}
             title="פתח ב-Drive"
           >

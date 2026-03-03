@@ -51,6 +51,24 @@ import { faultsAPI, ridersAPI, vehiclesAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import FaultDialog from '../components/FaultDialog';
 
+// המרת אובייקט תמונה ל-URL תקין דרך ה-proxy
+function getPhotoSrc(photo) {
+  if (!photo) return '';
+  // אם יש fileId ישיר — השתמש בו (הפתרון הכי אמין)
+  if (photo.fileId) return `/api/faults/photo-proxy?fileId=${photo.fileId}`;
+  const rawUrl = photo.url || photo.data || (typeof photo === 'string' ? photo : '');
+  if (!rawUrl) return '';
+  // כבר proxy URL
+  if (rawUrl.includes('/api/faults/photo-proxy')) return rawUrl;
+  // thumbnail?id=FILE_ID  או  uc?export=view&id=FILE_ID
+  const qIdMatch = rawUrl.match(/[?&]id=([^&]+)/);
+  if (qIdMatch) return `/api/faults/photo-proxy?fileId=${qIdMatch[1]}`;
+  // file/d/FILE_ID/view
+  const fileIdMatch = rawUrl.match(/\/file\/d\/([^/?]+)/);
+  if (fileIdMatch) return `/api/faults/photo-proxy?fileId=${fileIdMatch[1]}`;
+  return rawUrl;
+}
+
 export default function Faults() {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
@@ -1066,11 +1084,7 @@ export default function Faults() {
                         <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>תמונות ({selectedFault.photos.length}):</Typography>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
                           {selectedFault.photos.map((photo, i) => {
-                            const rawUrl = photo.url || photo.data || (typeof photo === 'string' ? photo : '');
-                            const idMatch = rawUrl.match && rawUrl.match(/[?&]id=([^&]+)/);
-                            const photoSrc = ((rawUrl.includes('thumbnail?id=') || rawUrl.includes('uc?export=view')) && idMatch)
-                              ? `/api/faults/photo-proxy?fileId=${idMatch[1]}`
-                              : rawUrl;
+                            const photoSrc = getPhotoSrc(photo);
                             return (<Box
                               key={i}
                               component="img"

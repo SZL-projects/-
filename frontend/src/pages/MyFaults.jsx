@@ -74,6 +74,19 @@ const SUB_CATEGORIES = {
 import { useAuth } from '../contexts/AuthContext';
 import { faultsAPI, ridersAPI, vehiclesAPI } from '../services/api';
 
+function getPhotoSrc(photo) {
+  if (!photo) return '';
+  if (photo.fileId) return `/api/faults/photo-proxy?fileId=${photo.fileId}`;
+  const rawUrl = photo.url || photo.data || (typeof photo === 'string' ? photo : '');
+  if (!rawUrl) return '';
+  if (rawUrl.includes('/api/faults/photo-proxy')) return rawUrl;
+  const qIdMatch = rawUrl.match(/[?&]id=([^&]+)/);
+  if (qIdMatch) return `/api/faults/photo-proxy?fileId=${qIdMatch[1]}`;
+  const fileIdMatch = rawUrl.match(/\/file\/d\/([^/?]+)/);
+  if (fileIdMatch) return `/api/faults/photo-proxy?fileId=${fileIdMatch[1]}`;
+  return rawUrl;
+}
+
 export default function MyFaults() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -795,7 +808,7 @@ export default function MyFaults() {
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
                 {images.map((img, index) => (
                   <Box key={index} sx={{ position: 'relative', width: 72, height: 72 }}>
-                    <Box component="img" src={img.url || img.data} alt={img.name}
+                    <Box component="img" src={getPhotoSrc(img)} alt={img.name}
                       sx={{ width: 72, height: 72, objectFit: 'cover', borderRadius: '10px', border: '2px solid #e2e8f0' }} />
                     <Box onClick={() => handleRemoveImage(index)} sx={{
                       position: 'absolute', top: -7, right: -7,
