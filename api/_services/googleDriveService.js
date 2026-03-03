@@ -110,6 +110,7 @@ class GoogleDriveService {
       // יצירת OAuth2 client עם הטוקנים השמורים
       const auth = await this.getOAuth2Client();
 
+      this.auth = auth;
       this.drive = google.drive({ version: 'v3', auth });
 
       // הגדרת תיקיית ROOT (אם קיימת במשתני סביבה)

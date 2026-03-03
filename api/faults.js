@@ -35,16 +35,24 @@ module.exports = async (req, res) => {
       const googleDriveService = require('./_services/googleDriveService');
       googleDriveService.setFirestore(dbProxy);
       await googleDriveService.initialize();
-      const driveRes = await googleDriveService.drive.files.get(
-        { fileId, alt: 'media', supportsAllDrives: true },
-        { responseType: 'arraybuffer' }
-      );
-      const contentType = driveRes.headers['content-type'] || 'image/jpeg';
-      const buffer = Buffer.from(driveRes.data);
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Cache-Control', 'public, max-age=86400');
-      res.setHeader('Content-Length', buffer.length);
-      return res.end(buffer);
+      // קבלת access token
+      const { token: accessToken } = await googleDriveService.auth.getAccessToken();
+      // fetch ישיר ל-Drive API
+      const https = require('https');
+      const driveUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`;
+      return new Promise((resolve) => {
+        https.get(driveUrl, { headers: { Authorization: `Bearer ${accessToken}` } }, (driveRes) => {
+          res.setHeader('Content-Type', driveRes.headers['content-type'] || 'image/jpeg');
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          driveRes.pipe(res);
+          driveRes.on('end', resolve);
+          driveRes.on('error', (e) => { console.error('Drive stream error:', e); resolve(); });
+        }).on('error', (e) => {
+          console.error('HTTPS error:', e);
+          res.status(500).end();
+          resolve();
+        });
+      });
     } catch (err) {
       console.error('Photo proxy error:', err);
       return res.status(500).json({ success: false, message: err.message });
