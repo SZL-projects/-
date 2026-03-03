@@ -427,7 +427,7 @@ export default function MyVehicle() {
                   </Box>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>תוקף ביטוח חובה</Typography>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>תוקף ביטוח</Typography>
                   <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
                     {vehicle.insurance?.mandatory?.expiryDate
                       ? new Date(vehicle.insurance.mandatory.expiryDate).toLocaleDateString('he-IL')

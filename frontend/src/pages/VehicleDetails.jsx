@@ -586,7 +586,7 @@ export default function VehicleDetails() {
         <Divider sx={{ mb: 3, borderColor: '#e2e8f0' }} />
 
         <Grid container spacing={3}>
-          {/* ביטוח חובה */}
+          {/* ביטוח */}
           <Grid item xs={12} sm={6} md={4}>
             <Card sx={{
               borderRadius: '12px',
@@ -614,7 +614,7 @@ export default function VehicleDetails() {
                   }} />
                 </Box>
                 <Box>
-                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>תוקף ביטוח חובה</Typography>
+                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>תוקף ביטוח</Typography>
                   <Typography variant="body1" sx={{
                     fontWeight: 600,
                     color: vehicle.insurance?.mandatory?.expiryDate && new Date(vehicle.insurance.mandatory.expiryDate) < new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
@@ -623,50 +623,6 @@ export default function VehicleDetails() {
                   }}>
                     {vehicle.insurance?.mandatory?.expiryDate
                       ? new Date(vehicle.insurance.mandatory.expiryDate).toLocaleDateString('he-IL')
-                      : 'לא הוזן'}
-                  </Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* ביטוח מקיף */}
-          <Grid item xs={12} sm={6} md={4}>
-            <Card sx={{
-              borderRadius: '12px',
-              border: '1px solid #e2e8f0',
-              boxShadow: 'none',
-              height: '100%',
-            }}>
-              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box sx={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: '10px',
-                  bgcolor: vehicle.insurance?.comprehensive?.expiryDate && new Date(vehicle.insurance.comprehensive.expiryDate) < new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-                    ? 'rgba(239, 68, 68, 0.1)'
-                    : 'rgba(139, 92, 246, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  <Security sx={{
-                    color: vehicle.insurance?.comprehensive?.expiryDate && new Date(vehicle.insurance.comprehensive.expiryDate) < new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-                      ? '#dc2626'
-                      : '#8b5cf6',
-                    fontSize: 20
-                  }} />
-                </Box>
-                <Box>
-                  <Typography variant="caption" sx={{ color: '#94a3b8' }}>תוקף ביטוח מקיף</Typography>
-                  <Typography variant="body1" sx={{
-                    fontWeight: 600,
-                    color: vehicle.insurance?.comprehensive?.expiryDate && new Date(vehicle.insurance.comprehensive.expiryDate) < new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-                      ? '#dc2626'
-                      : '#1e293b'
-                  }}>
-                    {vehicle.insurance?.comprehensive?.expiryDate
-                      ? new Date(vehicle.insurance.comprehensive.expiryDate).toLocaleDateString('he-IL')
                       : 'לא הוזן'}
                   </Typography>
                 </Box>
