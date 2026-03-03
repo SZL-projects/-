@@ -35,24 +35,21 @@ module.exports = async (req, res) => {
       const googleDriveService = require('./_services/googleDriveService');
       googleDriveService.setFirestore(dbProxy);
       await googleDriveService.initialize();
-      // קבלת access token
-      const { token: accessToken } = await googleDriveService.auth.getAccessToken();
-      // fetch ישיר ל-Drive API
-      const https = require('https');
-      const driveUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`;
-      return new Promise((resolve) => {
-        https.get(driveUrl, { headers: { Authorization: `Bearer ${accessToken}` } }, (driveRes) => {
-          res.setHeader('Content-Type', driveRes.headers['content-type'] || 'image/jpeg');
-          res.setHeader('Cache-Control', 'public, max-age=86400');
-          driveRes.pipe(res);
-          driveRes.on('end', resolve);
-          driveRes.on('error', (e) => { console.error('Drive stream error:', e); resolve(); });
-        }).on('error', (e) => {
-          console.error('HTTPS error:', e);
-          res.status(500).end();
-          resolve();
-        });
+      // הורדת הקובץ כ-stream ואיסוף ל-buffer (googleapis מטפל ב-redirects)
+      const driveStream = await googleDriveService.drive.files.get(
+        { fileId, alt: 'media', supportsAllDrives: true },
+        { responseType: 'stream' }
+      );
+      const chunks = [];
+      await new Promise((resolve, reject) => {
+        driveStream.data.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+        driveStream.data.on('end', resolve);
+        driveStream.data.on('error', reject);
       });
+      const buffer = Buffer.concat(chunks);
+      res.setHeader('Content-Type', driveStream.headers['content-type'] || 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.end(buffer);
     } catch (err) {
       console.error('Photo proxy error:', err);
       return res.status(500).json({ success: false, message: err.message });
