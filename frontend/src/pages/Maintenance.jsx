@@ -111,6 +111,9 @@ export default function Maintenance() {
   const [newTypeColor, setNewTypeColor] = useState('#64748b');
   const [editingType, setEditingType] = useState(null);
   const [typeSaving, setTypeSaving] = useState(false);
+  const [expandedTypeId, setExpandedTypeId] = useState(null);
+  const [newSubTypeLabel, setNewSubTypeLabel] = useState('');
+  const [editingSubType, setEditingSubType] = useState(null); // { typeId, subId, label }
 
   useEffect(() => {
     loadData();
@@ -367,6 +370,38 @@ export default function Maintenance() {
       console.error('Error reordering types:', err);
     }
   }, [isSuperAdmin, maintenanceTypesFromDB]);
+
+  const handleSaveSubType = useCallback(async (typeId) => {
+    if (!isSuperAdmin) return;
+    const label = editingSubType?.typeId === typeId ? editingSubType.label : newSubTypeLabel;
+    if (!label?.trim()) return;
+    try {
+      if (editingSubType?.typeId === typeId) {
+        await maintenanceTypesAPI.updateSubType(typeId, editingSubType.subId, { label: label.trim() });
+        setEditingSubType(null);
+      } else {
+        await maintenanceTypesAPI.addSubType(typeId, { label: label.trim() });
+        setNewSubTypeLabel('');
+      }
+      const response = await maintenanceTypesAPI.getAll();
+      setMaintenanceTypesFromDB(response.data.types || []);
+    } catch (err) {
+      console.error('Error saving sub-type:', err);
+      setError(err.response?.data?.message || 'שגיאה בשמירת תת-סוג');
+    }
+  }, [isSuperAdmin, editingSubType, newSubTypeLabel]);
+
+  const handleDeleteSubType = useCallback(async (typeId, subId) => {
+    if (!isSuperAdmin) return;
+    try {
+      await maintenanceTypesAPI.deleteSubType(typeId, subId);
+      const response = await maintenanceTypesAPI.getAll();
+      setMaintenanceTypesFromDB(response.data.types || []);
+    } catch (err) {
+      console.error('Error deleting sub-type:', err);
+      setError(err.response?.data?.message || 'שגיאה במחיקת תת-סוג');
+    }
+  }, [isSuperAdmin]);
 
   const handleInitializeTypes = useCallback(async () => {
     if (!isSuperAdmin) return;
@@ -2136,35 +2171,105 @@ export default function Maintenance() {
 
           <List sx={{ bgcolor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', mb: 2 }}>
             {[...maintenanceTypesFromDB].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((dbType, idx, arr) => (
-              <ListItem
-                key={dbType.id}
-                sx={{
-                  borderBottom: '1px solid #f1f5f9',
-                  '&:last-child': { borderBottom: 'none' },
-                  py: 1,
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
-                  <Box sx={{ width: 16, height: 16, borderRadius: '4px', bgcolor: dbType.color || '#64748b', flexShrink: 0 }} />
-                  <Typography sx={{ fontWeight: 600, color: '#1e293b' }}>{dbType.label}</Typography>
-                </Box>
-                {isSuperAdmin && (
-                  <Box sx={{ display: 'flex', gap: 0 }}>
-                    <IconButton size="small" onClick={() => handleMoveType(dbType.id, 'up')} disabled={idx === 0} sx={{ color: '#64748b' }}>
-                      <ArrowUpward fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleMoveType(dbType.id, 'down')} disabled={idx === arr.length - 1} sx={{ color: '#64748b' }}>
-                      <ArrowDownward fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleEditType(dbType)} sx={{ color: '#8b5cf6' }}>
-                      <Edit fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleDeleteType(dbType.id)} sx={{ color: '#ef4444' }}>
-                      <Delete fontSize="small" />
-                    </IconButton>
+              <Box key={dbType.id} sx={{ borderBottom: '1px solid #f1f5f9', '&:last-child': { borderBottom: 'none' } }}>
+                <ListItem sx={{ py: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
+                    <Box sx={{ width: 16, height: 16, borderRadius: '4px', bgcolor: dbType.color || '#64748b', flexShrink: 0 }} />
+                    <Typography sx={{ fontWeight: 600, color: '#1e293b' }}>{dbType.label}</Typography>
+                    {(dbType.subTypes?.length > 0) && (
+                      <Typography variant="caption" sx={{ color: '#64748b' }}>({dbType.subTypes.length} תת-סוגים)</Typography>
+                    )}
+                  </Box>
+                  {isSuperAdmin && (
+                    <Box sx={{ display: 'flex', gap: 0 }}>
+                      <IconButton size="small" onClick={() => handleMoveType(dbType.id, 'up')} disabled={idx === 0} sx={{ color: '#64748b' }}>
+                        <ArrowUpward fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => handleMoveType(dbType.id, 'down')} disabled={idx === arr.length - 1} sx={{ color: '#64748b' }}>
+                        <ArrowDownward fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => setExpandedTypeId(expandedTypeId === dbType.id ? null : dbType.id)}
+                        sx={{ color: expandedTypeId === dbType.id ? '#8b5cf6' : '#64748b' }}
+                        title="ניהול תת-סוגים"
+                      >
+                        <Typography sx={{ fontSize: 16, lineHeight: 1 }}>≡</Typography>
+                      </IconButton>
+                      <IconButton size="small" onClick={() => handleEditType(dbType)} sx={{ color: '#8b5cf6' }}>
+                        <Edit fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => handleDeleteType(dbType.id)} sx={{ color: '#ef4444' }}>
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  )}
+                </ListItem>
+
+                {/* תת-סוגים */}
+                {expandedTypeId === dbType.id && (
+                  <Box sx={{ bgcolor: '#f8fafc', px: 3, pb: 2, pt: 1, borderTop: '1px dashed #e2e8f0' }}>
+                    <Typography variant="caption" sx={{ color: '#8b5cf6', fontWeight: 700, display: 'block', mb: 1 }}>
+                      תת-סוגים של "{dbType.label}"
+                    </Typography>
+
+                    {/* רשימת תת-סוגים קיימים */}
+                    {(dbType.subTypes || []).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map(sub => (
+                      <Box key={sub.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                        {editingSubType?.subId === sub.id ? (
+                          <>
+                            <TextField
+                              size="small"
+                              value={editingSubType.label}
+                              onChange={e => setEditingSubType({ ...editingSubType, label: e.target.value })}
+                              sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: 13 } }}
+                              onKeyDown={e => e.key === 'Enter' && handleSaveSubType(dbType.id)}
+                              autoFocus
+                            />
+                            <IconButton size="small" onClick={() => handleSaveSubType(dbType.id)} sx={{ color: '#22c55e' }}>
+                              <Typography sx={{ fontSize: 14 }}>✓</Typography>
+                            </IconButton>
+                            <IconButton size="small" onClick={() => setEditingSubType(null)} sx={{ color: '#64748b' }}>
+                              <Typography sx={{ fontSize: 14 }}>✕</Typography>
+                            </IconButton>
+                          </>
+                        ) : (
+                          <>
+                            <Typography sx={{ flex: 1, fontSize: 13, color: '#475569', pr: 1 }}>• {sub.label}</Typography>
+                            <IconButton size="small" onClick={() => setEditingSubType({ typeId: dbType.id, subId: sub.id, label: sub.label })} sx={{ color: '#8b5cf6', p: 0.5 }}>
+                              <Edit sx={{ fontSize: 14 }} />
+                            </IconButton>
+                            <IconButton size="small" onClick={() => handleDeleteSubType(dbType.id, sub.id)} sx={{ color: '#ef4444', p: 0.5 }}>
+                              <Delete sx={{ fontSize: 14 }} />
+                            </IconButton>
+                          </>
+                        )}
+                      </Box>
+                    ))}
+
+                    {/* הוספת תת-סוג חדש */}
+                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                      <TextField
+                        size="small"
+                        placeholder="שם תת-הסוג החדש..."
+                        value={newSubTypeLabel}
+                        onChange={e => setNewSubTypeLabel(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSaveSubType(dbType.id)}
+                        sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: 13 } }}
+                      />
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={() => handleSaveSubType(dbType.id)}
+                        disabled={!newSubTypeLabel.trim()}
+                        sx={{ bgcolor: '#8b5cf6', borderRadius: '8px', fontSize: 12, '&:hover': { bgcolor: '#7c3aed' } }}
+                      >
+                        הוסף
+                      </Button>
+                    </Box>
                   </Box>
                 )}
-              </ListItem>
+              </Box>
             ))}
           </List>
 

@@ -458,6 +458,24 @@ export const maintenanceTypesAPI = {
     invalidateCache('/maintenance-types');
     return api.post('/maintenance-types/initialize');
   },
+
+  // הוספת תת-סוג לסוג טיפול
+  addSubType: (typeId, data) => {
+    invalidateCache('/maintenance-types');
+    return api.post(`/maintenance-types/${typeId}/subtypes`, data);
+  },
+
+  // עדכון תת-סוג
+  updateSubType: (typeId, subId, data) => {
+    invalidateCache('/maintenance-types');
+    return api.put(`/maintenance-types/${typeId}/subtypes/${subId}`, data);
+  },
+
+  // מחיקת תת-סוג
+  deleteSubType: (typeId, subId) => {
+    invalidateCache('/maintenance-types');
+    return api.delete(`/maintenance-types/${typeId}/subtypes/${subId}`);
+  },
 };
 
 // Garages API - מוסכים

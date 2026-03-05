@@ -57,6 +57,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
     maintenanceDate: new Date().toLocaleDateString('en-CA'),
     kilometersAtMaintenance: '',
     maintenanceType: 'routine',
+    maintenanceSubType: '',
     description: '',
     garage: {
       id: '',
@@ -160,6 +161,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
         maintenanceDate: parseDate(maintenance.maintenanceDate),
         kilometersAtMaintenance: maintenance.kilometersAtMaintenance || '',
         maintenanceType: maintenance.maintenanceType || 'routine',
+        maintenanceSubType: maintenance.maintenanceSubType || '',
         description: maintenance.description || '',
         garage: {
           id: garageId,
@@ -200,6 +202,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
         maintenanceDate: new Date().toLocaleDateString('en-CA'),
         kilometersAtMaintenance: prefilledVehicle?.currentKilometers || '',
         maintenanceType: 'routine',
+        maintenanceSubType: '',
         description: '',
         garage: {
           id: '',
@@ -229,7 +232,11 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'maintenanceType') {
+      setFormData(prev => ({ ...prev, maintenanceType: value, maintenanceSubType: '' }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleGarageSelect = (event, value) => {
@@ -589,6 +596,32 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
               </Select>
             </FormControl>
           </Grid>
+
+          {/* תת-סוג - מוצג רק אם לסוג הנוכחי יש תת-סוגים */}
+          {(() => {
+            const selectedType = maintenanceTypesProp.find(t => (t.value || t.key) === formData.maintenanceType);
+            const subTypes = selectedType?.subTypes || [];
+            if (subTypes.length === 0) return null;
+            return (
+              <Grid item xs={6} sm={6}>
+                <FormControl fullWidth size={isMobile ? "small" : "medium"}>
+                  <InputLabel>תת-סוג</InputLabel>
+                  <Select
+                    name="maintenanceSubType"
+                    value={formData.maintenanceSubType || ''}
+                    onChange={handleChange}
+                    label="תת-סוג"
+                    sx={{ borderRadius: '12px' }}
+                  >
+                    <MenuItem value=""><em>ללא תת-סוג</em></MenuItem>
+                    {subTypes.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map(sub => (
+                      <MenuItem key={sub.id} value={sub.id}>{sub.label}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            );
+          })()}
 
           <Grid item xs={12}>
             <TextField
