@@ -497,6 +497,27 @@ export const garagesAPI = {
   },
 };
 
+// Maintenance Types API - סוגי טיפולים
+export const maintenanceTypesAPI = {
+  getAll: () => cachedGet('/maintenance-types'),
+  create: (data) => {
+    invalidateCache('/maintenance-types');
+    return api.post('/maintenance-types', data);
+  },
+  update: (id, data) => {
+    invalidateCache('/maintenance-types');
+    return api.put(`/maintenance-types/${id}`, data);
+  },
+  delete: (id) => {
+    invalidateCache('/maintenance-types');
+    return api.delete(`/maintenance-types/${id}`);
+  },
+  initialize: () => {
+    invalidateCache('/maintenance-types');
+    return api.post('/maintenance-types/initialize');
+  },
+};
+
 // Permissions API - הרשאות
 export const permissionsAPI = {
   // קבלת הרשאות + מטא-דאטא

@@ -12,7 +12,8 @@ const COLLECTIONS = {
   INSURANCE_CLAIMS: 'insurance_claims',
   AUDIT_LOGS: 'audit_logs',
   PERMISSIONS: 'permissions',
-  DONATIONS: 'donations'
+  DONATIONS: 'donations',
+  MAINTENANCE_TYPES: 'maintenanceTypes'
 };
 
 module.exports = COLLECTIONS;

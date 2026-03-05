@@ -42,7 +42,7 @@ import {
   ExpandLess,
   Store,
 } from '@mui/icons-material';
-import { maintenanceAPI, garagesAPI } from '../services/api';
+import { maintenanceAPI, garagesAPI, maintenanceTypesAPI } from '../services/api';
 
 export default function MaintenanceDialog({ open, onClose, maintenance, vehicles, riders, onSave, isRiderView = false }) {
   const theme = useTheme();
@@ -86,6 +86,26 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [showFilesSection, setShowFilesSection] = useState(true);
+  const [maintenanceTypes, setMaintenanceTypes] = useState([]);
+
+  // סוגי טיפולים מהדאטהבייס (ברירת מחדל hardcoded אם ריק)
+  const DEFAULT_TYPES = [
+    { value: 'routine', label: 'טיפול תקופתי' },
+    { value: 'repair', label: 'תיקון' },
+    { value: 'emergency', label: 'חירום' },
+    { value: 'recall', label: 'ריקול' },
+    { value: 'accident_repair', label: 'תיקון תאונה' },
+    { value: 'other', label: 'אחר' },
+  ];
+
+  useEffect(() => {
+    maintenanceTypesAPI.getAll()
+      .then(res => {
+        const types = res.data.types || [];
+        setMaintenanceTypes(types.length > 0 ? types : DEFAULT_TYPES);
+      })
+      .catch(() => setMaintenanceTypes(DEFAULT_TYPES));
+  }, []);
 
   // טעינת רשימת מוסכים
   useEffect(() => {
@@ -553,12 +573,11 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
                 label="סוג טיפול"
                 sx={{ borderRadius: '12px' }}
               >
-                <MenuItem value="routine">טיפול תקופתי</MenuItem>
-                <MenuItem value="repair">תיקון</MenuItem>
-                <MenuItem value="emergency">חירום</MenuItem>
-                <MenuItem value="recall">ריקול</MenuItem>
-                <MenuItem value="accident_repair">תיקון תאונה</MenuItem>
-                <MenuItem value="other">אחר</MenuItem>
+                {maintenanceTypes.map(type => (
+                  <MenuItem key={type.value || type.id} value={type.value || type.id}>
+                    {type.label}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Grid>
