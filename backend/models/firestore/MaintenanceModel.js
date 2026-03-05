@@ -9,13 +9,13 @@ class MaintenanceModel {
   // יצירת מספר טיפול אוטומטי
   async generateMaintenanceNumber() {
     const year = new Date().getFullYear();
-    const snapshot = await this.collection
-      .where('createdAt', '>=', new Date(year, 0, 1))
-      .where('createdAt', '<', new Date(year + 1, 0, 1))
-      .get();
-
-    const count = snapshot.size + 1;
-    return `M-${year}-${String(count).padStart(5, '0')}`;
+    try {
+      const snapshot = await this.collection.get();
+      const count = snapshot.size + 1;
+      return `T-${year}-${String(count).padStart(4, '0')}`;
+    } catch (error) {
+      return `T-${Date.now()}`;
+    }
   }
 
   // יצירת טיפול חדש
