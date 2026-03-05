@@ -498,23 +498,29 @@ export default function Maintenance() {
     cancelled: { label: 'בוטל', bgcolor: 'rgba(100, 116, 139, 0.1)', color: '#64748b', icon: <Cancel sx={{ fontSize: 16 }} /> },
   }), []);
 
+  const DEFAULT_TYPES = useMemo(() => [
+    { key: 'routine', label: 'טיפול תקופתי', color: '#2563eb', order: 1 },
+    { key: 'repair', label: 'תיקון', color: '#d97706', order: 2 },
+    { key: 'emergency', label: 'חירום', color: '#dc2626', order: 3 },
+    { key: 'recall', label: 'ריקול', color: '#7c3aed', order: 4 },
+    { key: 'accident_repair', label: 'תיקון תאונה', color: '#dc2626', order: 5 },
+    { key: 'other', label: 'אחר', color: '#64748b', order: 6 },
+  ], []);
+
+  const missingDefaultTypes = useMemo(() => {
+    const dbKeys = new Set(maintenanceTypesFromDB.map(t => t.key || t.value).filter(Boolean));
+    return DEFAULT_TYPES.filter(t => !dbKeys.has(t.key));
+  }, [maintenanceTypesFromDB, DEFAULT_TYPES]);
+
   const typeMap = useMemo(() => {
-    // תמיד מתחילים עם ברירת המחדל (ערכים אנגלים)
-    const map = {
-      routine: { label: 'טיפול תקופתי', color: '#2563eb' },
-      repair: { label: 'תיקון', color: '#d97706' },
-      emergency: { label: 'חירום', color: '#dc2626' },
-      recall: { label: 'ריקול', color: '#7c3aed' },
-      accident_repair: { label: 'תיקון תאונה', color: '#dc2626' },
-      other: { label: 'אחר', color: '#64748b' },
-    };
-    // מוסיפים/דורסים עם סוגים מה-DB
+    const map = {};
+    DEFAULT_TYPES.forEach(t => { map[t.key] = { label: t.label, color: t.color }; });
     maintenanceTypesFromDB.forEach(type => {
       const key = type.value || type.key;
       if (key) map[key] = { label: type.label, color: type.color || '#64748b' };
     });
     return map;
-  }, [maintenanceTypesFromDB]);
+  }, [maintenanceTypesFromDB, DEFAULT_TYPES]);
 
   const paidByMap = useMemo(() => ({
     unit: 'היחידה',
@@ -2178,13 +2184,31 @@ export default function Maintenance() {
             </Box>
           )}
 
+          {/* כפתור אתחול סוגים חסרים */}
+          {isSuperAdmin && missingDefaultTypes.length > 0 && (
+            <Alert
+              severity="warning"
+              sx={{ borderRadius: '12px', mb: 2 }}
+              action={
+                <Button color="inherit" size="small" onClick={handleInitializeTypes} disabled={typeSaving}>
+                  {typeSaving ? <CircularProgress size={16} /> : 'הוסף חסרים'}
+                </Button>
+              }
+            >
+              {missingDefaultTypes.length === 6
+                ? 'הסוגים טרם אותחלו. לחץ "הוסף חסרים" להוספת ברירות המחדל.'
+                : `חסרים ${missingDefaultTypes.length} סוגי ברירת מחדל (${missingDefaultTypes.map(t => t.label).join(', ')})`}
+            </Alert>
+          )}
+
           <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 600, mb: 1 }}>
-            סוגי הטיפולים המוגדרים ({Object.keys(typeMap).length})
+            סוגי הטיפולים ({maintenanceTypesFromDB.length + missingDefaultTypes.length})
           </Typography>
 
           <List sx={{ bgcolor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', mb: 2 }}>
+            {/* סוגים מה-DB - עם ניהול מלא */}
             {[...maintenanceTypesFromDB].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((dbType, idx, arr) => (
-              <Box key={dbType.id} sx={{ borderBottom: '1px solid #f1f5f9', '&:last-child': { borderBottom: 'none' } }}>
+              <Box key={dbType.id} sx={{ borderBottom: '1px solid #f1f5f9', '&:last-child': { borderBottom: missingDefaultTypes.length > 0 ? '1px solid #f1f5f9' : 'none' } }}>
                 <ListItem sx={{ py: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
                     <Box sx={{ width: 16, height: 16, borderRadius: '4px', bgcolor: dbType.color || '#64748b', flexShrink: 0 }} />
@@ -2226,7 +2250,6 @@ export default function Maintenance() {
                       תת-סוגים של "{dbType.label}"
                     </Typography>
 
-                    {/* רשימת תת-סוגים קיימים */}
                     {(dbType.subTypes || []).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map(sub => (
                       <Box key={sub.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                         {editingSubType?.subId === sub.id ? (
@@ -2260,7 +2283,6 @@ export default function Maintenance() {
                       </Box>
                     ))}
 
-                    {/* הוספת תת-סוג חדש */}
                     <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
                       <TextField
                         size="small"
@@ -2281,7 +2303,6 @@ export default function Maintenance() {
                       </Button>
                     </Box>
 
-                    {/* כפתור ביטול רשימה */}
                     {(dbType.subTypes?.length > 0) && (
                       <Button
                         size="small"
@@ -2296,30 +2317,29 @@ export default function Maintenance() {
                 )}
               </Box>
             ))}
+
+            {/* סוגי ברירת מחדל שחסרים מה-DB - מוצגים בצבע אפור */}
+            {missingDefaultTypes.map((defType, idx) => (
+              <ListItem
+                key={defType.key}
+                sx={{
+                  borderBottom: idx < missingDefaultTypes.length - 1 ? '1px solid #f1f5f9' : 'none',
+                  py: 1,
+                  opacity: 0.5,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
+                  <Box sx={{ width: 16, height: 16, borderRadius: '4px', bgcolor: defType.color, flexShrink: 0 }} />
+                  <Typography sx={{ fontWeight: 600, color: '#64748b' }}>{defType.label}</Typography>
+                  <Typography variant="caption" sx={{ color: '#94a3b8', fontStyle: 'italic' }}>ברירת מחדל - לא נשמר</Typography>
+                </Box>
+              </ListItem>
+            ))}
           </List>
 
           {!isSuperAdmin && (
             <Alert severity="info" sx={{ borderRadius: '12px' }}>
               רק מנהל על יכול להוסיף או לערוך סוגי טיפולים.
-            </Alert>
-          )}
-
-          {isSuperAdmin && maintenanceTypesFromDB.length === 0 && (
-            <Alert
-              severity="warning"
-              sx={{ borderRadius: '12px' }}
-              action={
-                <Button
-                  color="inherit"
-                  size="small"
-                  onClick={handleInitializeTypes}
-                  disabled={typeSaving}
-                >
-                  {typeSaving ? <CircularProgress size={16} /> : 'אתחל'}
-                </Button>
-              }
-            >
-              סוגי הטיפולים עדיין לא נשמרו במסד הנתונים. לחץ על "אתחל" כדי לשמור את ברירות המחדל.
             </Alert>
           )}
         </DialogContent>

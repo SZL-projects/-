@@ -336,17 +336,9 @@ async function handleMaintenanceTypesRequest(req, res, db, user, url) {
     });
   }
 
-  // POST /api/maintenance-types/init - אתחול סוגי טיפול ברירת מחדל (super_admin בלבד)
+  // POST /api/maintenance-types/init - הוספת סוגי ברירת מחדל חסרים (super_admin בלבד)
   if (url.includes('/init') && req.method === 'POST') {
     await checkPermission(user, db, 'maintenance', 'edit');
-
-    const existingSnapshot = await db.collection('maintenanceTypes').get();
-    if (!existingSnapshot.empty) {
-      return res.status(400).json({
-        success: false,
-        message: 'סוגי טיפול כבר קיימים במערכת'
-      });
-    }
 
     const defaultTypes = [
       { key: 'routine', label: 'טיפול תקופתי', color: '#2563eb', order: 1 },
@@ -357,27 +349,27 @@ async function handleMaintenanceTypesRequest(req, res, db, user, url) {
       { key: 'other', label: 'אחר', color: '#64748b', order: 6 },
     ];
 
-    const batch = db.batch();
-    const types = [];
+    // קבל את כל המפתחות הקיימים ב-DB
+    const existingSnapshot = await db.collection('maintenanceTypes').get();
+    const existingKeys = new Set(existingSnapshot.docs.map(d => d.data().key).filter(Boolean));
 
-    for (const type of defaultTypes) {
-      const ref = db.collection('maintenanceTypes').doc();
-      batch.set(ref, {
-        ...type,
-        createdBy: user.id,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-      types.push({ id: ref.id, ...type });
+    // הוסף רק את הסוגים החסרים
+    const missingTypes = defaultTypes.filter(t => !existingKeys.has(t.key));
+
+    if (missingTypes.length === 0) {
+      return res.json({ success: true, message: 'כל סוגי הטיפולים כבר קיימים', types: [] });
     }
 
+    const batch = db.batch();
+    const types = [];
+    for (const type of missingTypes) {
+      const ref = db.collection('maintenanceTypes').doc();
+      batch.set(ref, { ...type, subTypes: [], createdBy: user.id, createdAt: new Date(), updatedAt: new Date() });
+      types.push({ id: ref.id, ...type });
+    }
     await batch.commit();
 
-    return res.status(201).json({
-      success: true,
-      message: 'סוגי טיפול ברירת מחדל נוצרו בהצלחה',
-      types
-    });
+    return res.status(201).json({ success: true, message: `נוספו ${types.length} סוגי טיפול`, types });
   }
 
   // ==================== SUBTYPES ROUTES (before generic POST/PUT/DELETE) ====================
