@@ -1042,6 +1042,11 @@ export default function Maintenance() {
                       <Typography variant="caption" sx={{ color: '#6366f1', fontWeight: 600 }}>
                         #{maintenance.maintenanceNumber || '-'}
                       </Typography>
+                      {maintenance.riderName && (
+                        <Typography variant="caption" sx={{ color: '#64748b', display: 'block' }}>
+                          {maintenance.riderName}
+                        </Typography>
+                      )}
                     </Box>
                     <Typography variant="subtitle1" sx={{ fontWeight: 700, color: maintenance.costs?.totalCost > 0 ? '#6366f1' : '#94a3b8' }}>
                       {formatCurrency(maintenance.costs?.totalCost)}
@@ -1179,6 +1184,11 @@ export default function Maintenance() {
                       <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
                         {maintenance.vehiclePlate || '-'}
                       </Typography>
+                      {maintenance.riderName && (
+                        <Typography variant="caption" sx={{ color: '#64748b' }}>
+                          {maintenance.riderName}
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell>{getTypeChip(maintenance.maintenanceType)}</TableCell>
                     <TableCell>
