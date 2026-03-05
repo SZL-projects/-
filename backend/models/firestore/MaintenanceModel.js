@@ -132,6 +132,8 @@ class MaintenanceModel {
   // עדכון טיפול
   async update(maintenanceId, updateData, updatedByUserId) {
     try {
+      const existing = await this.findById(maintenanceId);
+
       const updates = {
         ...updateData,
         updatedAt: new Date(),
@@ -143,6 +145,11 @@ class MaintenanceModel {
       delete updates.maintenanceNumber;
       delete updates.createdAt;
       delete updates.createdBy;
+
+      // אם לרשומה אין מספר טיפול - צור אחד
+      if (existing && !existing.maintenanceNumber) {
+        updates.maintenanceNumber = await this.generateMaintenanceNumber();
+      }
 
       // חישוב עלות כוללת מחדש אם יש שינוי בעלויות
       if (updates.costs) {
