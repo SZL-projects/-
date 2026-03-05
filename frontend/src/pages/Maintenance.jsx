@@ -517,6 +517,13 @@ export default function Maintenance() {
       }
 
       return matchesSearch && matchesStatus && matchesType && matchesPaidBy && matchesGarage && matchesTab;
+    }).sort((a, b) => {
+      const getTime = (m) => {
+        const raw = m.maintenanceDate || m.createdAt;
+        if (!raw) return 0;
+        return raw._seconds ? raw._seconds * 1000 : new Date(raw).getTime();
+      };
+      return getTime(b) - getTime(a);
     });
   }, [maintenances, searchTerm, filterStatus, filterType, filterPaidBy, filterGarage, viewMode]);
 
