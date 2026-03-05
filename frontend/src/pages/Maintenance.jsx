@@ -227,6 +227,10 @@ export default function Maintenance() {
   const handleSubmitComplete = useCallback(async () => {
     if (!completingMaintenance) return;
     const totalCost = (completeCosts.laborCost || 0) + (completeCosts.partsCost || 0) + (completeCosts.otherCosts || 0);
+    if (totalCost <= 0) {
+      setError('עלות כוללת חובה לסגירת טיפול');
+      return;
+    }
     await handleComplete(completingMaintenance.id, { ...completeCosts, totalCost });
   }, [completingMaintenance, completeCosts, handleComplete]);
 
@@ -1690,6 +1694,11 @@ export default function Maintenance() {
           </Box>
         </DialogTitle>
         <DialogContent>
+          {error && (
+            <Alert severity="error" sx={{ mt: 2, mb: 1, borderRadius: '12px' }} onClose={() => setError('')}>
+              {error}
+            </Alert>
+          )}
           {completingMaintenance && (
             <Box sx={{ mt: 2 }}>
               <Alert severity="info" sx={{ mb: 3, borderRadius: '12px' }}>
