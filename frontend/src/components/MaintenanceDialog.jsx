@@ -390,6 +390,13 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
       setError('יש להזין תיאור');
       return;
     }
+    if (formData.status === 'completed') {
+      const totalCost = (formData.costs.laborCost || 0) + (formData.costs.partsCost || 0) + (formData.costs.otherCosts || 0);
+      if (totalCost <= 0) {
+        setError('עלות כוללת חובה לסגירת טיפול');
+        return;
+      }
+    }
 
     try {
       setLoading(true);
