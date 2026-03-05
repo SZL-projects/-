@@ -352,6 +352,33 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
     return name || user.username || user.email || '';
   };
 
+  const getVehicleLabel = (vehicle) => {
+    if (!vehicle) return '';
+    const parts = [];
+    if (vehicle.internalNumber) parts.push(vehicle.internalNumber);
+    if (vehicle.licensePlate) parts.push(vehicle.licensePlate);
+    const riderId = typeof vehicle.assignedRider === 'object'
+      ? (vehicle.assignedRider?.id || vehicle.assignedRider?._id)
+      : vehicle.assignedRider;
+    if (riderId) {
+      const rider = riders.find(r => (r.id || r._id) === riderId);
+      if (rider) {
+        const riderName = `${rider.firstName || ''} ${rider.lastName || ''}`.trim();
+        if (riderName) parts.push(riderName);
+      }
+    }
+    return parts.join(' | ') || vehicle.licensePlate || '';
+  };
+
+  const handleVehicleChange = (event, vehicle) => {
+    const vehicleId = vehicle?.id || vehicle?._id || '';
+    const riderId = typeof vehicle?.assignedRider === 'object'
+      ? (vehicle?.assignedRider?.id || vehicle?.assignedRider?._id || '')
+      : (vehicle?.assignedRider || '');
+    setFormData(prev => ({ ...prev, vehicleId, riderId }));
+    if (errors.vehicleId) setErrors(prev => ({ ...prev, vehicleId: '' }));
+  };
+
   const subCategoryOptions = formData.faultArea ? SUB_CATEGORIES[formData.faultArea] : [];
 
   return (
@@ -386,26 +413,17 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
       <DialogContent sx={{ pt: isMobile ? 3 : 2 }}>
         <Grid container spacing={2.5} sx={{ mt: 0 }}>
 
-          {/* ── שורה 1: כלי + רוכב ── */}
-          <Grid item xs={12} sm={6}>
+          {/* ── שורה 1: כלי (מספר פנימי | מספר רישוי | שם רוכב) ── */}
+          <Grid item xs={12}>
             <Autocomplete
               options={vehicles}
-              getOptionLabel={(option) => option.licensePlate || option.vehicleNumber || option.internalNumber || ''}
+              getOptionLabel={getVehicleLabel}
               value={vehicles.find(v => (v.id || v._id) === formData.vehicleId) || null}
-              onChange={handleAutocompleteChange('vehicleId')}
+              onChange={handleVehicleChange}
               renderInput={(params) => (
                 <TextField {...params} label="כלי" required
-                  error={!!errors.vehicleId} helperText={errors.vehicleId} />
+                  error={!!errors.vehicleId} helperText={errors.vehicleId || 'מספר פנימי | מספר רישוי | שם רוכב'} />
               )}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <Autocomplete
-              options={riders}
-              getOptionLabel={(option) => `${option.firstName || ''} ${option.lastName || ''}`.trim()}
-              value={riders.find(r => (r.id || r._id) === formData.riderId) || null}
-              onChange={handleAutocompleteChange('riderId')}
-              renderInput={(params) => <TextField {...params} label="רוכב" />}
             />
           </Grid>
 
