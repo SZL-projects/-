@@ -114,6 +114,7 @@ export default function Maintenance() {
   const [expandedTypeId, setExpandedTypeId] = useState(null);
   const [newSubTypeLabel, setNewSubTypeLabel] = useState('');
   const [editingSubType, setEditingSubType] = useState(null); // { typeId, subId, label }
+  const [deleteTypeConfirm, setDeleteTypeConfirm] = useState(null); // { id, label, hasRecords }
 
   useEffect(() => {
     loadData();
@@ -335,18 +336,24 @@ export default function Maintenance() {
     setNewTypeColor(type.color || '#64748b');
   }, []);
 
-  const handleDeleteType = useCallback(async (typeId) => {
+  const handleDeleteType = useCallback(async (typeId, force = false) => {
     if (!isSuperAdmin) return;
-
     try {
-      await maintenanceTypesAPI.delete(typeId);
+      await maintenanceTypesAPI.delete(typeId, force);
+      setDeleteTypeConfirm(null);
       const response = await maintenanceTypesAPI.getAll();
       setMaintenanceTypesFromDB(response.data.types || []);
     } catch (err) {
-      console.error('Error deleting maintenance type:', err);
-      setError(err.response?.data?.message || 'שגיאה במחיקת סוג הטיפול');
+      const msg = err.response?.data?.message || '';
+      if (err.response?.status === 400 && msg.includes('טיפולים')) {
+        // יש טיפולים המשתמשים בסוג - נציג dialog אישור
+        const type = maintenanceTypesFromDB.find(t => t.id === typeId);
+        setDeleteTypeConfirm({ id: typeId, label: type?.label || '', hasRecords: true });
+      } else {
+        setError(msg || 'שגיאה במחיקת סוג הטיפול');
+      }
     }
-  }, [isSuperAdmin]);
+  }, [isSuperAdmin, maintenanceTypesFromDB]);
 
   const handleMoveType = useCallback(async (typeId, direction) => {
     if (!isSuperAdmin || !typeId) return;
@@ -2340,6 +2347,24 @@ export default function Maintenance() {
           {!isSuperAdmin && (
             <Alert severity="info" sx={{ borderRadius: '12px' }}>
               רק מנהל על יכול להוסיף או לערוך סוגי טיפולים.
+            </Alert>
+          )}
+
+          {/* Dialog אישור מחיקה בכוח */}
+          {deleteTypeConfirm && (
+            <Alert
+              severity="error"
+              sx={{ borderRadius: '12px', mt: 1 }}
+              action={
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button size="small" color="inherit" onClick={() => setDeleteTypeConfirm(null)}>ביטול</Button>
+                  <Button size="small" variant="contained" color="error" onClick={() => handleDeleteType(deleteTypeConfirm.id, true)}>
+                    מחק בכל זאת
+                  </Button>
+                </Box>
+              }
+            >
+              יש טיפולים המשתמשים ב"{deleteTypeConfirm.label}". מחיקה תשאיר אותם ללא סוג. להמשיך?
             </Alert>
           )}
         </DialogContent>

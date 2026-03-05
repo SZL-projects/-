@@ -448,9 +448,9 @@ export const maintenanceTypesAPI = {
   },
 
   // מחיקת סוג טיפול (super_admin בלבד)
-  delete: (id) => {
+  delete: (id, force = false) => {
     invalidateCache('/maintenance-types');
-    return api.delete(`/maintenance-types/${id}`);
+    return api.delete(`/maintenance-types/${id}${force ? '?force=true' : ''}`);
   },
 
   // אתחול סוגי טיפול ברירת מחדל (super_admin בלבד)

@@ -480,15 +480,18 @@ async function handleMaintenanceTypesRequest(req, res, db, user, url) {
   if (req.method === 'DELETE' && typeId && !url.includes('/subtypes')) {
     await checkPermission(user, db, 'maintenance', 'edit');
 
+    const force = req.query?.force === 'true';
     const typeRef = db.collection('maintenanceTypes').doc(typeId);
     const doc = await typeRef.get();
     if (!doc.exists) return res.status(404).json({ success: false, message: 'סוג טיפול לא נמצא' });
 
     const typeData = doc.data();
-    const maintenanceSnapshot = await db.collection('maintenance')
-      .where('maintenanceType', '==', typeData.key).limit(1).get();
-    if (!maintenanceSnapshot.empty) {
-      return res.status(400).json({ success: false, message: 'לא ניתן למחוק סוג טיפול שקיימים טיפולים המשתמשים בו' });
+    if (!force) {
+      const maintenanceSnapshot = await db.collection('maintenance')
+        .where('maintenanceType', '==', typeData.key).limit(1).get();
+      if (!maintenanceSnapshot.empty) {
+        return res.status(400).json({ success: false, message: 'לא ניתן למחוק סוג טיפול שקיימים טיפולים המשתמשים בו' });
+      }
     }
 
     await typeRef.delete();
