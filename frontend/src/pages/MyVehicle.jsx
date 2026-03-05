@@ -766,11 +766,24 @@ export default function MyVehicle() {
                               {maintenance.description || 'ללא תיאור'}
                             </Typography>
                             <Chip
-                              label={maintenance.status === 'completed' ? 'הושלם' : maintenance.status === 'in_progress' ? 'בטיפול' : 'מתוכנן'}
+                              label={
+                                maintenance.status === 'completed' ? 'הושלם' :
+                                maintenance.status === 'in_progress' ? 'בטיפול' :
+                                maintenance.status === 'pending_approval' ? 'ממתין לאישור' :
+                                'מתוכנן'
+                              }
                               size="small"
                               sx={{
-                                bgcolor: maintenance.status === 'completed' ? 'rgba(16, 185, 129, 0.1)' : maintenance.status === 'in_progress' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                                color: maintenance.status === 'completed' ? '#10b981' : maintenance.status === 'in_progress' ? '#f59e0b' : '#3b82f6',
+                                bgcolor:
+                                  maintenance.status === 'completed' ? 'rgba(16, 185, 129, 0.1)' :
+                                  maintenance.status === 'in_progress' ? 'rgba(245, 158, 11, 0.1)' :
+                                  maintenance.status === 'pending_approval' ? 'rgba(168, 85, 247, 0.1)' :
+                                  'rgba(59, 130, 246, 0.1)',
+                                color:
+                                  maintenance.status === 'completed' ? '#10b981' :
+                                  maintenance.status === 'in_progress' ? '#f59e0b' :
+                                  maintenance.status === 'pending_approval' ? '#a855f7' :
+                                  '#3b82f6',
                                 fontWeight: 600,
                                 fontSize: '0.75rem',
                               }}
@@ -779,9 +792,12 @@ export default function MyVehicle() {
                         }
                         secondary={
                           <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5 }}>
-                            {maintenance.maintenanceDate
-                              ? new Date(maintenance.maintenanceDate?.seconds ? maintenance.maintenanceDate.seconds * 1000 : maintenance.maintenanceDate).toLocaleDateString('he-IL')
-                              : new Date(maintenance.createdAt?.seconds ? maintenance.createdAt.seconds * 1000 : maintenance.createdAt).toLocaleDateString('he-IL')}
+                            {(() => {
+                              const raw = maintenance.maintenanceDate || maintenance.createdAt;
+                              if (!raw) return '';
+                              const d = new Date(raw?._seconds ? raw._seconds * 1000 : raw?.seconds ? raw.seconds * 1000 : raw);
+                              return isNaN(d) ? '' : d.toLocaleDateString('he-IL');
+                            })()}
                             {maintenance.garageName && ` • ${maintenance.garageName}`}
                             {maintenance.costs?.totalCost > 0 && ` • ₪${maintenance.costs.totalCost.toLocaleString()}`}
                           </Typography>

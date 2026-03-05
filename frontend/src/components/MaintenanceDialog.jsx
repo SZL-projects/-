@@ -478,22 +478,30 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
           </Grid>
 
           <Grid item xs={12} sm={6}>
-            <FormControl fullWidth size={isMobile ? "small" : "medium"}>
-              <InputLabel>כלי *</InputLabel>
-              <Select
-                value={formData.vehicleId}
-                onChange={handleVehicleChange}
-                label="כלי *"
-                sx={{ borderRadius: '12px' }}
-                disabled={isRiderView}
-              >
-                {vehicles.map(vehicle => (
-                  <MenuItem key={vehicle.id} value={vehicle.id}>
-                    {vehicle.licensePlate} - {vehicle.manufacturer} {vehicle.model}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              options={vehicles}
+              getOptionLabel={(vehicle) => {
+                if (!vehicle) return '';
+                const parts = [];
+                if (vehicle.internalNumber) parts.push(vehicle.internalNumber);
+                if (vehicle.licensePlate) parts.push(vehicle.licensePlate);
+                if (vehicle.assignedRiderName) parts.push(vehicle.assignedRiderName);
+                return parts.join(' | ') || vehicle.licensePlate || '';
+              }}
+              value={vehicles.find(v => (v.id || v._id) === formData.vehicleId) || null}
+              onChange={(event, vehicle) => {
+                handleVehicleChange({ target: { value: vehicle?.id || vehicle?._id || '' } });
+              }}
+              disabled={isRiderView}
+              size={isMobile ? "small" : "medium"}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="כלי *"
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                />
+              )}
+            />
           </Grid>
 
           <Grid item xs={12} sm={6}>
@@ -913,6 +921,10 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
                     border: '2px dashed #e2e8f0',
                     borderRadius: '12px',
                     p: 3,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     textAlign: 'center',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
