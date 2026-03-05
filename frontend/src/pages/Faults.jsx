@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -759,16 +759,19 @@ export default function Faults() {
                       const riderName = v?.assignedRiderName || null;
                       return (
                         <Box>
-                          <Typography
-                            variant="body1"
-                            sx={{
-                              fontWeight: 700, color: '#6366f1', cursor: 'pointer', textDecoration: 'underline',
-                              '&:hover': { color: '#4f46e5' },
-                            }}
-                            onClick={(e) => { e.stopPropagation(); if (v?.id) navigate(`/vehicles/${v.id}`); }}
-                          >
-                            {plate}
-                          </Typography>
+                          {v?.id ? (
+                            <Link
+                              to={`/vehicles/${v.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ fontWeight: 700, color: '#6366f1', textDecoration: 'underline', fontSize: '1rem' }}
+                            >
+                              {plate}
+                            </Link>
+                          ) : (
+                            <Typography variant="body1" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                              {plate}
+                            </Typography>
+                          )}
                           {riderName && (
                             <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mt: 0.2 }}>
                               {riderName}
