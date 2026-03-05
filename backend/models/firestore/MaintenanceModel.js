@@ -142,13 +142,15 @@ class MaintenanceModel {
 
       // הסרת שדות שלא צריך לעדכן
       delete updates.id;
-      delete updates.maintenanceNumber;
       delete updates.createdAt;
       delete updates.createdBy;
 
-      // אם לרשומה אין מספר טיפול - צור אחד
-      if (existing && !existing.maintenanceNumber) {
-        updates.maintenanceNumber = await this.generateMaintenanceNumber();
+      // אם נשלח מספר טיפול ידני - שמור אותו; אם לא - צור אוטומטי אם חסר
+      if (!updates.maintenanceNumber) {
+        delete updates.maintenanceNumber;
+        if (existing && !existing.maintenanceNumber) {
+          updates.maintenanceNumber = await this.generateMaintenanceNumber();
+        }
       }
 
       // חישוב עלות כוללת מחדש אם יש שינוי בעלויות

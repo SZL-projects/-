@@ -53,6 +53,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
     vehiclePlate: '',
     riderId: '',
     riderName: '',
+    maintenanceNumber: '',
     maintenanceDate: new Date().toLocaleDateString('en-CA'),
     kilometersAtMaintenance: '',
     maintenanceType: 'routine',
@@ -160,6 +161,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
         vehiclePlate: maintenance.vehiclePlate || '',
         riderId: maintenance.riderId || '',
         riderName: maintenance.riderName || '',
+        maintenanceNumber: maintenance.maintenanceNumber || '',
         maintenanceDate: parseDate(maintenance.maintenanceDate),
         kilometersAtMaintenance: maintenance.kilometersAtMaintenance || '',
         maintenanceType: maintenance.maintenanceType || 'routine',
@@ -490,15 +492,19 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
         )}
 
         <Grid container spacing={isMobile ? 2 : 2.5}>
-          {/* מספר טיפול - רק בעריכה */}
-          {maintenance?.maintenanceNumber && (
-            <Grid item xs={12}>
-              <Box sx={{ bgcolor: '#f8fafc', borderRadius: '10px', px: 2, py: 1, display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="caption" sx={{ color: '#94a3b8' }}>מספר טיפול:</Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1' }}>
-                  {maintenance.maintenanceNumber}
-                </Typography>
-              </Box>
+          {/* מספר טיפול */}
+          {!isRiderView && (
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                size={isMobile ? 'small' : 'medium'}
+                label="מספר טיפול"
+                name="maintenanceNumber"
+                value={formData.maintenanceNumber}
+                onChange={handleChange}
+                placeholder="יווצר אוטומטית אם ריק"
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              />
             </Grid>
           )}
 
