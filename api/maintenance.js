@@ -380,124 +380,10 @@ async function handleMaintenanceTypesRequest(req, res, db, user, url) {
     });
   }
 
-  // POST /api/maintenance-types - הוספת סוג טיפול חדש (super_admin בלבד)
-  if (req.method === 'POST') {
-    await checkPermission(user, db, 'maintenance', 'edit');
+  // ==================== SUBTYPES ROUTES (before generic POST/PUT/DELETE) ====================
 
-    if (!req.body.key || !req.body.label) {
-      return res.status(400).json({
-        success: false,
-        message: 'מפתח ושם הסוג הם שדות חובה'
-      });
-    }
-
-    // בדיקה שהמפתח לא קיים כבר
-    const existingSnapshot = await db.collection('maintenanceTypes')
-      .where('key', '==', req.body.key)
-      .get();
-
-    if (!existingSnapshot.empty) {
-      return res.status(400).json({
-        success: false,
-        message: 'סוג טיפול עם מפתח זה כבר קיים'
-      });
-    }
-
-    // קבלת הסדר הבא
-    const countSnapshot = await db.collection('maintenanceTypes').get();
-    const nextOrder = countSnapshot.size + 1;
-
-    const typeData = {
-      key: req.body.key,
-      label: req.body.label,
-      color: req.body.color || '#64748b',
-      order: req.body.order || nextOrder,
-      createdBy: user.id,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    const typeRef = await db.collection('maintenanceTypes').add(typeData);
-    const typeDoc = await typeRef.get();
-
-    return res.status(201).json({
-      success: true,
-      message: 'סוג טיפול נוצר בהצלחה',
-      type: { id: typeRef.id, ...typeDoc.data() }
-    });
-  }
-
-  // PUT /api/maintenance-types/:id - עדכון סוג טיפול (super_admin בלבד)
-  if (req.method === 'PUT' && typeId) {
-    await checkPermission(user, db, 'maintenance', 'edit');
-
-    const typeRef = db.collection('maintenanceTypes').doc(typeId);
-    const doc = await typeRef.get();
-
-    if (!doc.exists) {
-      return res.status(404).json({
-        success: false,
-        message: 'סוג טיפול לא נמצא'
-      });
-    }
-
-    const updateData = {
-      ...req.body,
-      updatedBy: user.id,
-      updatedAt: new Date()
-    };
-
-    // מנע שינוי מפתח
-    delete updateData.key;
-
-    await typeRef.update(updateData);
-    const updatedDoc = await typeRef.get();
-
-    return res.json({
-      success: true,
-      message: 'סוג טיפול עודכן בהצלחה',
-      type: { id: updatedDoc.id, ...updatedDoc.data() }
-    });
-  }
-
-  // DELETE /api/maintenance-types/:id - מחיקת סוג טיפול (super_admin בלבד)
-  if (req.method === 'DELETE' && typeId) {
-    await checkPermission(user, db, 'maintenance', 'edit');
-
-    const typeRef = db.collection('maintenanceTypes').doc(typeId);
-    const doc = await typeRef.get();
-
-    if (!doc.exists) {
-      return res.status(404).json({
-        success: false,
-        message: 'סוג טיפול לא נמצא'
-      });
-    }
-
-    // בדיקה שאין טיפולים משתמשים בסוג זה
-    const typeData = doc.data();
-    const maintenanceSnapshot = await db.collection('maintenance')
-      .where('maintenanceType', '==', typeData.key)
-      .limit(1)
-      .get();
-
-    if (!maintenanceSnapshot.empty) {
-      return res.status(400).json({
-        success: false,
-        message: 'לא ניתן למחוק סוג טיפול שקיימים טיפולים המשתמשים בו'
-      });
-    }
-
-    await typeRef.delete();
-
-    return res.json({
-      success: true,
-      message: 'סוג טיפול נמחק בהצלחה'
-    });
-  }
-
-  // POST /api/maintenance-types/:id/subtypes - הוספת תת-סוג לסוג טיפול
-  if (url.includes('/subtypes') && req.method === 'POST' && typeId) {
+  // POST /api/maintenance-types/:id/subtypes - הוספת תת-סוג
+  if (url.includes('/subtypes') && !url.includes('/subtypes/') && req.method === 'POST' && typeId) {
     await checkPermission(user, db, 'maintenance', 'edit');
 
     if (!req.body.label) {
@@ -509,11 +395,7 @@ async function handleMaintenanceTypesRequest(req, res, db, user, url) {
     if (!doc.exists) return res.status(404).json({ success: false, message: 'סוג טיפול לא נמצא' });
 
     const existing = doc.data().subTypes || [];
-    const newSubType = {
-      id: Date.now().toString(),
-      label: req.body.label,
-      order: existing.length
-    };
+    const newSubType = { id: Date.now().toString(), label: req.body.label, order: existing.length };
     await typeRef.update({ subTypes: [...existing, newSubType], updatedAt: new Date() });
     const updated = await typeRef.get();
     return res.json({ success: true, type: { id: typeRef.id, ...updated.data() } });
@@ -523,13 +405,13 @@ async function handleMaintenanceTypesRequest(req, res, db, user, url) {
   if (url.includes('/subtypes/') && req.method === 'PUT' && typeId) {
     await checkPermission(user, db, 'maintenance', 'edit');
 
-    const subId = url.split('/subtypes/')[1]?.split('/')[0];
+    const subId = url.split('/subtypes/')[1]?.split('?')[0];
     const typeRef = db.collection('maintenanceTypes').doc(typeId);
     const doc = await typeRef.get();
     if (!doc.exists) return res.status(404).json({ success: false, message: 'סוג טיפול לא נמצא' });
 
     const subTypes = (doc.data().subTypes || []).map(st =>
-      st.id === subId ? { ...st, ...req.body, id: subId } : st
+      st.id === subId ? { ...st, label: req.body.label ?? st.label, order: req.body.order ?? st.order, id: subId } : st
     );
     await typeRef.update({ subTypes, updatedAt: new Date() });
     const updated = await typeRef.get();
@@ -540,7 +422,7 @@ async function handleMaintenanceTypesRequest(req, res, db, user, url) {
   if (url.includes('/subtypes/') && req.method === 'DELETE' && typeId) {
     await checkPermission(user, db, 'maintenance', 'edit');
 
-    const subId = url.split('/subtypes/')[1]?.split('/')[0];
+    const subId = url.split('/subtypes/')[1]?.split('?')[0];
     const typeRef = db.collection('maintenanceTypes').doc(typeId);
     const doc = await typeRef.get();
     if (!doc.exists) return res.status(404).json({ success: false, message: 'סוג טיפול לא נמצא' });
@@ -550,10 +432,78 @@ async function handleMaintenanceTypesRequest(req, res, db, user, url) {
     return res.json({ success: true, message: 'תת-סוג נמחק בהצלחה' });
   }
 
-  return res.status(405).json({
-    success: false,
-    message: 'Method not allowed'
-  });
+  // ==================== MAIN TYPE CRUD ====================
+
+  // POST /api/maintenance-types - יצירת סוג טיפול חדש
+  if (req.method === 'POST' && !url.includes('/subtypes')) {
+    await checkPermission(user, db, 'maintenance', 'edit');
+
+    if (!req.body.key || !req.body.label) {
+      return res.status(400).json({ success: false, message: 'מפתח ושם הסוג הם שדות חובה' });
+    }
+
+    const existingSnapshot = await db.collection('maintenanceTypes')
+      .where('key', '==', req.body.key).get();
+    if (!existingSnapshot.empty) {
+      return res.status(400).json({ success: false, message: 'סוג טיפול עם מפתח זה כבר קיים' });
+    }
+
+    const countSnapshot = await db.collection('maintenanceTypes').get();
+    const typeData = {
+      key: req.body.key,
+      label: req.body.label,
+      color: req.body.color || '#64748b',
+      order: req.body.order ?? (countSnapshot.size + 1),
+      subTypes: [],
+      createdBy: user.id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const typeRef = await db.collection('maintenanceTypes').add(typeData);
+    const typeDoc = await typeRef.get();
+    return res.status(201).json({ success: true, message: 'סוג טיפול נוצר בהצלחה', type: { id: typeRef.id, ...typeDoc.data() } });
+  }
+
+  // PUT /api/maintenance-types/:id - עדכון סוג טיפול
+  if (req.method === 'PUT' && typeId && !url.includes('/subtypes')) {
+    await checkPermission(user, db, 'maintenance', 'edit');
+
+    const typeRef = db.collection('maintenanceTypes').doc(typeId);
+    const doc = await typeRef.get();
+    if (!doc.exists) return res.status(404).json({ success: false, message: 'סוג טיפול לא נמצא' });
+
+    const updateData = { ...req.body, updatedBy: user.id, updatedAt: new Date() };
+    delete updateData.key;
+    delete updateData.id;
+    delete updateData.createdAt;
+    delete updateData.createdBy;
+
+    await typeRef.update(updateData);
+    const updatedDoc = await typeRef.get();
+    return res.json({ success: true, message: 'סוג טיפול עודכן בהצלחה', type: { id: updatedDoc.id, ...updatedDoc.data() } });
+  }
+
+  // DELETE /api/maintenance-types/:id - מחיקת סוג טיפול
+  if (req.method === 'DELETE' && typeId && !url.includes('/subtypes')) {
+    await checkPermission(user, db, 'maintenance', 'edit');
+
+    const typeRef = db.collection('maintenanceTypes').doc(typeId);
+    const doc = await typeRef.get();
+    if (!doc.exists) return res.status(404).json({ success: false, message: 'סוג טיפול לא נמצא' });
+
+    const typeData = doc.data();
+    const maintenanceSnapshot = await db.collection('maintenance')
+      .where('maintenanceType', '==', typeData.key).limit(1).get();
+    if (!maintenanceSnapshot.empty) {
+      return res.status(400).json({ success: false, message: 'לא ניתן למחוק סוג טיפול שקיימים טיפולים המשתמשים בו' });
+    }
+
+    await typeRef.delete();
+    return res.json({ success: true, message: 'סוג טיפול נמחק בהצלחה' });
+  }
+
+  return res.status(405).json({ success: false, message: 'Method not allowed' });
 }
 
 // ==================== MAINTENANCE HANDLER ====================
