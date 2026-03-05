@@ -6,29 +6,15 @@ class MaintenanceModel {
     this.collection = db.collection(COLLECTIONS.MAINTENANCE);
   }
 
-  // יצירת מספר טיפול אוטומטי
-  async generateMaintenanceNumber() {
-    const year = new Date().getFullYear();
-    try {
-      const snapshot = await this.collection.get();
-      const count = snapshot.size + 1;
-      return `T-${year}-${String(count).padStart(4, '0')}`;
-    } catch (error) {
-      return `T-${Date.now()}`;
-    }
-  }
-
   // יצירת טיפול חדש
   async create(maintenanceData, createdByUserId) {
     try {
-      const maintenanceNumber = await this.generateMaintenanceNumber();
-
       // חישוב עלות כוללת
       const costs = maintenanceData.costs || {};
       const totalCost = (costs.laborCost || 0) + (costs.partsCost || 0) + (costs.otherCosts || 0);
 
       const maintenanceDoc = {
-        maintenanceNumber,
+        maintenanceNumber: maintenanceData.maintenanceNumber || '',
         vehicleId: maintenanceData.vehicleId,
         vehiclePlate: maintenanceData.vehiclePlate || null,
         riderId: maintenanceData.riderId || null,
@@ -144,14 +130,6 @@ class MaintenanceModel {
       delete updates.id;
       delete updates.createdAt;
       delete updates.createdBy;
-
-      // אם נשלח מספר טיפול ידני - שמור אותו; אם לא - צור אוטומטי אם חסר
-      if (!updates.maintenanceNumber) {
-        delete updates.maintenanceNumber;
-        if (existing && !existing.maintenanceNumber) {
-          updates.maintenanceNumber = await this.generateMaintenanceNumber();
-        }
-      }
 
       // חישוב עלות כוללת מחדש אם יש שינוי בעלויות
       if (updates.costs) {
