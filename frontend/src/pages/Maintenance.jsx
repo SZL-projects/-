@@ -403,6 +403,19 @@ export default function Maintenance() {
     }
   }, [isSuperAdmin]);
 
+  const handleClearSubTypes = useCallback(async (typeId) => {
+    if (!isSuperAdmin) return;
+    try {
+      await maintenanceTypesAPI.update(typeId, { subTypes: [] });
+      const response = await maintenanceTypesAPI.getAll();
+      setMaintenanceTypesFromDB(response.data.types || []);
+      setExpandedTypeId(null);
+    } catch (err) {
+      console.error('Error clearing sub-types:', err);
+      setError('שגיאה בניקוי תת-סוגים');
+    }
+  }, [isSuperAdmin]);
+
   const handleInitializeTypes = useCallback(async () => {
     if (!isSuperAdmin) return;
 
@@ -2267,6 +2280,18 @@ export default function Maintenance() {
                         הוסף
                       </Button>
                     </Box>
+
+                    {/* כפתור ביטול רשימה */}
+                    {(dbType.subTypes?.length > 0) && (
+                      <Button
+                        size="small"
+                        variant="text"
+                        onClick={() => handleClearSubTypes(dbType.id)}
+                        sx={{ mt: 1, color: '#ef4444', fontSize: 12, p: 0, minWidth: 0, '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' } }}
+                      >
+                        ✕ בטל רשימת תת-סוגים
+                      </Button>
+                    )}
                   </Box>
                 )}
               </Box>
