@@ -61,6 +61,8 @@ import {
   FilterList,
   HourglassEmpty,
   CheckCircleOutline,
+  ArrowUpward,
+  ArrowDownward,
 } from '@mui/icons-material';
 import { maintenanceAPI, vehiclesAPI, ridersAPI, garagesAPI, maintenanceTypesAPI } from '../services/api';
 import MaintenanceDialog from '../components/MaintenanceDialog';
@@ -304,7 +306,7 @@ export default function Maintenance() {
         });
       } else {
         await maintenanceTypesAPI.create({
-          key: newTypeKey,
+          value: newTypeKey,
           label: newTypeLabel,
           color: newTypeColor
         });
@@ -325,7 +327,7 @@ export default function Maintenance() {
 
   const handleEditType = useCallback((type) => {
     setEditingType(type);
-    setNewTypeKey(type.key);
+    setNewTypeKey(type.value || type.key || '');
     setNewTypeLabel(type.label);
     setNewTypeColor(type.color || '#64748b');
   }, []);
@@ -342,6 +344,27 @@ export default function Maintenance() {
       setError(err.response?.data?.message || 'שגיאה במחיקת סוג הטיפול');
     }
   }, [isSuperAdmin]);
+
+  const handleMoveType = useCallback(async (typeId, direction) => {
+    if (!isSuperAdmin) return;
+    const sorted = [...maintenanceTypesFromDB].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const idx = sorted.findIndex(t => t.id === typeId);
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === sorted.length - 1) return;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const current = sorted[idx];
+    const swap = sorted[swapIdx];
+    try {
+      await Promise.all([
+        maintenanceTypesAPI.update(current.id, { order: swap.order ?? swapIdx }),
+        maintenanceTypesAPI.update(swap.id, { order: current.order ?? idx }),
+      ]);
+      const response = await maintenanceTypesAPI.getAll();
+      setMaintenanceTypesFromDB(response.data.types || []);
+    } catch (err) {
+      console.error('Error reordering types:', err);
+    }
+  }, [isSuperAdmin, maintenanceTypesFromDB]);
 
   const handleInitializeTypes = useCallback(async () => {
     if (!isSuperAdmin) return;
@@ -2110,44 +2133,37 @@ export default function Maintenance() {
           </Typography>
 
           <List sx={{ bgcolor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', mb: 2 }}>
-            {Object.entries(typeMap).map(([key, { label, color }]) => {
-              const dbType = maintenanceTypesFromDB.find(t => (t.value || t.key) === key);
-              return (
-                <ListItem
-                  key={key}
-                  sx={{
-                    borderBottom: '1px solid #f1f5f9',
-                    '&:last-child': { borderBottom: 'none' },
-                    py: 1.5,
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
-                    <Box
-                      sx={{
-                        width: 16,
-                        height: 16,
-                        borderRadius: '4px',
-                        bgcolor: color,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <Typography sx={{ fontWeight: 600, color: '#1e293b' }}>
-                      {label}
-                    </Typography>
+            {[...maintenanceTypesFromDB].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((dbType, idx, arr) => (
+              <ListItem
+                key={dbType.id}
+                sx={{
+                  borderBottom: '1px solid #f1f5f9',
+                  '&:last-child': { borderBottom: 'none' },
+                  py: 1,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
+                  <Box sx={{ width: 16, height: 16, borderRadius: '4px', bgcolor: dbType.color || '#64748b', flexShrink: 0 }} />
+                  <Typography sx={{ fontWeight: 600, color: '#1e293b' }}>{dbType.label}</Typography>
+                </Box>
+                {isSuperAdmin && (
+                  <Box sx={{ display: 'flex', gap: 0 }}>
+                    <IconButton size="small" onClick={() => handleMoveType(dbType.id, 'up')} disabled={idx === 0} sx={{ color: '#64748b' }}>
+                      <ArrowUpward fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => handleMoveType(dbType.id, 'down')} disabled={idx === arr.length - 1} sx={{ color: '#64748b' }}>
+                      <ArrowDownward fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => handleEditType(dbType)} sx={{ color: '#8b5cf6' }}>
+                      <Edit fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => handleDeleteType(dbType.id)} sx={{ color: '#ef4444' }}>
+                      <Delete fontSize="small" />
+                    </IconButton>
                   </Box>
-                  {isSuperAdmin && dbType && (
-                    <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      <IconButton size="small" onClick={() => handleEditType(dbType)} sx={{ color: '#8b5cf6' }}>
-                        <Edit fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" onClick={() => handleDeleteType(dbType.id)} sx={{ color: '#ef4444' }}>
-                        <Delete fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  )}
-                </ListItem>
-              );
-            })}
+                )}
+              </ListItem>
+            ))}
           </List>
 
           {!isSuperAdmin && (
