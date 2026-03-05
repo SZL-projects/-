@@ -218,6 +218,10 @@ exports.sendNewFaultNotification = async (fault, vehicle, rider) => {
   const severityColor = fault.severity === 'critical' || fault.severity === 'high' ? '#dc2626' : fault.severity === 'medium' ? '#d97706' : '#64748b';
   const canRideText = fault.canRide === false ? '<span style="color:#dc2626;font-weight:bold;">לא ניתן לרכב ⚠️</span>' : 'ניתן לרכב';
   const riderName = rider ? `${rider.firstName} ${rider.lastName}` : 'לא ידוע';
+  const vehicleHeaderLabel = [vehicle?.internalNumber, vehicle?.licensePlate].filter(Boolean).join(' | ') || fault.vehicleLicensePlate || 'לא ידוע';
+  const riderDetails = rider
+    ? [rider.idNumber ? `ל.ז. ${rider.idNumber}` : null, vehicle?.internalNumber ? `מספר פנימי ${vehicle.internalNumber}` : null, riderName].filter(Boolean).join(' | ')
+    : 'לא ידוע';
 
   const html = `
     <!DOCTYPE html>
@@ -225,13 +229,13 @@ exports.sendNewFaultNotification = async (fault, vehicle, rider) => {
     <head>
       <meta charset="UTF-8">
       <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; margin: 0; }
-        .container { max-width: 620px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; margin: 0; direction: rtl; text-align: right; }
+        .container { max-width: 620px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; direction: rtl; }
         .header { background: linear-gradient(135deg, #ef4444, #f97316); padding: 28px 30px; text-align: center; }
         .header h1 { color: #ffffff; margin: 0; font-size: 22px; }
         .header p { color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px; }
         .body { padding: 24px 30px; }
-        .field { background:#f8fafc; border:1px solid #e2e8f0; border-right:4px solid #6366f1; border-radius:8px; padding:12px 16px; margin-bottom:10px; }
+        .field { background:#f8fafc; border:1px solid #e2e8f0; border-right:4px solid #6366f1; border-radius:8px; padding:12px 16px; margin-bottom:10px; text-align: right; }
         .field-label { color:#64748b; font-size:12px; }
         .field-value { color:#1e293b; font-size:15px; font-weight:600; margin-top:2px; }
         .footer { padding: 16px 30px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #94a3b8; }
@@ -241,12 +245,12 @@ exports.sendNewFaultNotification = async (fault, vehicle, rider) => {
       <div class="container">
         <div class="header">
           <h1>⚠️ תקלה חדשה דווחה</h1>
-          <p>כלי: ${vehicle?.licensePlate || fault.vehicleLicensePlate || 'לא ידוע'}</p>
+          <p>כלי: ${vehicleHeaderLabel}</p>
         </div>
         <div class="body">
           <div class="field">
             <div class="field-label">רוכב מדווח</div>
-            <div class="field-value">${riderName}</div>
+            <div class="field-value">${riderDetails}</div>
           </div>
           <div class="field">
             <div class="field-label">כותרת התקלה</div>
