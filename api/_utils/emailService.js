@@ -610,7 +610,7 @@ ${fault.location ? `<div class="field"><div class="field-label">מיקום</div>
   for (const email of targets) {
     await exports.sendEmail({
       email: email.trim(),
-      subject: `תקלה חדשה: ${fault.title || (fault.description || '').substring(0, 40) || 'תקלה'} - ${licensePlate}`,
+      subject: `תקלה חדשה: ${fault.title || (fault.description || '').substring(0, 40) || 'תקלה'} - ${vehicleHeaderLabel}`,
       html,
     });
   }
