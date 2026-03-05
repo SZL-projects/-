@@ -753,12 +753,30 @@ export default function Faults() {
                   }}
                 >
                   <TableCell>
-                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
-                      {(() => {
-                        const v = vehicles.find(v => (v.id || v._id) === fault.vehicleId);
-                        return v?.licensePlate || v?.vehicleNumber || v?.internalNumber || fault.vehicleLicensePlate || '-';
-                      })()}
-                    </Typography>
+                    {(() => {
+                      const v = vehicles.find(v => (v.id || v._id) === fault.vehicleId);
+                      const plate = v?.licensePlate || v?.vehicleNumber || v?.internalNumber || fault.vehicleLicensePlate || '-';
+                      const riderName = v?.assignedRiderName || null;
+                      return (
+                        <Box>
+                          <Typography
+                            variant="body1"
+                            sx={{
+                              fontWeight: 700, color: '#6366f1', cursor: 'pointer', textDecoration: 'underline',
+                              '&:hover': { color: '#4f46e5' },
+                            }}
+                            onClick={(e) => { e.stopPropagation(); if (v?.id) navigate(`/vehicles/${v.id}`); }}
+                          >
+                            {plate}
+                          </Typography>
+                          {riderName && (
+                            <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mt: 0.2 }}>
+                              {riderName}
+                            </Typography>
+                          )}
+                        </Box>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" sx={{ fontWeight: 500, color: '#1e293b' }}>
