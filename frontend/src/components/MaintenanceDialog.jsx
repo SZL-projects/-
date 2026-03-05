@@ -470,6 +470,18 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
         )}
 
         <Grid container spacing={isMobile ? 2 : 2.5}>
+          {/* מספר טיפול - רק בעריכה */}
+          {maintenance?.maintenanceNumber && (
+            <Grid item xs={12}>
+              <Box sx={{ bgcolor: '#f8fafc', borderRadius: '10px', px: 2, py: 1, display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="caption" sx={{ color: '#94a3b8' }}>מספר טיפול:</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: '#6366f1' }}>
+                  {maintenance.maintenanceNumber}
+                </Typography>
+              </Box>
+            </Grid>
+          )}
+
           {/* פרטי כלי */}
           <Grid item xs={12}>
             <Typography variant="subtitle2" sx={{ color: '#6366f1', fontWeight: 600, mb: isMobile ? 1 : 1.5 }}>
@@ -593,7 +605,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
                 value={selectedGarage}
                 onChange={handleGarageSelect}
                 loading={loadingGarages}
-                isOptionEqualToValue={(option, value) => option?.id === value?.id}
+                isOptionEqualToValue={(option, value) => option?.id === value?.id || option?.name === value?.name}
                 renderOption={(props, option) => (
                   <Box component="li" {...props} key={option.id}>
                     <Box>
