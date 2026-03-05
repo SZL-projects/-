@@ -218,10 +218,7 @@ exports.sendNewFaultNotification = async (fault, vehicle, rider) => {
   const severityColor = fault.severity === 'critical' || fault.severity === 'high' ? '#dc2626' : fault.severity === 'medium' ? '#d97706' : '#64748b';
   const canRideText = fault.canRide === false ? '<span style="color:#dc2626;font-weight:bold;">לא ניתן לרכב ⚠️</span>' : 'ניתן לרכב';
   const riderName = rider ? `${rider.firstName} ${rider.lastName}` : 'לא ידוע';
-  const vehicleHeaderLabel = [vehicle?.internalNumber, vehicle?.licensePlate].filter(Boolean).join(' | ') || fault.vehicleLicensePlate || 'לא ידוע';
-  const riderDetails = rider
-    ? [rider.idNumber ? `ל.ז. ${rider.idNumber}` : null, vehicle?.internalNumber ? `מספר פנימי ${vehicle.internalNumber}` : null, riderName].filter(Boolean).join(' | ')
-    : 'לא ידוע';
+  const vehicleHeaderLabel = [vehicle?.internalNumber, vehicle?.licensePlate, rider ? riderName : null].filter(Boolean).join(' | ') || fault.vehicleLicensePlate || 'לא ידוע';
 
   const html = `
     <!DOCTYPE html>
@@ -250,7 +247,7 @@ exports.sendNewFaultNotification = async (fault, vehicle, rider) => {
         <div class="body">
           <div class="field">
             <div class="field-label">רוכב מדווח</div>
-            <div class="field-value">${riderDetails}</div>
+            <div class="field-value">${riderName}</div>
           </div>
           <div class="field">
             <div class="field-label">כותרת התקלה</div>
