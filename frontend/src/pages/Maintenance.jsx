@@ -1509,6 +1509,7 @@ export default function Maintenance() {
         maintenance={editingMaintenance}
         vehicles={vehicles}
         riders={riders}
+        maintenanceTypesProp={maintenanceTypesFromDB}
         onSave={async () => {
           await loadData();
           setEditDialogOpen(false);

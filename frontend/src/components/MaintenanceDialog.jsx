@@ -42,9 +42,9 @@ import {
   ExpandLess,
   Store,
 } from '@mui/icons-material';
-import { maintenanceAPI, garagesAPI, maintenanceTypesAPI } from '../services/api';
+import { maintenanceAPI, garagesAPI } from '../services/api';
 
-export default function MaintenanceDialog({ open, onClose, maintenance, vehicles, riders, onSave, isRiderView = false }) {
+export default function MaintenanceDialog({ open, onClose, maintenance, vehicles, riders, onSave, isRiderView = false, maintenanceTypesProp = [] }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -96,16 +96,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
     { value: 'other', label: 'אחר' },
   ];
 
-  const [maintenanceTypes, setMaintenanceTypes] = useState(DEFAULT_TYPES);
-
-  useEffect(() => {
-    maintenanceTypesAPI.getAll()
-      .then(res => {
-        const types = res.data.types || [];
-        setMaintenanceTypes(types.length > 0 ? types : DEFAULT_TYPES);
-      })
-      .catch(() => {});
-  }, []);
+  const maintenanceTypes = maintenanceTypesProp.length > 0 ? maintenanceTypesProp : DEFAULT_TYPES;
 
   // טעינת רשימת מוסכים
   useEffect(() => {
