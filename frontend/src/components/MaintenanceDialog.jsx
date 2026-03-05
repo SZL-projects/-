@@ -88,21 +88,8 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [showFilesSection, setShowFilesSection] = useState(true);
-  const DEFAULT_TYPES = [
-    { value: 'routine', label: 'טיפול תקופתי' },
-    { value: 'repair', label: 'תיקון' },
-    { value: 'emergency', label: 'חירום' },
-    { value: 'recall', label: 'ריקול' },
-    { value: 'accident_repair', label: 'תיקון תאונה' },
-    { value: 'other', label: 'אחר' },
-  ];
-
-  // אחד DB types עם DEFAULT_TYPES - DB types מוצגים ראשונים, DEFAULT_TYPES כגיבוי לערכים חסרים
-  const dbValues = new Set(maintenanceTypesProp.map(t => t.value || t.key || t.id));
-  const maintenanceTypes = [
-    ...maintenanceTypesProp,
-    ...DEFAULT_TYPES.filter(t => !dbValues.has(t.value)),
-  ];
+  // רק סוגים מה-DB - ממוינים לפי order
+  const maintenanceTypes = [...maintenanceTypesProp].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   // טעינת רשימת מוסכים
   useEffect(() => {

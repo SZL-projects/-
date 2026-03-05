@@ -410,6 +410,30 @@ export default function Maintenance() {
     }
   }, [isSuperAdmin]);
 
+  const handleMoveSubType = useCallback(async (typeId, subId, direction) => {
+    if (!isSuperAdmin) return;
+    const type = maintenanceTypesFromDB.find(t => t.id === typeId);
+    if (!type) return;
+    const sorted = [...(type.subTypes || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const idx = sorted.findIndex(s => s.id === subId);
+    if (idx < 0) return;
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === sorted.length - 1) return;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    // עדכון ה-order
+    const newSorted = sorted.map((s, i) => ({ ...s, order: i }));
+    const temp = newSorted[idx].order;
+    newSorted[idx] = { ...newSorted[idx], order: newSorted[swapIdx].order };
+    newSorted[swapIdx] = { ...newSorted[swapIdx], order: temp };
+    try {
+      await maintenanceTypesAPI.update(typeId, { subTypes: newSorted });
+      const response = await maintenanceTypesAPI.getAll();
+      setMaintenanceTypesFromDB(response.data.types || []);
+    } catch (err) {
+      console.error('Error reordering sub-type:', err);
+    }
+  }, [isSuperAdmin, maintenanceTypesFromDB]);
+
   const handleClearSubTypes = useCallback(async (typeId) => {
     if (!isSuperAdmin) return;
     try {
@@ -505,29 +529,14 @@ export default function Maintenance() {
     cancelled: { label: 'בוטל', bgcolor: 'rgba(100, 116, 139, 0.1)', color: '#64748b', icon: <Cancel sx={{ fontSize: 16 }} /> },
   }), []);
 
-  const DEFAULT_TYPES = useMemo(() => [
-    { key: 'routine', label: 'טיפול תקופתי', color: '#2563eb', order: 1 },
-    { key: 'repair', label: 'תיקון', color: '#d97706', order: 2 },
-    { key: 'emergency', label: 'חירום', color: '#dc2626', order: 3 },
-    { key: 'recall', label: 'ריקול', color: '#7c3aed', order: 4 },
-    { key: 'accident_repair', label: 'תיקון תאונה', color: '#dc2626', order: 5 },
-    { key: 'other', label: 'אחר', color: '#64748b', order: 6 },
-  ], []);
-
-  const missingDefaultTypes = useMemo(() => {
-    const dbKeys = new Set(maintenanceTypesFromDB.map(t => t.key || t.value).filter(Boolean));
-    return DEFAULT_TYPES.filter(t => !dbKeys.has(t.key));
-  }, [maintenanceTypesFromDB, DEFAULT_TYPES]);
-
   const typeMap = useMemo(() => {
     const map = {};
-    DEFAULT_TYPES.forEach(t => { map[t.key] = { label: t.label, color: t.color }; });
     maintenanceTypesFromDB.forEach(type => {
       const key = type.value || type.key;
       if (key) map[key] = { label: type.label, color: type.color || '#64748b' };
     });
     return map;
-  }, [maintenanceTypesFromDB, DEFAULT_TYPES]);
+  }, [maintenanceTypesFromDB]);
 
   const paidByMap = useMemo(() => ({
     unit: 'היחידה',
@@ -2191,31 +2200,19 @@ export default function Maintenance() {
             </Box>
           )}
 
-          {/* כפתור אתחול סוגים חסרים */}
-          {isSuperAdmin && missingDefaultTypes.length > 0 && (
-            <Alert
-              severity="warning"
-              sx={{ borderRadius: '12px', mb: 2 }}
-              action={
-                <Button color="inherit" size="small" onClick={handleInitializeTypes} disabled={typeSaving}>
-                  {typeSaving ? <CircularProgress size={16} /> : 'הוסף חסרים'}
-                </Button>
-              }
-            >
-              {missingDefaultTypes.length === 6
-                ? 'הסוגים טרם אותחלו. לחץ "הוסף חסרים" להוספת ברירות המחדל.'
-                : `חסרים ${missingDefaultTypes.length} סוגי ברירת מחדל (${missingDefaultTypes.map(t => t.label).join(', ')})`}
+          <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 600, mb: 1 }}>
+            סוגי הטיפולים ({maintenanceTypesFromDB.length})
+          </Typography>
+
+          {maintenanceTypesFromDB.length === 0 && (
+            <Alert severity="info" sx={{ borderRadius: '12px', mb: 2 }}>
+              אין סוגי טיפולים. הוסף סוג חדש למעלה.
             </Alert>
           )}
 
-          <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 600, mb: 1 }}>
-            סוגי הטיפולים ({maintenanceTypesFromDB.length + missingDefaultTypes.length})
-          </Typography>
-
           <List sx={{ bgcolor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', mb: 2 }}>
-            {/* סוגים מה-DB - עם ניהול מלא */}
             {[...maintenanceTypesFromDB].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((dbType, idx, arr) => (
-              <Box key={dbType.id} sx={{ borderBottom: '1px solid #f1f5f9', '&:last-child': { borderBottom: missingDefaultTypes.length > 0 ? '1px solid #f1f5f9' : 'none' } }}>
+              <Box key={dbType.id} sx={{ borderBottom: '1px solid #f1f5f9', '&:last-child': { borderBottom: 'none' } }}>
                 <ListItem sx={{ py: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
                     <Box sx={{ width: 16, height: 16, borderRadius: '4px', bgcolor: dbType.color || '#64748b', flexShrink: 0 }} />
@@ -2234,7 +2231,7 @@ export default function Maintenance() {
                       </IconButton>
                       <IconButton
                         size="small"
-                        onClick={() => setExpandedTypeId(expandedTypeId === dbType.id ? null : dbType.id)}
+                        onClick={() => { setExpandedTypeId(expandedTypeId === dbType.id ? null : dbType.id); setNewSubTypeLabel(''); setEditingSubType(null); }}
                         sx={{ color: expandedTypeId === dbType.id ? '#8b5cf6' : '#64748b' }}
                         title="ניהול תת-סוגים"
                       >
@@ -2250,15 +2247,15 @@ export default function Maintenance() {
                   )}
                 </ListItem>
 
-                {/* תת-סוגים */}
+                {/* פאנל תת-סוגים */}
                 {expandedTypeId === dbType.id && (
                   <Box sx={{ bgcolor: '#f8fafc', px: 3, pb: 2, pt: 1, borderTop: '1px dashed #e2e8f0' }}>
                     <Typography variant="caption" sx={{ color: '#8b5cf6', fontWeight: 700, display: 'block', mb: 1 }}>
                       תת-סוגים של "{dbType.label}"
                     </Typography>
 
-                    {(dbType.subTypes || []).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map(sub => (
-                      <Box key={sub.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                    {(dbType.subTypes || []).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((sub, subIdx, subArr) => (
+                      <Box key={sub.id} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                         {editingSubType?.subId === sub.id ? (
                           <>
                             <TextField
@@ -2278,7 +2275,13 @@ export default function Maintenance() {
                           </>
                         ) : (
                           <>
-                            <Typography sx={{ flex: 1, fontSize: 13, color: '#475569', pr: 1 }}>• {sub.label}</Typography>
+                            <IconButton size="small" onClick={() => handleMoveSubType(dbType.id, sub.id, 'up')} disabled={subIdx === 0} sx={{ color: '#64748b', p: 0.3 }}>
+                              <ArrowUpward sx={{ fontSize: 13 }} />
+                            </IconButton>
+                            <IconButton size="small" onClick={() => handleMoveSubType(dbType.id, sub.id, 'down')} disabled={subIdx === subArr.length - 1} sx={{ color: '#64748b', p: 0.3 }}>
+                              <ArrowDownward sx={{ fontSize: 13 }} />
+                            </IconButton>
+                            <Typography sx={{ flex: 1, fontSize: 13, color: '#475569', px: 0.5 }}>• {sub.label}</Typography>
                             <IconButton size="small" onClick={() => setEditingSubType({ typeId: dbType.id, subId: sub.id, label: sub.label })} sx={{ color: '#8b5cf6', p: 0.5 }}>
                               <Edit sx={{ fontSize: 14 }} />
                             </IconButton>
@@ -2290,7 +2293,7 @@ export default function Maintenance() {
                       </Box>
                     ))}
 
-                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                    <Box sx={{ display: 'flex', gap: 1, mt: 1.5 }}>
                       <TextField
                         size="small"
                         placeholder="שם תת-הסוג החדש..."
@@ -2323,24 +2326,6 @@ export default function Maintenance() {
                   </Box>
                 )}
               </Box>
-            ))}
-
-            {/* סוגי ברירת מחדל שחסרים מה-DB - מוצגים בצבע אפור */}
-            {missingDefaultTypes.map((defType, idx) => (
-              <ListItem
-                key={defType.key}
-                sx={{
-                  borderBottom: idx < missingDefaultTypes.length - 1 ? '1px solid #f1f5f9' : 'none',
-                  py: 1,
-                  opacity: 0.5,
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
-                  <Box sx={{ width: 16, height: 16, borderRadius: '4px', bgcolor: defType.color, flexShrink: 0 }} />
-                  <Typography sx={{ fontWeight: 600, color: '#64748b' }}>{defType.label}</Typography>
-                  <Typography variant="caption" sx={{ color: '#94a3b8', fontStyle: 'italic' }}>ברירת מחדל - לא נשמר</Typography>
-                </Box>
-              </ListItem>
             ))}
           </List>
 
