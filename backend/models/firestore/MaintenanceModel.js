@@ -139,6 +139,11 @@ class MaintenanceModel {
           (updates.costs.otherCosts || 0);
       }
 
+      // אם maintenanceType ריק - שמור את הערך הקיים
+      if (!updates.maintenanceType) {
+        updates.maintenanceType = existing?.maintenanceType || 'routine';
+      }
+
       // אם הטיפול הושלם - נוסיף תאריך השלמה
       if (updateData.status === 'completed' && !updateData.completedAt) {
         updates.completedAt = new Date();
