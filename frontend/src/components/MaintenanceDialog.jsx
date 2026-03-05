@@ -87,9 +87,6 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [showFilesSection, setShowFilesSection] = useState(true);
-  const [maintenanceTypes, setMaintenanceTypes] = useState([]);
-
-  // סוגי טיפולים מהדאטהבייס (ברירת מחדל hardcoded אם ריק)
   const DEFAULT_TYPES = [
     { value: 'routine', label: 'טיפול תקופתי' },
     { value: 'repair', label: 'תיקון' },
@@ -99,13 +96,15 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
     { value: 'other', label: 'אחר' },
   ];
 
+  const [maintenanceTypes, setMaintenanceTypes] = useState(DEFAULT_TYPES);
+
   useEffect(() => {
     maintenanceTypesAPI.getAll()
       .then(res => {
         const types = res.data.types || [];
         setMaintenanceTypes(types.length > 0 ? types : DEFAULT_TYPES);
       })
-      .catch(() => setMaintenanceTypes(DEFAULT_TYPES));
+      .catch(() => {});
   }, []);
 
   // טעינת רשימת מוסכים

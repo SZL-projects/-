@@ -430,9 +430,10 @@ export default function Maintenance() {
     if (maintenanceTypesFromDB.length > 0) {
       const map = {};
       maintenanceTypesFromDB.forEach(type => {
-        map[type.key] = { label: type.label, color: type.color };
+        const key = type.value || type.key;
+        if (key) map[key] = { label: type.label, color: type.color || '#64748b' };
       });
-      return map;
+      if (Object.keys(map).length > 0) return map;
     }
     // ברירת מחדל
     return {
@@ -2112,7 +2113,7 @@ export default function Maintenance() {
 
           <List sx={{ bgcolor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', mb: 2 }}>
             {Object.entries(typeMap).map(([key, { label, color }]) => {
-              const dbType = maintenanceTypesFromDB.find(t => t.key === key);
+              const dbType = maintenanceTypesFromDB.find(t => (t.value || t.key) === key);
               return (
                 <ListItem
                   key={key}
