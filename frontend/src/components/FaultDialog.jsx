@@ -35,7 +35,7 @@ import {
   PhotoCamera,
   Delete,
 } from '@mui/icons-material';
-import { vehiclesAPI, ridersAPI, authAPI, faultsAPI } from '../services/api';
+import { vehiclesAPI, authAPI, faultsAPI } from '../services/api';
 
 // המרת אובייקט תמונה ל-URL תקין דרך ה-proxy
 function getPhotoSrc(photo) {
@@ -139,14 +139,12 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [lightboxLink, setLightboxLink] = useState(null);
   const [vehicles, setVehicles] = useState([]);
-  const [riders, setRiders] = useState([]);
   const [users, setUsers] = useState([]);
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (open) {
       loadVehicles();
-      loadRiders();
       loadUsers();
     }
   }, [open]);
@@ -199,15 +197,6 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
       setVehicles(response.data.vehicles || []);
     } catch (err) {
       console.error('Error loading vehicles:', err);
-    }
-  };
-
-  const loadRiders = async () => {
-    try {
-      const response = await ridersAPI.getAll();
-      setRiders(response.data.riders || []);
-    } catch (err) {
-      console.error('Error loading riders:', err);
     }
   };
 
@@ -357,24 +346,13 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
     const parts = [];
     if (vehicle.internalNumber) parts.push(vehicle.internalNumber);
     if (vehicle.licensePlate) parts.push(vehicle.licensePlate);
-    const riderId = typeof vehicle.assignedRider === 'object'
-      ? (vehicle.assignedRider?.id || vehicle.assignedRider?._id)
-      : vehicle.assignedRider;
-    if (riderId) {
-      const rider = riders.find(r => (r.id || r._id) === riderId);
-      if (rider) {
-        const riderName = `${rider.firstName || ''} ${rider.lastName || ''}`.trim();
-        if (riderName) parts.push(riderName);
-      }
-    }
+    if (vehicle.assignedRiderName) parts.push(vehicle.assignedRiderName);
     return parts.join(' | ') || vehicle.licensePlate || '';
   };
 
   const handleVehicleChange = (event, vehicle) => {
     const vehicleId = vehicle?.id || vehicle?._id || '';
-    const riderId = typeof vehicle?.assignedRider === 'object'
-      ? (vehicle?.assignedRider?.id || vehicle?.assignedRider?._id || '')
-      : (vehicle?.assignedRider || '');
+    const riderId = vehicle?.assignedRiderId || '';
     setFormData(prev => ({ ...prev, vehicleId, riderId }));
     if (errors.vehicleId) setErrors(prev => ({ ...prev, vehicleId: '' }));
   };
