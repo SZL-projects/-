@@ -96,7 +96,12 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
     { value: 'other', label: 'אחר' },
   ];
 
-  const maintenanceTypes = maintenanceTypesProp.length > 0 ? maintenanceTypesProp : DEFAULT_TYPES;
+  // אחד DB types עם DEFAULT_TYPES - DB types מוצגים ראשונים, DEFAULT_TYPES כגיבוי לערכים חסרים
+  const dbValues = new Set(maintenanceTypesProp.map(t => t.value || t.id));
+  const maintenanceTypes = [
+    ...maintenanceTypesProp,
+    ...DEFAULT_TYPES.filter(t => !dbValues.has(t.value)),
+  ];
 
   // טעינת רשימת מוסכים
   useEffect(() => {

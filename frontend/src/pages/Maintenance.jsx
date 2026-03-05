@@ -426,17 +426,8 @@ export default function Maintenance() {
   }), []);
 
   const typeMap = useMemo(() => {
-    // אם יש סוגי טיפולים מהמסד נתונים, השתמש בהם
-    if (maintenanceTypesFromDB.length > 0) {
-      const map = {};
-      maintenanceTypesFromDB.forEach(type => {
-        const key = type.value || type.key;
-        if (key) map[key] = { label: type.label, color: type.color || '#64748b' };
-      });
-      if (Object.keys(map).length > 0) return map;
-    }
-    // ברירת מחדל
-    return {
+    // תמיד מתחילים עם ברירת המחדל (ערכים אנגלים)
+    const map = {
       routine: { label: 'טיפול תקופתי', color: '#2563eb' },
       repair: { label: 'תיקון', color: '#d97706' },
       emergency: { label: 'חירום', color: '#dc2626' },
@@ -444,6 +435,12 @@ export default function Maintenance() {
       accident_repair: { label: 'תיקון תאונה', color: '#dc2626' },
       other: { label: 'אחר', color: '#64748b' },
     };
+    // מוסיפים/דורסים עם סוגים מה-DB
+    maintenanceTypesFromDB.forEach(type => {
+      const key = type.value || type.key;
+      if (key) map[key] = { label: type.label, color: type.color || '#64748b' };
+    });
+    return map;
   }, [maintenanceTypesFromDB]);
 
   const paidByMap = useMemo(() => ({
