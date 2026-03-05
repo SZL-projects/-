@@ -97,7 +97,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
   ];
 
   // אחד DB types עם DEFAULT_TYPES - DB types מוצגים ראשונים, DEFAULT_TYPES כגיבוי לערכים חסרים
-  const dbValues = new Set(maintenanceTypesProp.map(t => t.value || t.id));
+  const dbValues = new Set(maintenanceTypesProp.map(t => t.value || t.key || t.id));
   const maintenanceTypes = [
     ...maintenanceTypesProp,
     ...DEFAULT_TYPES.filter(t => !dbValues.has(t.value)),
@@ -582,7 +582,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
                 sx={{ borderRadius: '12px' }}
               >
                 {maintenanceTypes.map(type => (
-                  <MenuItem key={type.value || type.id} value={type.value || type.id}>
+                  <MenuItem key={type.value || type.key || type.id} value={type.value || type.key || type.id}>
                     {type.label}
                   </MenuItem>
                 ))}

@@ -306,7 +306,7 @@ export default function Maintenance() {
         });
       } else {
         await maintenanceTypesAPI.create({
-          value: newTypeKey,
+          key: newTypeKey,
           label: newTypeLabel,
           color: newTypeColor
         });
@@ -346,14 +346,16 @@ export default function Maintenance() {
   }, [isSuperAdmin]);
 
   const handleMoveType = useCallback(async (typeId, direction) => {
-    if (!isSuperAdmin) return;
+    if (!isSuperAdmin || !typeId) return;
     const sorted = [...maintenanceTypesFromDB].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     const idx = sorted.findIndex(t => t.id === typeId);
+    if (idx < 0) return;
     if (direction === 'up' && idx === 0) return;
     if (direction === 'down' && idx === sorted.length - 1) return;
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
     const current = sorted[idx];
     const swap = sorted[swapIdx];
+    if (!current?.id || !swap?.id) return;
     try {
       await Promise.all([
         maintenanceTypesAPI.update(current.id, { order: swap.order ?? swapIdx }),

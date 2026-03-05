@@ -310,30 +310,29 @@ async function handleMaintenanceTypesRequest(req, res, db, user, url) {
 
   // GET /api/maintenance-types - קבלת כל סוגי הטיפולים
   if (req.method === 'GET' && !typeId) {
-    const snapshot = await db.collection('maintenanceTypes').orderBy('order', 'asc').get();
-    const types = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-    // אם אין סוגים מוגדרים, החזר את ברירת המחדל
-    if (types.length === 0) {
-      const defaultTypes = [
-        { key: 'routine', label: 'טיפול תקופתי', color: '#2563eb', order: 1 },
-        { key: 'repair', label: 'תיקון', color: '#d97706', order: 2 },
-        { key: 'emergency', label: 'חירום', color: '#dc2626', order: 3 },
-        { key: 'recall', label: 'ריקול', color: '#7c3aed', order: 4 },
-        { key: 'accident_repair', label: 'תיקון תאונה', color: '#dc2626', order: 5 },
-        { key: 'other', label: 'אחר', color: '#64748b', order: 6 },
-      ];
-      return res.json({
-        success: true,
-        types: defaultTypes,
-        isDefault: true
+    let types = [];
+    try {
+      const snapshot = await db.collection('maintenanceTypes').orderBy('order', 'asc').get();
+      types = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          // נרמול: value = key || value (תאימות לשני הפורמטים)
+          value: data.value || data.key,
+        };
+      });
+    } catch (e) {
+      const snapshot = await db.collection('maintenanceTypes').get();
+      types = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return { id: doc.id, ...data, value: data.value || data.key };
       });
     }
 
     return res.json({
       success: true,
       types,
-      isDefault: false
     });
   }
 
