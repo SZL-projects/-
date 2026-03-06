@@ -344,18 +344,21 @@ module.exports = async (req, res) => {
             const checkMonth = month || now.getMonth() + 1;
             const checkYear = year || now.getFullYear();
 
-            // בדיקת כפילות - אם כבר קיימת בקרה לאותו רוכב/כלי/חודש
-            const monthStart = admin.firestore.Timestamp.fromDate(new Date(checkYear, checkMonth - 1, 1));
-            const monthEnd = admin.firestore.Timestamp.fromDate(new Date(checkYear, checkMonth, 0, 23, 59, 59));
+            // בדיקת כפילות - שאילתה לפי riderId בלבד (ללא index מורכב), סינון חודש ב-JS
             const existingCheckSnapshot = await db.collection('monthly_checks')
               .where('riderId', '==', rider.id)
               .where('vehicleId', '==', vehicle.id)
-              .where('checkDate', '>=', monthStart)
-              .where('checkDate', '<=', monthEnd)
-              .limit(1)
               .get();
 
-            if (!existingCheckSnapshot.empty) {
+            const monthStart = new Date(checkYear, checkMonth - 1, 1);
+            const monthEnd = new Date(checkYear, checkMonth, 0, 23, 59, 59);
+            const hasExisting = existingCheckSnapshot.docs.some(doc => {
+              const d = doc.data();
+              const checkDate = d.checkDate?.toDate ? d.checkDate.toDate() : new Date(d.checkDate);
+              return checkDate >= monthStart && checkDate <= monthEnd;
+            });
+
+            if (hasExisting) {
               errors.push({ riderId, error: 'כבר קיימת בקרה לחודש זה' });
               continue;
             }
