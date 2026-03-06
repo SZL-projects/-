@@ -82,6 +82,7 @@ import {
   AddTask,
   Delete,
   Close,
+  EditNote,
 } from '@mui/icons-material';
 import { monthlyChecksAPI, ridersAPI, vehiclesAPI, tasksAPI, authAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -1225,7 +1226,7 @@ export default function MonthlyChecks() {
                 </Card>
               </Grid>
 
-              {selectedCheck.checkResults && (
+              {selectedCheck.checkResults && Object.keys(selectedCheck.checkResults).length > 0 && (
                 <>
                   <Grid item xs={12}>
                     <Divider sx={{ my: 1 }} />
@@ -1370,6 +1371,17 @@ export default function MonthlyChecks() {
                 <Grid item xs={12}>
                   <Divider sx={{ my: 1 }} />
                   <Stack direction="column" spacing={1} sx={{ mt: 1 }}>
+                    {selectedCheck.status === 'pending' && (
+                      <Button
+                        fullWidth
+                        onClick={() => { setDetailsDialogOpen(false); navigate(`/monthly-check/${selectedCheck._id || selectedCheck.id}`); }}
+                        variant="outlined"
+                        startIcon={<EditNote />}
+                        sx={{ borderRadius: '12px', fontWeight: 600, borderColor: '#6366f1', color: '#6366f1' }}
+                      >
+                        מלא במקום הרוכב
+                      </Button>
+                    )}
                     {(checkHasIssues(selectedCheck) || selectedCheck.status !== 'pending') && (
                       <Button
                         fullWidth
@@ -1419,6 +1431,23 @@ export default function MonthlyChecks() {
             >
               סגור
             </Button>
+            {hasPermission('monthly_checks', 'edit') && selectedCheck?.status === 'pending' && (
+              <Button
+                onClick={() => { setDetailsDialogOpen(false); navigate(`/monthly-check/${selectedCheck._id || selectedCheck.id}`); }}
+                variant="outlined"
+                startIcon={<EditNote />}
+                sx={{
+                  borderRadius: '12px',
+                  px: 3,
+                  fontWeight: 600,
+                  borderColor: '#6366f1',
+                  color: '#6366f1',
+                  '&:hover': { borderColor: '#4f46e5', bgcolor: 'rgba(99,102,241,0.06)' },
+                }}
+              >
+                מלא במקום הרוכב
+              </Button>
+            )}
             {hasPermission('monthly_checks', 'edit') && selectedCheck && (checkHasIssues(selectedCheck) || selectedCheck.status !== 'pending') && (
               <Button
                 onClick={handleCreateTask}
