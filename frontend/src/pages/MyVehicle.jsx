@@ -168,15 +168,18 @@ export default function MyVehicle() {
         const riderId = riderData?.id || riderData?._id;
         const checksResponse = await monthlyChecksAPI.getAll({ vehicleId, riderId });
         const checks = checksResponse.data.monthlyChecks || [];
-        checks.sort((a, b) => {
-          const dateA = a.checkDate?.seconds ? new Date(a.checkDate.seconds * 1000) : new Date(a.checkDate);
-          const dateB = b.checkDate?.seconds ? new Date(b.checkDate.seconds * 1000) : new Date(b.checkDate);
-          return dateB - dateA;
-        });
+        const parseCheckDate = (checkDate) => {
+          if (!checkDate) return new Date(0);
+          if (checkDate.toDate) return checkDate.toDate();
+          if (checkDate.seconds) return new Date(checkDate.seconds * 1000);
+          if (checkDate._seconds) return new Date(checkDate._seconds * 1000);
+          return new Date(checkDate);
+        };
+        checks.sort((a, b) => parseCheckDate(b.checkDate) - parseCheckDate(a.checkDate));
         // הצג לרוכב רק את בקרת החודש הנוכחי
         const now = new Date();
         const currentMonthChecks = checks.filter(c => {
-          const d = c.checkDate?.seconds ? new Date(c.checkDate.seconds * 1000) : new Date(c.checkDate);
+          const d = parseCheckDate(c.checkDate);
           return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
         });
         setMonthlyChecks(currentMonthChecks);
