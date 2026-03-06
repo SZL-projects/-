@@ -115,6 +115,7 @@ export default function Maintenance() {
   const [newSubTypeLabel, setNewSubTypeLabel] = useState('');
   const [editingSubType, setEditingSubType] = useState(null); // { typeId, subId, label }
   const [deleteTypeConfirm, setDeleteTypeConfirm] = useState(null); // { id, label, hasRecords }
+  const [reordering, setReordering] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -356,7 +357,7 @@ export default function Maintenance() {
   }, [isSuperAdmin, maintenanceTypesFromDB]);
 
   const handleMoveType = useCallback(async (typeId, direction) => {
-    if (!isSuperAdmin || !typeId) return;
+    if (!isSuperAdmin || !typeId || reordering) return;
     const sorted = [...maintenanceTypesFromDB].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     const idx = sorted.findIndex(t => t.id === typeId);
     if (idx < 0) return;
@@ -364,8 +365,8 @@ export default function Maintenance() {
     if (direction === 'down' && idx === sorted.length - 1) return;
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
     if (!sorted[idx]?.id || !sorted[swapIdx]?.id) return;
+    setReordering(true);
     try {
-      // תמיד שימוש ב-index כ-order חדש - לא תלוי בערכים הקיימים
       await Promise.all([
         maintenanceTypesAPI.update(sorted[idx].id, { order: swapIdx }),
         maintenanceTypesAPI.update(sorted[swapIdx].id, { order: idx }),
@@ -374,8 +375,10 @@ export default function Maintenance() {
       setMaintenanceTypesFromDB(response.data.types || []);
     } catch (err) {
       console.error('Error reordering types:', err);
+    } finally {
+      setReordering(false);
     }
-  }, [isSuperAdmin, maintenanceTypesFromDB]);
+  }, [isSuperAdmin, maintenanceTypesFromDB, reordering]);
 
   const handleSaveSubType = useCallback(async (typeId) => {
     if (!isSuperAdmin) return;
@@ -410,7 +413,7 @@ export default function Maintenance() {
   }, [isSuperAdmin]);
 
   const handleMoveSubType = useCallback(async (typeId, subId, direction) => {
-    if (!isSuperAdmin) return;
+    if (!isSuperAdmin || reordering) return;
     const type = maintenanceTypesFromDB.find(t => t.id === typeId);
     if (!type) return;
     const sorted = [...(type.subTypes || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -419,19 +422,21 @@ export default function Maintenance() {
     if (direction === 'up' && idx === 0) return;
     if (direction === 'down' && idx === sorted.length - 1) return;
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    // עדכון ה-order
     const newSorted = sorted.map((s, i) => ({ ...s, order: i }));
     const temp = newSorted[idx].order;
     newSorted[idx] = { ...newSorted[idx], order: newSorted[swapIdx].order };
     newSorted[swapIdx] = { ...newSorted[swapIdx], order: temp };
+    setReordering(true);
     try {
       await maintenanceTypesAPI.update(typeId, { subTypes: newSorted });
       const response = await maintenanceTypesAPI.getAll();
       setMaintenanceTypesFromDB(response.data.types || []);
     } catch (err) {
       console.error('Error reordering sub-type:', err);
+    } finally {
+      setReordering(false);
     }
-  }, [isSuperAdmin, maintenanceTypesFromDB]);
+  }, [isSuperAdmin, maintenanceTypesFromDB, reordering]);
 
   const handleClearSubTypes = useCallback(async (typeId) => {
     if (!isSuperAdmin) return;
@@ -2222,10 +2227,10 @@ export default function Maintenance() {
                   </Box>
                   {isSuperAdmin && (
                     <Box sx={{ display: 'flex', gap: 0 }}>
-                      <IconButton size="small" onClick={() => handleMoveType(dbType.id, 'up')} disabled={idx === 0} sx={{ color: '#64748b' }}>
+                      <IconButton size="small" onClick={() => handleMoveType(dbType.id, 'up')} disabled={idx === 0 || reordering} sx={{ color: '#64748b' }}>
                         <ArrowUpward fontSize="small" />
                       </IconButton>
-                      <IconButton size="small" onClick={() => handleMoveType(dbType.id, 'down')} disabled={idx === arr.length - 1} sx={{ color: '#64748b' }}>
+                      <IconButton size="small" onClick={() => handleMoveType(dbType.id, 'down')} disabled={idx === arr.length - 1 || reordering} sx={{ color: '#64748b' }}>
                         <ArrowDownward fontSize="small" />
                       </IconButton>
                       <IconButton
@@ -2274,10 +2279,10 @@ export default function Maintenance() {
                           </>
                         ) : (
                           <>
-                            <IconButton size="small" onClick={() => handleMoveSubType(dbType.id, sub.id, 'up')} disabled={subIdx === 0} sx={{ color: '#64748b', p: 0.3 }}>
+                            <IconButton size="small" onClick={() => handleMoveSubType(dbType.id, sub.id, 'up')} disabled={subIdx === 0 || reordering} sx={{ color: '#64748b', p: 0.3 }}>
                               <ArrowUpward sx={{ fontSize: 13 }} />
                             </IconButton>
-                            <IconButton size="small" onClick={() => handleMoveSubType(dbType.id, sub.id, 'down')} disabled={subIdx === subArr.length - 1} sx={{ color: '#64748b', p: 0.3 }}>
+                            <IconButton size="small" onClick={() => handleMoveSubType(dbType.id, sub.id, 'down')} disabled={subIdx === subArr.length - 1 || reordering} sx={{ color: '#64748b', p: 0.3 }}>
                               <ArrowDownward sx={{ fontSize: 13 }} />
                             </IconButton>
                             <Typography sx={{ flex: 1, fontSize: 13, color: '#475569', px: 0.5 }}>• {sub.label}</Typography>
