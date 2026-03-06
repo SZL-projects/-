@@ -317,7 +317,7 @@ export default function MonthlyCheckForm() {
 
       setSuccess(true);
       setTimeout(() => {
-        navigate('/my-profile');
+        navigate(-1);
       }, 2500);
     } catch (err) {
       console.error('Error submitting monthly check:', err);
@@ -408,7 +408,7 @@ export default function MonthlyCheckForm() {
         </Alert>
         <Button
           variant="outlined"
-          onClick={() => navigate('/my-vehicle')}
+          onClick={() => navigate(-1)}
           sx={{
             borderRadius: '10px',
             borderColor: '#6366f1',
@@ -1045,7 +1045,7 @@ export default function MonthlyCheckForm() {
 
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Button
-              onClick={() => navigate('/my-vehicle')}
+              onClick={() => navigate(-1)}
               sx={{
                 borderRadius: '10px',
                 px: 3,
