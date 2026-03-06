@@ -101,8 +101,12 @@ export default function MonthlyCheckForm() {
 
           // בדיקה שהבקרה שייכת לחודש הנוכחי - אחרת חוסמים גישה
           const now = new Date();
-          const checkDateObj = checkData.checkDate?.seconds
+          const checkDateObj = checkData.checkDate?.toDate
+            ? checkData.checkDate.toDate()
+            : checkData.checkDate?.seconds
             ? new Date(checkData.checkDate.seconds * 1000)
+            : checkData.checkDate?._seconds
+            ? new Date(checkData.checkDate._seconds * 1000)
             : new Date(checkData.checkDate);
           const isCurrentMonth =
             checkDateObj.getFullYear() === now.getFullYear() &&
