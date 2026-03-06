@@ -363,13 +363,12 @@ export default function Maintenance() {
     if (direction === 'up' && idx === 0) return;
     if (direction === 'down' && idx === sorted.length - 1) return;
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    const current = sorted[idx];
-    const swap = sorted[swapIdx];
-    if (!current?.id || !swap?.id) return;
+    if (!sorted[idx]?.id || !sorted[swapIdx]?.id) return;
     try {
+      // תמיד שימוש ב-index כ-order חדש - לא תלוי בערכים הקיימים
       await Promise.all([
-        maintenanceTypesAPI.update(current.id, { order: swap.order ?? swapIdx }),
-        maintenanceTypesAPI.update(swap.id, { order: current.order ?? idx }),
+        maintenanceTypesAPI.update(sorted[idx].id, { order: swapIdx }),
+        maintenanceTypesAPI.update(sorted[swapIdx].id, { order: idx }),
       ]);
       const response = await maintenanceTypesAPI.getAll();
       setMaintenanceTypesFromDB(response.data.types || []);
