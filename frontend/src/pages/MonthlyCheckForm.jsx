@@ -98,6 +98,22 @@ export default function MonthlyCheckForm() {
         try {
           const checkResponse = await monthlyChecksAPI.getById(checkId);
           const checkData = checkResponse.data.monthlyCheck || checkResponse.data;
+
+          // בדיקה שהבקרה שייכת לחודש הנוכחי - אחרת חוסמים גישה
+          const now = new Date();
+          const checkDateObj = checkData.checkDate?.seconds
+            ? new Date(checkData.checkDate.seconds * 1000)
+            : new Date(checkData.checkDate);
+          const isCurrentMonth =
+            checkDateObj.getFullYear() === now.getFullYear() &&
+            checkDateObj.getMonth() === now.getMonth();
+
+          if (!isCurrentMonth) {
+            setError('הבקרה החודשית פגת תוקף. ניתן למלא רק את בקרת החודש הנוכחי.');
+            setLoading(false);
+            return;
+          }
+
           setExistingCheck(checkData);
 
           if (checkData.vehicleId) {

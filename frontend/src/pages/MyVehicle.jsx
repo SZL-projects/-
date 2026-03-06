@@ -173,7 +173,13 @@ export default function MyVehicle() {
           const dateB = b.checkDate?.seconds ? new Date(b.checkDate.seconds * 1000) : new Date(b.checkDate);
           return dateB - dateA;
         });
-        setMonthlyChecks(checks);
+        // הצג לרוכב רק את בקרת החודש הנוכחי
+        const now = new Date();
+        const currentMonthChecks = checks.filter(c => {
+          const d = c.checkDate?.seconds ? new Date(c.checkDate.seconds * 1000) : new Date(c.checkDate);
+          return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+        });
+        setMonthlyChecks(currentMonthChecks);
       } catch (err) {
         console.error('Error loading monthly checks:', err);
       }
@@ -482,7 +488,7 @@ export default function MyVehicle() {
                 </Box>
               ) : (
                 <Grid container spacing={2}>
-                  {monthlyChecks.slice(0, 6).map((check) => {
+                  {monthlyChecks.map((check) => {
                     const checkDate = check.checkDate?.seconds
                       ? new Date(check.checkDate.seconds * 1000)
                       : new Date(check.checkDate);

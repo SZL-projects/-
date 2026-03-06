@@ -149,16 +149,16 @@ module.exports = async (req, res) => {
         if (checkResults.waterCheck === 'low' || checkResults.waterCheck === 'not_ok') {
           issues.push('מים - נמוך/לא תקין');
         }
-        if (checkResults.brakesCondition === 'bad' || checkResults.brakesCondition === 'fair') {
-          issues.push(`בלמים - ${checkResults.brakesCondition === 'bad' ? 'לא תקין' : 'בינוני'}`);
+        if (checkResults.brakesCondition === 'poor' || checkResults.brakesCondition === 'bad' || checkResults.brakesCondition === 'fair') {
+          issues.push(`בלמים - ${(checkResults.brakesCondition === 'poor' || checkResults.brakesCondition === 'bad') ? 'לא תקין' : 'בינוני'}`);
         }
-        if (checkResults.lightsCondition === 'bad' || checkResults.lightsCondition === 'fair') {
-          issues.push(`פנסים - ${checkResults.lightsCondition === 'bad' ? 'לא תקין' : 'בינוני'}`);
+        if (checkResults.lightsCondition === 'poor' || checkResults.lightsCondition === 'bad' || checkResults.lightsCondition === 'fair') {
+          issues.push(`פנסים - ${(checkResults.lightsCondition === 'poor' || checkResults.lightsCondition === 'bad') ? 'לא תקין' : 'בינוני'}`);
         }
-        if (checkResults.mirrorsCondition === 'bad') {
+        if (checkResults.mirrorsCondition === 'poor' || checkResults.mirrorsCondition === 'bad') {
           issues.push('מראות - לא תקין');
         }
-        if (checkResults.helmetCondition === 'bad') {
+        if (checkResults.helmetCondition === 'poor' || checkResults.helmetCondition === 'bad') {
           issues.push('קסדה - לא תקין');
         }
         if (req.body.issues && req.body.issues.trim()) {
@@ -270,8 +270,8 @@ module.exports = async (req, res) => {
       // סינון לפי הרשאות - רוכב רואה רק את עצמו
       const permLevel = await checkPermission(user, db, 'monthly_checks', 'view');
 
-      // אם לא הוגדר riderId וההרשאה היא self - סנן לפי riderId שלו
-      if (!riderId && permLevel === 'self' && user.riderId) {
+      // אם ההרשאה היא self - תמיד סנן לפי riderId של המשתמש עצמו (גם אם הועבר riderId אחר)
+      if (permLevel === 'self' && user.riderId) {
         query = db.collection('monthly_checks').where('riderId', '==', user.riderId);
       }
 

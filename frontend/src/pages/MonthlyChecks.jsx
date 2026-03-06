@@ -161,17 +161,17 @@ export default function MonthlyChecks() {
       if (c.hasIssues || c.status === 'issues') return true;
       if (results.oilCheck === 'low' || results.oilCheck === 'not_ok') return true;
       if (results.waterCheck === 'low' || results.waterCheck === 'not_ok') return true;
-      if (results.brakesCondition === 'bad' || results.brakesCondition === 'fair') return true;
-      if (results.lightsCondition === 'bad' || results.lightsCondition === 'fair') return true;
-      if (results.mirrorsCondition === 'bad') return true;
-      if (results.helmetCondition === 'bad') return true;
+      if (results.brakesCondition === 'poor' || results.brakesCondition === 'bad' || results.brakesCondition === 'fair') return true;
+      if (results.lightsCondition === 'poor' || results.lightsCondition === 'bad' || results.lightsCondition === 'fair') return true;
+      if (results.mirrorsCondition === 'poor' || results.mirrorsCondition === 'bad') return true;
+      if (results.helmetCondition === 'poor' || results.helmetCondition === 'bad') return true;
       return false;
     });
 
     return {
       total: checks.length,
       thisMonth: thisMonthChecks.length,
-      pending: checks.filter(c => c.status === 'pending').length,
+      pending: thisMonthChecks.filter(c => c.status === 'pending').length,
       completed: checks.filter(c => c.status === 'completed' || c.status === 'passed').length,
       issues: checksWithIssues.length,
     };
@@ -209,10 +209,10 @@ export default function MonthlyChecks() {
     const results = check.checkResults || {};
     if (results.oilCheck === 'low' || results.oilCheck === 'not_ok') return true;
     if (results.waterCheck === 'low' || results.waterCheck === 'not_ok') return true;
-    if (results.brakesCondition === 'bad' || results.brakesCondition === 'fair') return true;
-    if (results.lightsCondition === 'bad' || results.lightsCondition === 'fair') return true;
-    if (results.mirrorsCondition === 'bad') return true;
-    if (results.helmetCondition === 'bad') return true;
+    if (results.brakesCondition === 'poor' || results.brakesCondition === 'bad' || results.brakesCondition === 'fair') return true;
+    if (results.lightsCondition === 'poor' || results.lightsCondition === 'bad' || results.lightsCondition === 'fair') return true;
+    if (results.mirrorsCondition === 'poor' || results.mirrorsCondition === 'bad') return true;
+    if (results.helmetCondition === 'poor' || results.helmetCondition === 'bad') return true;
 
     return false;
   };
@@ -297,7 +297,13 @@ export default function MonthlyChecks() {
   }, [loadData]);
 
   const handleSendToAll = useCallback(async () => {
-    const pendingChecks = checks.filter(c => c.status === 'pending');
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const pendingChecks = checks.filter(c => {
+      if (c.status !== 'pending') return false;
+      const d = safeParseDate(c.checkDate);
+      return d && d >= firstDayOfMonth;
+    });
 
     if (pendingChecks.length === 0) {
       setSnackbar({ open: true, message: 'אין בקרות ממתינות לשליחה', severity: 'info' });

@@ -293,11 +293,20 @@ module.exports = async (req, res) => {
               })
           );
 
+          const todayStr = now.toDateString();
           for (const check of currentMonthChecks) {
             const riderEmail = check.riderId ? riderEmailMap[check.riderId] : null;
             if (!riderEmail) {
               console.log(`[Cron] אין מייל לרוכב ${check.riderName} (${check.riderId}), מדלג`);
               continue;
+            }
+            // מניעת שליחה כפולה באותו יום
+            if (check.lastReminderSent) {
+              const lastSent = check.lastReminderSent.toDate ? check.lastReminderSent.toDate() : new Date(check.lastReminderSent);
+              if (lastSent.toDateString() === todayStr) {
+                console.log(`[Cron] תזכורת כבר נשלחה היום ל-${check.riderName}, מדלג`);
+                continue;
+              }
             }
             try {
               await emailService.sendMonthlyCheckReminder({
@@ -307,6 +316,10 @@ module.exports = async (req, res) => {
                 monthName: currentMonthName,
                 year: currentYear,
                 checkId: check.id
+              });
+              // עדכון תאריך שליחה אחרון
+              await db.collection('monthly_checks').doc(check.id).update({
+                lastReminderSent: admin.firestore.FieldValue.serverTimestamp()
               });
               results.monthlyReminders++;
               console.log(`[Cron] תזכורת בקרה נשלחה ל-${check.riderName} (${riderEmail})`);
