@@ -26,7 +26,6 @@ import {
   CheckCircle,
   Info,
   Speed,
-  LocalGasStation,
   FolderOpen,
   OpenInNew,
   Description,
@@ -349,7 +348,7 @@ export default function MyVehicle() {
                 <Grid item xs={6}>
                   <Typography variant="caption" sx={{ color: '#94a3b8' }}>סוג כלי</Typography>
                   <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
-                    {vehicle.type || 'אופנוע'}
+                    {vehicle.type === 'scooter' ? 'קטנוע' : vehicle.type === 'motorcycle' ? 'אופנוע' : vehicle.type || 'אופנוע'}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
@@ -419,18 +418,7 @@ export default function MyVehicle() {
                     <Box>
                       <Typography variant="caption" sx={{ color: '#94a3b8' }}>קילומטר אחרון</Typography>
                       <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
-                        {vehicle.currentMileage ? `${vehicle.currentMileage.toLocaleString()} ק"מ` : '-'}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Grid>
-                <Grid item xs={6}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <LocalGasStation sx={{ color: '#94a3b8', fontSize: 18 }} />
-                    <Box>
-                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>צריכת דלק</Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
-                        {vehicle.fuelConsumption ? `${vehicle.fuelConsumption} ל'/100` : '-'}
+                        {(vehicle.currentKilometers || vehicle.currentMileage) ? `${(vehicle.currentKilometers || vehicle.currentMileage).toLocaleString()} ק"מ` : '-'}
                       </Typography>
                     </Box>
                   </Box>
@@ -492,12 +480,18 @@ export default function MyVehicle() {
               ) : (
                 <Grid container spacing={2}>
                   {monthlyChecks.map((check) => {
-                    const checkDate = check.checkDate?.seconds
-                      ? new Date(check.checkDate.seconds * 1000)
-                      : new Date(check.checkDate);
+                    const rawDate = check.checkDate;
+                    const checkDate = rawDate?._seconds
+                      ? new Date(rawDate._seconds * 1000)
+                      : rawDate?.seconds
+                      ? new Date(rawDate.seconds * 1000)
+                      : rawDate
+                      ? new Date(rawDate)
+                      : null;
                     const monthNames = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
-                    const monthName = monthNames[checkDate.getMonth()];
-                    const year = checkDate.getFullYear();
+                    const isValidDate = checkDate && !isNaN(checkDate.getTime());
+                    const monthName = isValidDate ? monthNames[checkDate.getMonth()] : '';
+                    const year = isValidDate ? checkDate.getFullYear() : '';
 
                     const statusConfig = {
                       pending: { label: 'ממתין', bgcolor: 'rgba(245, 158, 11, 0.1)', color: '#d97706', icon: <HourglassEmpty fontSize="small" /> },
