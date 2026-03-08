@@ -154,6 +154,7 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onSnapshot(
       permissionsDoc,
       (snapshot) => {
+        console.log('[Permissions] onSnapshot fired, exists:', snapshot.exists());
         if (!snapshot.exists()) return;
         const roles = snapshot.data().roles || {};
 
@@ -169,6 +170,7 @@ export const AuthProvider = ({ children }) => {
           }
           effectivePermissions[entity] = highest;
         }
+        console.log('[Permissions] updated:', effectivePermissions);
         setUserPermissions(effectivePermissions);
       },
       (error) => {
