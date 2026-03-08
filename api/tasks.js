@@ -107,7 +107,7 @@ module.exports = async (req, res) => {
       const permLevel = await checkPermission(user, db, 'tasks', 'view');
 
       if (permLevel === 'self') {
-        query = query.where('assignedTo', '==', user.id);
+        query = query.where('assigneeId', '==', user.id);
       }
 
       const snapshot = await query.limit(parseInt(limit)).get();
