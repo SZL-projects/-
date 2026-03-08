@@ -286,17 +286,14 @@ export default function InsuranceClaimDialog({ open, onClose, claim, vehicles, r
                 label="כלי *"
                 sx={{ borderRadius: '12px' }}
               >
-                {vehicles.map(vehicle => {
-                  const rider = riders?.find(r => r.id === vehicle.assignedRiderId);
-                  return (
-                    <MenuItem key={vehicle.id} value={vehicle.id}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                        <span>{vehicle.licensePlate} - {vehicle.manufacturer} {vehicle.model}</span>
-                        {rider && <span style={{ color: '#6b7280', fontSize: '0.85em', marginRight: 8 }}>{rider.name}</span>}
-                      </Box>
-                    </MenuItem>
-                  );
-                })}
+                {vehicles.map(vehicle => (
+                  <MenuItem key={vehicle.id} value={vehicle.id}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span>{vehicle.licensePlate} - {vehicle.manufacturer} {vehicle.model}</span>
+                      {vehicle.assignedRiderName && <span style={{ color: '#6b7280', fontSize: '0.85em', marginRight: 8 }}>{vehicle.assignedRiderName}</span>}
+                    </Box>
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
           </Grid>
