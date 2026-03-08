@@ -152,6 +152,8 @@ router.post('/reset', async (req, res) => {
 router.get('/my', async (req, res) => {
   try {
     const userRoles = Array.isArray(req.user.roles) ? req.user.roles : [req.user.role];
+    // תמיד קרא מ-Firestore ישירות (ללא cache) - כדי שעדכוני הרשאות יגיעו מיידית
+    PermissionModel.clearCache();
     const permissions = await PermissionModel.getPermissions();
     const metadata = PermissionModel.getMetadata();
 
