@@ -103,25 +103,11 @@ module.exports = async (req, res) => {
         query = query.where('vehicleId', '==', vehicleId);
       }
 
-      // סינון לפי הרשאות - self רואה רק משימות של הכלי שלו
+      // סינון לפי הרשאות - self רואה רק משימות המשויכות אליו
       const permLevel = await checkPermission(user, db, 'tasks', 'view');
 
-      if (permLevel === 'self' && user.riderId) {
-        // נמצא את הרוכב כדי לקבל את assignedVehicleId
-        const riderSnapshot = await db.collection('riders').doc(user.riderId).get();
-        if (riderSnapshot.exists) {
-          const riderData = riderSnapshot.data();
-          if (riderData.assignedVehicleId) {
-            query = query.where('vehicleId', '==', riderData.assignedVehicleId);
-          } else {
-            // אין כלי משויך - מחזיר מערך ריק
-            return res.status(200).json({
-              success: true,
-              count: 0,
-              tasks: []
-            });
-          }
-        }
+      if (permLevel === 'self') {
+        query = query.where('assignedTo', '==', user.id);
       }
 
       const snapshot = await query.limit(parseInt(limit)).get();

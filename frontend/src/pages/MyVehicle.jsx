@@ -33,11 +33,12 @@ import {
   Download,
   Assignment,
   HourglassEmpty,
+  TaskAlt,
   Badge as BadgeIcon,
   Factory,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { vehiclesAPI, ridersAPI, faultsAPI, monthlyChecksAPI, maintenanceAPI } from '../services/api';
+import { vehiclesAPI, ridersAPI, faultsAPI, monthlyChecksAPI, maintenanceAPI, tasksAPI } from '../services/api';
 import MaintenanceDialog from '../components/MaintenanceDialog';
 
 export default function MyVehicle() {
@@ -53,6 +54,7 @@ export default function MyVehicle() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [maintenanceDialogOpen, setMaintenanceDialogOpen] = useState(false);
+  const [myTasks, setMyTasks] = useState([]);
 
   // מפת סטטוסים מודרנית
   const statusMap = useMemo(() => ({
@@ -184,6 +186,13 @@ export default function MyVehicle() {
         setMonthlyChecks(currentMonthChecks);
       } catch (err) {
         console.error('Error loading monthly checks:', err);
+      }
+
+      try {
+        const tasksResponse = await tasksAPI.getAll();
+        setMyTasks(tasksResponse.data.tasks || []);
+      } catch (err) {
+        console.error('Error loading tasks:', err);
       }
 
       setError('');
@@ -580,6 +589,52 @@ export default function MyVehicle() {
             </CardContent>
           </Card>
         </Grid>
+
+        {/* משימות */}
+        {myTasks.length > 0 && (
+          <Grid item xs={12}>
+            <Card sx={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                  <Box sx={{ width: 40, height: 40, borderRadius: '10px', bgcolor: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <TaskAlt sx={{ color: '#059669', fontSize: 20 }} />
+                  </Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                    המשימות שלי
+                  </Typography>
+                  <Chip label={myTasks.length} size="small" sx={{ bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#059669', fontWeight: 700 }} />
+                </Box>
+                <Divider sx={{ mb: 3, borderColor: '#e2e8f0' }} />
+                <List sx={{ p: 0 }}>
+                  {myTasks.map((task, index) => {
+                    const priorityMap = { high: { label: 'דחוף', color: '#dc2626', bg: 'rgba(239,68,68,0.1)' }, medium: { label: 'בינוני', color: '#d97706', bg: 'rgba(245,158,11,0.1)' }, low: { label: 'נמוך', color: '#059669', bg: 'rgba(16,185,129,0.1)' } };
+                    const statusMap2 = { pending: 'ממתין', in_progress: 'בביצוע', completed: 'הושלם', cancelled: 'בוטל' };
+                    const p = priorityMap[task.priority] || priorityMap.medium;
+                    return (
+                      <ListItem key={task.id || index} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px', mb: 1.5, flexDirection: 'column', alignItems: 'flex-start' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                          <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>{task.title}</Typography>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Chip label={p.label} size="small" sx={{ bgcolor: p.bg, color: p.color, fontWeight: 600, fontSize: '0.72rem' }} />
+                            <Chip label={statusMap2[task.status] || task.status} size="small" sx={{ bgcolor: 'rgba(99,102,241,0.1)', color: '#6366f1', fontWeight: 600, fontSize: '0.72rem' }} />
+                          </Box>
+                        </Box>
+                        {task.description && (
+                          <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5 }}>{task.description}</Typography>
+                        )}
+                        {task.dueDate && (
+                          <Typography variant="caption" sx={{ color: '#94a3b8', mt: 0.5 }}>
+                            תאריך יעד: {new Date(task.dueDate?.seconds ? task.dueDate.seconds * 1000 : task.dueDate).toLocaleDateString('he-IL')}
+                          </Typography>
+                        )}
+                      </ListItem>
+                    );
+                  })}
+                </List>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
 
         {/* תקלות אחרונות */}
         <Grid item xs={12}>
