@@ -1,6 +1,8 @@
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { authAPI, permissionsAPI, setLogoutCallback } from '../services/api';
+import { db } from '../config/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 const AuthContext = createContext(null);
 
@@ -140,19 +142,16 @@ export const AuthProvider = ({ children }) => {
     }
   }, [location.pathname]);
 
-  // האזנה ל-SSE - ריענון הרשאות מיידי כשמנהל משנה אותן
+  // האזנה ל-Firestore - ריענון הרשאות מיידי כשמנהל משנה אותן
   useEffect(() => {
     if (!user) return;
 
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    const API_URL = import.meta.env.VITE_API_URL || '/api';
-    const eventSource = new EventSource(`${API_URL}/permissions/events?token=${token}`);
-
-    eventSource.addEventListener('permissions-updated', () => {
+    const permissionsDoc = doc(db, 'permissions', 'default');
+    const unsubscribe = onSnapshot(permissionsDoc, () => {
       loadPermissions();
     });
 
-    return () => eventSource.close();
+    return () => unsubscribe();
   }, [user?.id]);
 
   const logout = useCallback(() => {

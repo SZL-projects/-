@@ -3,23 +3,24 @@
   "version": "3.23.0",
   "type": "module",
   "scripts": {
-    "start":"vite",
+    "start": "vite",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.15.0",
+    "@mui/material": "^5.15.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "axios": "^1.6.2",
+    "firebase": "^12.10.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.0",
-    "@mui/material": "^5.15.0",
-    "@mui/icons-material": "^5.15.0",
-    "@emotion/react": "^11.11.1",
-    "@emotion/styled": "^11.11.0",
-    "axios": "^1.6.2",
     "recharts": "^2.10.3",
-    "vite": "^5.0.8",
-    "@vitejs/plugin-react": "^4.2.1"
+    "vite": "^5.0.8"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
