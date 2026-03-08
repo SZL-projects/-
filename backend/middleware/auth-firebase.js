@@ -10,6 +10,11 @@ exports.protect = async (req, res, next) => {
     token = req.headers.authorization.split(' ')[1];
   }
 
+  // תמיכה ב-SSE: token דרך query string (EventSource לא תומך ב-headers)
+  if (!token && req.query.token) {
+    token = req.query.token;
+  }
+
   // בדיקה אם token קיים
   if (!token) {
     return res.status(401).json({

@@ -3,6 +3,31 @@ const router = express.Router();
 const PermissionModel = require('../models/firestore/PermissionModel');
 const { protect } = require('../middleware/auth-firebase');
 const { logAudit } = require('../middleware/auditLogger');
+const sseManager = require('../utils/sseManager');
+
+// @route   GET /api/permissions/events
+// @desc    SSE - האזנה לשינויי הרשאות בזמן אמת
+// @access  Private
+router.get('/events', protect, (req, res) => {
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  });
+  res.flushHeaders();
+
+  // שליחת heartbeat כל 30 שניות כדי שהחיבור לא ייסגר
+  const heartbeat = setInterval(() => {
+    res.write(': heartbeat\n\n');
+  }, 30000);
+
+  sseManager.addClient(res);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    sseManager.removeClient(res);
+  });
+});
 
 // כל הנתיבים מוגנים
 router.use(protect);
@@ -65,6 +90,9 @@ router.put('/', async (req, res) => {
       message: 'ההרשאות עודכנו בהצלחה',
       permissions: updated,
     });
+
+    // שליחת אירוע SSE לכל המשתמשים המחוברים
+    sseManager.broadcast('permissions-updated', { updatedAt: Date.now() });
 
     for (const role of Object.keys(permissions)) {
       await logAudit(req, {
