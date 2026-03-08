@@ -16,6 +16,8 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  TextField,
+  Collapse,
 } from '@mui/material';
 import {
   TwoWheeler,
@@ -55,6 +57,8 @@ export default function MyVehicle() {
   const [error, setError] = useState('');
   const [maintenanceDialogOpen, setMaintenanceDialogOpen] = useState(false);
   const [myTasks, setMyTasks] = useState([]);
+  const [taskNotes, setTaskNotes] = useState({});
+  const [expandedNotes, setExpandedNotes] = useState({});
 
   // מפת סטטוסים מודרנית
   const statusMap = useMemo(() => ({
@@ -645,6 +649,48 @@ export default function MyVehicle() {
                           <Typography variant="caption" sx={{ color: '#94a3b8', mt: 0.5 }}>
                             תאריך יעד: {new Date(task.dueDate?.seconds ? task.dueDate.seconds * 1000 : task.dueDate).toLocaleDateString('he-IL')}
                           </Typography>
+                        )}
+                        {/* הערות רוכב */}
+                        {task.riderNotes && !expandedNotes[task.id] && (
+                          <Box sx={{ mt: 1, p: 1, bgcolor: 'rgba(99,102,241,0.05)', borderRadius: '8px', width: '100%' }}>
+                            <Typography variant="caption" sx={{ color: '#6366f1', fontWeight: 600 }}>הערה: </Typography>
+                            <Typography variant="caption" sx={{ color: '#475569' }}>{task.riderNotes}</Typography>
+                          </Box>
+                        )}
+                        <Collapse in={!!expandedNotes[task.id]} sx={{ width: '100%' }}>
+                          <Box sx={{ mt: 1.5, width: '100%' }}>
+                            <TextField
+                              fullWidth
+                              multiline
+                              rows={2}
+                              size="small"
+                              label="הוסף הערה"
+                              value={taskNotes[task.id] ?? (task.riderNotes || '')}
+                              onChange={e => setTaskNotes(prev => ({ ...prev, [task.id]: e.target.value }))}
+                              sx={{ mb: 1 }}
+                            />
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Button size="small" variant="contained" sx={{ borderRadius: '8px', bgcolor: '#6366f1', '&:hover': { bgcolor: '#4f46e5' } }}
+                                onClick={async () => {
+                                  try {
+                                    const note = taskNotes[task.id] ?? task.riderNotes ?? '';
+                                    await tasksAPI.update(task.id, { riderNotes: note });
+                                    setMyTasks(prev => prev.map(t => t.id === task.id ? { ...t, riderNotes: note } : t));
+                                    setExpandedNotes(prev => ({ ...prev, [task.id]: false }));
+                                  } catch (err) {
+                                    console.error('Error saving note:', err);
+                                  }
+                                }}>שמור</Button>
+                              <Button size="small" variant="outlined" sx={{ borderRadius: '8px' }}
+                                onClick={() => setExpandedNotes(prev => ({ ...prev, [task.id]: false }))}>ביטול</Button>
+                            </Box>
+                          </Box>
+                        </Collapse>
+                        {!expandedNotes[task.id] && (
+                          <Button size="small" variant="text" sx={{ mt: 0.5, color: '#6366f1', fontSize: '0.75rem', p: 0, minWidth: 0 }}
+                            onClick={() => setExpandedNotes(prev => ({ ...prev, [task.id]: true }))}>
+                            {task.riderNotes ? 'ערוך הערה' : '+ הוסף הערה'}
+                          </Button>
                         )}
                       </ListItem>
                     );
