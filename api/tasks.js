@@ -49,14 +49,23 @@ module.exports = async (req, res) => {
       }
 
       if (req.method === 'PUT') {
-        await checkPermission(user, db, 'tasks', 'edit');
+        const permLevel = await checkPermission(user, db, 'tasks', 'view');
 
         const existingTaskData = doc.data();
-        const updateData = {
-          ...req.body,
-          updatedBy: user.id,
-          updatedAt: new Date()
-        };
+
+        // רוכב עם הרשאת self יכול לעדכן רק סטטוס של משימה המשויכת אליו
+        if (permLevel === 'self') {
+          if (existingTaskData.assigneeId !== user.id) {
+            return res.status(403).json({ success: false, message: 'אין לך הרשאה לעדכן משימה זו' });
+          }
+          if (!req.body.status) {
+            return res.status(403).json({ success: false, message: 'רוכב יכול לעדכן סטטוס בלבד' });
+          }
+        }
+
+        const updateData = permLevel === 'self'
+          ? { status: req.body.status, updatedBy: user.id, updatedAt: new Date() }
+          : { ...req.body, updatedBy: user.id, updatedAt: new Date() };
 
         await taskRef.update(updateData);
         const updatedDoc = await taskRef.get();

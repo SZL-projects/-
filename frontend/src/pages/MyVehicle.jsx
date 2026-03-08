@@ -610,13 +610,32 @@ export default function MyVehicle() {
                     const priorityMap = { high: { label: 'דחוף', color: '#dc2626', bg: 'rgba(239,68,68,0.1)' }, medium: { label: 'בינוני', color: '#d97706', bg: 'rgba(245,158,11,0.1)' }, low: { label: 'נמוך', color: '#059669', bg: 'rgba(16,185,129,0.1)' } };
                     const statusMap2 = { pending: 'ממתין', in_progress: 'בביצוע', completed: 'הושלם', cancelled: 'בוטל' };
                     const p = priorityMap[task.priority] || priorityMap.medium;
+                    const isDone = task.status === 'completed' || task.status === 'cancelled';
                     return (
-                      <ListItem key={task.id || index} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px', mb: 1.5, flexDirection: 'column', alignItems: 'flex-start' }}>
+                      <ListItem key={task.id || index} sx={{ border: `1px solid ${isDone ? 'rgba(16,185,129,0.3)' : '#e2e8f0'}`, borderRadius: '12px', mb: 1.5, flexDirection: 'column', alignItems: 'flex-start', bgcolor: isDone ? 'rgba(16,185,129,0.03)' : 'transparent' }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                          <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>{task.title}</Typography>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Typography variant="body1" sx={{ fontWeight: 600, color: isDone ? '#94a3b8' : '#1e293b', textDecoration: isDone ? 'line-through' : 'none' }}>{task.title}</Typography>
+                          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                             <Chip label={p.label} size="small" sx={{ bgcolor: p.bg, color: p.color, fontWeight: 600, fontSize: '0.72rem' }} />
-                            <Chip label={statusMap2[task.status] || task.status} size="small" sx={{ bgcolor: 'rgba(99,102,241,0.1)', color: '#6366f1', fontWeight: 600, fontSize: '0.72rem' }} />
+                            <Chip label={statusMap2[task.status] || task.status} size="small" sx={{ bgcolor: isDone ? 'rgba(16,185,129,0.1)' : 'rgba(99,102,241,0.1)', color: isDone ? '#059669' : '#6366f1', fontWeight: 600, fontSize: '0.72rem' }} />
+                            {!isDone && (
+                              <Button
+                                size="small"
+                                variant="contained"
+                                startIcon={<CheckCircle sx={{ fontSize: 16 }} />}
+                                onClick={async () => {
+                                  try {
+                                    await tasksAPI.update(task.id, { status: 'completed' });
+                                    setMyTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'completed' } : t));
+                                  } catch (err) {
+                                    console.error('Error updating task:', err);
+                                  }
+                                }}
+                                sx={{ borderRadius: '8px', fontWeight: 600, fontSize: '0.75rem', bgcolor: '#059669', '&:hover': { bgcolor: '#047857' }, whiteSpace: 'nowrap' }}
+                              >
+                                סמן כבוצע
+                              </Button>
+                            )}
                           </Box>
                         </Box>
                         {task.description && (
