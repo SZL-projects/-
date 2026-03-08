@@ -146,11 +146,30 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (!user) return;
 
+    const userRoles = Array.isArray(user.roles) ? user.roles : [user.role];
+    const levelPriority = { none: 0, self: 1, view: 2, edit: 3 };
+    const entities = ['riders','vehicles','tasks','faults','monthly_checks','maintenance','garages','insurance_claims','users','reports','settings','audit_logs','donations'];
+
     const permissionsDoc = doc(db, 'permissions', 'default');
     const unsubscribe = onSnapshot(
       permissionsDoc,
-      () => {
-        loadPermissions();
+      (snapshot) => {
+        if (!snapshot.exists()) return;
+        const roles = snapshot.data().roles || {};
+
+        // חישוב הרשאות אפקטיביות ישירות מה-snapshot - ללא API call
+        const effectivePermissions = {};
+        for (const entity of entities) {
+          let highest = 'none';
+          for (const role of userRoles) {
+            const level = roles[role]?.[entity];
+            if (level && (levelPriority[level] || 0) > (levelPriority[highest] || 0)) {
+              highest = level;
+            }
+          }
+          effectivePermissions[entity] = highest;
+        }
+        setUserPermissions(effectivePermissions);
       },
       (error) => {
         console.error('Firestore onSnapshot error:', error.code, error.message);
