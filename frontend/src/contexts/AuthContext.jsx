@@ -147,9 +147,15 @@ export const AuthProvider = ({ children }) => {
     if (!user) return;
 
     const permissionsDoc = doc(db, 'permissions', 'default');
-    const unsubscribe = onSnapshot(permissionsDoc, () => {
-      loadPermissions();
-    });
+    const unsubscribe = onSnapshot(
+      permissionsDoc,
+      () => {
+        loadPermissions();
+      },
+      (error) => {
+        console.error('Firestore onSnapshot error:', error.code, error.message);
+      }
+    );
 
     return () => unsubscribe();
   }, [user?.id]);

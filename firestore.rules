@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // הרשאות - כולם יכולים לקרוא (לא מידע רגיש), רק backend יכול לכתוב
+    match /permissions/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // כל שאר ה-collections - רק דרך Backend (Firebase Admin SDK)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
