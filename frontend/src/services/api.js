@@ -141,6 +141,7 @@ export const ridersAPI = {
   // Google Drive file operations for riders
   createFolder: (riderId) => api.post(`/riders/${riderId}/create-folder`),
   uploadFile: (formData, folderId) => {
+    invalidateCache('/riders');
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     return axios.post(`${API_URL}/riders/upload-file`, formData, {
       headers: {
@@ -211,6 +212,7 @@ export const vehiclesAPI = {
   },
   createFolder: (vehicleNumber, vehicleId) => api.post('/vehicles/create-folder', { vehicleNumber, vehicleId }),
   uploadFile: (formData, folderId) => {
+    invalidateCache('/vehicles');
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     return axios.post(`${API_URL}/vehicles/upload-file`, formData, {
       headers: {

@@ -127,9 +127,14 @@ export default function VehicleFiles({ vehicleNumber, vehicleFolderData, vehicle
       formData.append('file', file);
       formData.append('folderId', folderId);
 
-      await vehiclesAPI.uploadFile(formData, folderId);
+      const response = await vehiclesAPI.uploadFile(formData, folderId);
+      const uploadedFile = response.data.file;
+      if (uploadedFile) {
+        setFiles(prev => [...prev, { ...uploadedFile, visibleToRider: true }]);
+      } else {
+        loadFiles();
+      }
       showSnackbar('הקובץ הועלה בהצלחה', 'success');
-      loadFiles();
     } catch (error) {
       console.error('Error uploading file:', error);
       showSnackbar('שגיאה בהעלאת קובץ', 'error');

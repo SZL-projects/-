@@ -130,9 +130,14 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
       formData.append('file', file);
       formData.append('folderId', folderId);
 
-      await ridersAPI.uploadFile(formData, folderId);
+      const response = await ridersAPI.uploadFile(formData, folderId);
+      const uploadedFile = response.data.file;
+      if (uploadedFile) {
+        setFiles(prev => [...prev, { ...uploadedFile, visibleToRider: true }]);
+      } else {
+        loadFiles();
+      }
       showSnackbar('הקובץ הועלה בהצלחה', 'success');
-      loadFiles();
     } catch (error) {
       console.error('Error uploading file:', error);
       showSnackbar('שגיאה בהעלאת קובץ', 'error');
