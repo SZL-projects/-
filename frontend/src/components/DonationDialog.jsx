@@ -477,9 +477,16 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
                 </Typography>
                 <List dense>
                   {donation.documents.map((doc, index) => (
-                    <ListItem key={index}>
+                    <ListItem
+                      key={index}
+                      component={doc.webViewLink ? 'a' : 'li'}
+                      href={doc.webViewLink || undefined}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{ cursor: doc.webViewLink ? 'pointer' : 'default', '&:hover': doc.webViewLink ? { bgcolor: 'action.hover' } : {} }}
+                    >
                       <ListItemIcon sx={{ minWidth: 36 }}>
-                        <InsertDriveFile fontSize="small" color="action" />
+                        <InsertDriveFile fontSize="small" color={doc.webViewLink ? 'primary' : 'action'} />
                       </ListItemIcon>
                       <ListItemText
                         primary={doc.originalName || doc.filename}
