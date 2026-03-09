@@ -154,8 +154,16 @@ export default function DonationDialog({ open, onClose, donation, riders, onSave
     }
   };
 
+  const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB - מגבלת Vercel
+
   const handleFileSelect = (event) => {
     const files = Array.from(event.target.files);
+    const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
+    if (oversized.length > 0) {
+      setError(`הקובץ גדול מדי. מקסימום 4MB לקובץ (${oversized.map(f => f.name).join(', ')})`);
+      event.target.value = '';
+      return;
+    }
     const currentCount = selectedFiles.length;
     const newFiles = files.map((file, i) => {
       const lastDot = file.name.lastIndexOf('.');

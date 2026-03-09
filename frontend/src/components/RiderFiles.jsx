@@ -118,6 +118,12 @@ export default function RiderFiles({ riderName, riderFolderData, riderId, onFold
     const file = event.target.files[0];
     if (!file) return;
 
+    if (file.size > 4 * 1024 * 1024) {
+      showSnackbar('הקובץ גדול מדי. מקסימום 4MB', 'error');
+      event.target.value = '';
+      return;
+    }
+
     const folderId = getCurrentFolderId();
     if (!folderId) {
       showSnackbar('שגיאה: לא נמצאה תיקייה', 'error');
