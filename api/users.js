@@ -194,10 +194,11 @@ module.exports = async (req, res) => {
         const updatedData = updatedDoc.data();
         delete updatedData.password;
 
-        // אם התפקיד השתנה - עדכן permissions/default כדי להפעיל onSnapshot אצל המשתמש
+        // אם התפקיד או הסטטוס (פעיל/לא פעיל) השתנה - עדכן permissions/default כדי להפעיל onSnapshot
         const oldRoles = JSON.stringify(existingUserData.roles || [existingUserData.role]);
         const newRoles = JSON.stringify(updateData.roles || [updateData.role]);
-        if (oldRoles !== newRoles) {
+        const activeChanged = updateData.isActive !== undefined && updateData.isActive !== existingUserData.isActive;
+        if (oldRoles !== newRoles || activeChanged) {
           await db.collection('permissions').doc('default').update({ userRoleChangedAt: new Date() });
         }
 
