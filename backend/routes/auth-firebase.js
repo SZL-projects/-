@@ -231,10 +231,10 @@ router.get('/users', protect, checkPermission('users', 'view'), async (req, res)
       users = await UserModel.getAll(filters, parseInt(limit));
     }
 
-    // הסרת סיסמאות
+    // הסרת שדות רגישים
     users = users.map(user => {
-      const { password, ...userWithoutPassword } = user;
-      return userWithoutPassword;
+      const { password, resetPasswordToken, resetPasswordExpiry, resetPasswordExpire, ...safeUser } = user;
+      return safeUser;
     });
 
     res.json({
