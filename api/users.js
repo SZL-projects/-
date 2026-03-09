@@ -255,6 +255,9 @@ module.exports = async (req, res) => {
       let users = snapshot.docs.map(doc => {
         const data = doc.data();
         delete data.password; // לא להחזיר סיסמאות
+        delete data.resetPasswordToken;
+        delete data.resetPasswordExpiry;
+        delete data.resetPasswordExpire;
         // המרת Firestore Timestamps לתאריכים קריאים
         ['createdAt', 'updatedAt', 'lastLogin', 'lockedAt'].forEach(field => {
           if (data[field]?.toDate) data[field] = data[field].toDate().toISOString();
