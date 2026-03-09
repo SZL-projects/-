@@ -21,8 +21,9 @@ export const AuthProvider = ({ children }) => {
       storage.setItem('user', JSON.stringify(updatedUser));
       setUser(updatedUser);
     } catch (error) {
-      // אם ה-token לא תקין - נתק
-      if (error.response?.status === 401) {
+      // אם ה-token לא תקין או המשתמש לא פעיל - נתק
+      const status = error.response?.status;
+      if (status === 401 || status === 403) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         sessionStorage.removeItem('token');
