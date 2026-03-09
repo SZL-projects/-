@@ -1084,6 +1084,19 @@ module.exports = async (req, res) => {
       if (req.method === 'DELETE') {
         await checkPermission(user, db, 'vehicles', 'edit');
         const deletedVehicleData = doc.data();
+
+        // העברת תיקיית Drive לארכיון
+        if (deletedVehicleData.driveFolderData?.mainFolderId) {
+          try {
+            googleDriveService.setFirestore(db);
+            const vehiclesFolderId = await googleDriveService.getOrCreateVehiclesFolder();
+            const archiveFolderId = await googleDriveService.getOrCreateArchiveFolder(vehiclesFolderId);
+            await googleDriveService.moveFolder(deletedVehicleData.driveFolderData.mainFolderId, archiveFolderId);
+          } catch (driveError) {
+            console.error('Error moving vehicle folder to archive:', driveError);
+          }
+        }
+
         await vehicleRef.delete();
         await writeAuditLog(db, user, { action: 'delete', entityType: 'vehicle', entityId: vehicleId, entityName: deletedVehicleData.licensePlate || 'כלי', description: `כלי נמחק: ${deletedVehicleData.licensePlate || ''}` });
 

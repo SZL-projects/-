@@ -222,6 +222,15 @@ class GoogleDriveService {
     return folder.id;
   }
 
+  // קבלת/יצירת תיקיית ארכיון בתוך תיקיית אב
+  async getOrCreateArchiveFolder(parentFolderId) {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+    const folder = await this.findOrCreateFolder('ארכיון', parentFolderId);
+    return folder.id;
+  }
+
   // קבלת כל התיקיות בתיקיית אב
   async listFolders(parentId) {
     if (!this.initialized) {

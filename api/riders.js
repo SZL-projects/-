@@ -706,6 +706,19 @@ module.exports = async (req, res) => {
         await checkPermission(user, db, 'riders', 'edit');
 
         const deletedData = doc.data();
+
+        // העברת תיקיית Drive לארכיון
+        if (deletedData.driveFolderData?.mainFolderId) {
+          try {
+            googleDriveService.setFirestore(db);
+            const ridersFolderId = await googleDriveService.getOrCreateRidersFolder();
+            const archiveFolderId = await googleDriveService.getOrCreateArchiveFolder(ridersFolderId);
+            await googleDriveService.moveFolder(deletedData.driveFolderData.mainFolderId, archiveFolderId);
+          } catch (driveError) {
+            console.error('Error moving rider folder to archive:', driveError);
+          }
+        }
+
         await riderRef.delete();
         await writeAuditLog(db, user, {
           action: 'delete',
