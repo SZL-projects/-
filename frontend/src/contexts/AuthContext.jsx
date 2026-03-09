@@ -153,25 +153,9 @@ export const AuthProvider = ({ children }) => {
     const permissionsDoc = doc(db, 'permissions', 'default');
     const unsubscribe = onSnapshot(
       permissionsDoc,
-      (snapshot) => {
-        console.log('[Permissions] onSnapshot fired, exists:', snapshot.exists());
-        if (!snapshot.exists()) return;
-        const roles = snapshot.data().roles || {};
-
-        // חישוב הרשאות אפקטיביות ישירות מה-snapshot - ללא API call
-        const effectivePermissions = {};
-        for (const entity of entities) {
-          let highest = 'none';
-          for (const role of userRoles) {
-            const level = roles[role]?.[entity];
-            if (level && (levelPriority[level] || 0) > (levelPriority[highest] || 0)) {
-              highest = level;
-            }
-          }
-          effectivePermissions[entity] = highest;
-        }
-        console.log('[Permissions] updated:', effectivePermissions);
-        setUserPermissions(effectivePermissions);
+      () => {
+        // כשמשהו משתנה (הרשאות תפקיד או תפקיד משתמש) - טען נתונים עדכניים מהשרת
+        refreshUserFromServer().then(() => loadPermissions());
       },
       (error) => {
         console.error('Firestore onSnapshot error:', error.code, error.message);

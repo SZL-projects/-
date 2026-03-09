@@ -194,6 +194,11 @@ module.exports = async (req, res) => {
         const updatedData = updatedDoc.data();
         delete updatedData.password;
 
+        // אם התפקיד השתנה - עדכן permissions/default כדי להפעיל onSnapshot אצל המשתמש
+        if (updateData.roles || updateData.role) {
+          await db.collection('permissions').doc('default').update({ userRoleChangedAt: new Date() });
+        }
+
         await writeAuditLog(db, user, { action: 'update', entityType: 'user', entityId: userId, entityName: `${updatedData.firstName || ''} ${updatedData.lastName || ''}`.trim() || updatedData.username, description: 'פרטי משתמש עודכנו' });
         return res.status(200).json({
           success: true,
