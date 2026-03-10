@@ -130,10 +130,12 @@ class RiderModel {
       if (riders.length === 0) {
         const allRiders = await this.getAll(filters, limit);
         const lowerSearch = searchTerm.toLowerCase();
-        riders = allRiders.filter(r =>
-          r.firstName?.toLowerCase().includes(lowerSearch) ||
-          r.lastName?.toLowerCase().includes(lowerSearch)
-        );
+        riders = allRiders.filter(r => {
+          const fullName = `${r.firstName || ''} ${r.lastName || ''}`.toLowerCase();
+          return r.firstName?.toLowerCase().includes(lowerSearch) ||
+            r.lastName?.toLowerCase().includes(lowerSearch) ||
+            fullName.includes(lowerSearch);
+        });
       }
 
       return riders.slice(0, limit);
