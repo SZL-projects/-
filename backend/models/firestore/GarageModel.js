@@ -242,10 +242,10 @@ class GarageModel {
 
       snapshot.forEach(doc => {
         const data = doc.data();
-        const garageId = data.garage?.id;
+        const garageId = data.garage?.id || data.garage?.name;
         const garageName = data.garage?.name;
 
-        if (!garageId || !garageName) return;
+        if (!garageName) return;
 
         if (!garageStats[garageId]) {
           garageStats[garageId] = {
