@@ -133,8 +133,8 @@ router.get('/rider/:riderId', async (req, res) => {
 // @access  Private
 router.get('/garage/:garageId', async (req, res) => {
   try {
-    const { limit = 200 } = req.query;
-    const maintenances = await MaintenanceModel.getByGarage(req.params.garageId, parseInt(limit));
+    const { limit = 200, garageName } = req.query;
+    const maintenances = await MaintenanceModel.getByGarage(req.params.garageId, garageName || null, parseInt(limit));
 
     res.json({
       success: true,

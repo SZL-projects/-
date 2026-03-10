@@ -354,8 +354,8 @@ export const maintenanceAPI = {
   // קבלת טיפולים לפי תקלה
   getByFault: (faultId) => cachedGet(`/maintenance/fault/${faultId}`),
 
-  // קבלת טיפולים לפי מוסך
-  getByGarage: (garageId, limit = 200) => cachedGet(`/maintenance/garage/${garageId}`, { params: { limit } }),
+  // קבלת טיפולים לפי מוסך (garageName - fallback לרשומות ישנות ללא garage.id)
+  getByGarage: (garageId, garageName = null, limit = 200) => cachedGet(`/maintenance/garage/${garageId}`, { params: { limit, ...(garageName && { garageName }) } }),
 
   // סטטיסטיקות
   getStatistics: (vehicleId = null) => cachedGet('/maintenance/statistics', { params: { vehicleId } }),

@@ -192,14 +192,17 @@ export default function GarageDetails() {
       setLoading(true);
       setError('');
 
-      const [garageRes, statsRes, maintRes] = await Promise.all([
-        garagesAPI.getById(id).catch(() => ({ data: { garage: null } })),
+      // טעינת פרטי מוסך קודם כדי לקבל את השם (לחיפוש fallback)
+      const garageRes = await garagesAPI.getById(id).catch(() => ({ data: { garage: null } }));
+      const garageData = garageRes.data?.garage || null;
+      setGarage(garageData);
+
+      // טעינת סטטיסטיקות וטיפולים במקביל - עם שם המוסך כ-fallback
+      const [statsRes, maintRes] = await Promise.all([
         garagesAPI.getStatistics(id).catch(() => ({ data: { statistics: {} } })),
-        maintenanceAPI.getByGarage(id).catch(() => ({ data: { maintenances: [] } })),
+        maintenanceAPI.getByGarage(id, garageData?.name || null).catch(() => ({ data: { maintenances: [] } })),
       ]);
 
-      const garageData = garageRes.data?.garage || statsRes.data?.garage || null;
-      setGarage(garageData);
       setStatistics(statsRes.data?.statistics || {});
       setMaintenances(maintRes.data?.maintenances || []);
     } catch (err) {

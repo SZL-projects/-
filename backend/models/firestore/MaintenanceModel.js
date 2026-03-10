@@ -288,8 +288,8 @@ class MaintenanceModel {
     }
   }
 
-  // קבלת טיפולים לפי מוסך
-  async getByGarage(garageId, limit = 200) {
+  // קבלת טיפולים לפי מוסך (חיפוש לפי ID, ו-fallback לפי שם עבור רשומות ישנות)
+  async getByGarage(garageId, garageName = null, limit = 200) {
     try {
       const snapshot = await this.collection
         .where('garage.id', '==', garageId)
@@ -301,6 +301,19 @@ class MaintenanceModel {
       snapshot.forEach(doc => {
         maintenances.push({ id: doc.id, ...doc.data() });
       });
+
+      // אם לא נמצאו תוצאות ויש שם מוסך - חפש לפי שם (לרשומות ישנות ללא garage.id)
+      if (maintenances.length === 0 && garageName) {
+        const nameSnapshot = await this.collection
+          .where('garage.name', '==', garageName)
+          .orderBy('maintenanceDate', 'desc')
+          .limit(limit)
+          .get();
+
+        nameSnapshot.forEach(doc => {
+          maintenances.push({ id: doc.id, ...doc.data() });
+        });
+      }
 
       return maintenances;
     } catch (error) {
