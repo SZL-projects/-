@@ -225,7 +225,7 @@ export default function Layout() {
                 צי לוג
               </Typography>
               <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                v3.23.0
+                v3.25.0
               </Typography>
             </Box>
           )}
@@ -429,7 +429,7 @@ export default function Layout() {
                     צי לוג
                   </Typography>
                   <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                    v3.23.0
+                    v3.25.0
                   </Typography>
                 </Box>
               </Box>

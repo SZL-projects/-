@@ -45,7 +45,6 @@ import {
 } from '@mui/icons-material';
 import { ridersAPI, vehiclesAPI } from '../services/api';
 import RiderDialog from '../components/RiderDialog';
-import { useDebounce } from '../hooks/useDebounce';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Riders() {
@@ -53,10 +52,9 @@ export default function Riders() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { hasPermission } = useAuth();
-  const [riders, setRiders] = useState([]);
+  const [allRiders, setAllRiders] = useState([]); // כל הרוכבים - לחיפוש מקומי
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [error, setError] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRider, setEditingRider] = useState(null);
@@ -64,15 +62,30 @@ export default function Riders() {
   const [riderToDelete, setRiderToDelete] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
+  // חיפוש מקומי - מיידי ללא API, עובד תמיד נכון
+  const riders = useMemo(() => {
+    const s = searchTerm.trim().toLowerCase();
+    if (!s) return allRiders;
+    return allRiders.filter(r => {
+      const fn = (r.firstName || '').trim().toLowerCase();
+      const ln = (r.lastName || '').trim().toLowerCase();
+      const fullName = `${fn} ${ln}`;
+      return fn.includes(s) || ln.includes(s) || fullName.includes(s) ||
+        (r.idNumber || '').includes(s) ||
+        (r.phone || '').includes(s);
+    });
+  }, [allRiders, searchTerm]);
+
   useEffect(() => {
     loadRiders();
-  }, [debouncedSearchTerm]); // שינוי: מאזין ל-debouncedSearchTerm במקום טעינה ראשונית
+  }, []);
 
   const loadRiders = async () => {
     try {
       setLoading(true);
-      const response = await ridersAPI.getAll({ search: debouncedSearchTerm });
-      setRiders(response.data.riders || []);
+      // טוען את כל הרוכבים פעם אחת - הcache מטפל בביצועים
+      const response = await ridersAPI.getAll({ limit: 300 });
+      setAllRiders(response.data.riders || []);
       setError('');
     } catch (err) {
       setError('שגיאה בטעינת רוכבים');

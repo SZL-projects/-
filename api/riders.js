@@ -739,7 +739,7 @@ module.exports = async (req, res) => {
     // GET - list riders
     if (req.method === 'GET') {
       const { search, riderStatus, assignmentStatus, region, page = 1, limit = 20 } = req.query;
-      const limitNum = Math.min(parseInt(limit), 100); // מקסימום 100 לבקשה
+      const limitNum = Math.min(parseInt(limit), 500); // מקסימום 500 לבקשה
       const pageNum = parseInt(page);
 
       let query = db.collection('riders');
