@@ -224,8 +224,10 @@ async function searchCollection(db, collectionName, fields, term, limit, fullNam
     });
 
     const matchFullName = fullNamePairs.some(([f1, f2]) => {
-      const fullName = `${data[f1] || ''} ${data[f2] || ''}`.toLowerCase();
-      return fullName.includes(searchLower);
+      const f1val = (data[f1] || '').trim().toLowerCase();
+      const f2val = (data[f2] || '').trim().toLowerCase();
+      const fullName = `${f1val} ${f2val}`;
+      return f1val.includes(searchLower) || f2val.includes(searchLower) || fullName.includes(searchLower);
     });
 
     if (matchField || matchFullName) {
@@ -282,13 +284,11 @@ module.exports = async (req, res) => {
 
         // חיפוש
         const rawResults = await SEARCH_FUNCTIONS[config.key](db, searchTerm, limitPerType);
-        console.log(`[search] ${config.key}: found ${rawResults.length} results for "${searchTerm}"`);
         return {
           key: config.key,
           items: rawResults.slice(0, limitPerType).map(config.normalize),
         };
       } catch (err) {
-        console.log(`[search] ${config.key}: skipped - ${err.message}`);
         return { key: config.key, items: [] };
       }
     });
