@@ -105,76 +105,54 @@ const ENTITY_CONFIGS = [
 
 // פונקציות חיפוש לכל ישות
 async function searchRiders(db, term, limit) {
-  let riders = [];
+  const lowerTerm = term.toLowerCase();
+  const riders = [];
+  const seen = new Set();
 
-  // חיפוש לפי ת"ז
+  const addRider = (doc) => {
+    if (!seen.has(doc.id)) {
+      seen.add(doc.id);
+      riders.push({ id: doc.id, ...doc.data() });
+    }
+  };
+
+  // ת"ז: prefix query עובד מצוין - מחרוזת מספרית עקבית
   if (/^\d/.test(term)) {
     const idSnap = await db.collection('riders')
       .where('idNumber', '>=', term)
       .where('idNumber', '<=', term + '\uf8ff')
       .limit(limit)
       .get();
-    idSnap.forEach(doc => riders.push({ id: doc.id, ...doc.data() }));
+    idSnap.forEach(doc => addRider(doc));
+    if (riders.length > 0) return riders.slice(0, limit);
   }
 
-  // חיפוש לפי טלפון
+  // טלפון: prefix query עובד מצוין - מחרוזת מספרית עקבית
   if (/^05/.test(term)) {
     const phoneSnap = await db.collection('riders')
       .where('phone', '>=', term)
       .where('phone', '<=', term + '\uf8ff')
       .limit(limit)
       .get();
-    phoneSnap.forEach(doc => {
-      if (!riders.find(r => r.id === doc.id)) {
-        riders.push({ id: doc.id, ...doc.data() });
-      }
-    });
+    phoneSnap.forEach(doc => addRider(doc));
+    if (riders.length > 0) return riders.slice(0, limit);
   }
 
-  // חיפוש לפי שם פרטי
-  if (riders.length === 0) {
-    const firstNameSnap = await db.collection('riders')
-      .where('firstName', '>=', term)
-      .where('firstName', '<=', term + '\uf8ff')
-      .limit(limit)
-      .get();
-    firstNameSnap.forEach(doc => {
-      if (!riders.find(r => r.id === doc.id)) {
-        riders.push({ id: doc.id, ...doc.data() });
-      }
-    });
-  }
-
-  // חיפוש לפי שם משפחה
-  if (riders.length === 0) {
-    const lastNameSnap = await db.collection('riders')
-      .where('lastName', '>=', term)
-      .where('lastName', '<=', term + '\uf8ff')
-      .limit(limit)
-      .get();
-    lastNameSnap.forEach(doc => {
-      if (!riders.find(r => r.id === doc.id)) {
-        riders.push({ id: doc.id, ...doc.data() });
-      }
-    });
-  }
-
-  // fallback כללי עם limit מצומצם
-  if (riders.length === 0) {
-    const allSnap = await db.collection('riders').limit(100).get();
-    const lowerSearch = term.toLowerCase();
-    allSnap.forEach(doc => {
-      const data = doc.data();
-      const fullName = `${data.firstName || ''} ${data.lastName || ''}`.toLowerCase();
-      if (
-        data.firstName?.toLowerCase().includes(lowerSearch) ||
-        data.lastName?.toLowerCase().includes(lowerSearch) ||
-        fullName.includes(lowerSearch)
-      ) {
-        riders.push({ id: doc.id, ...data });
-      }
-    });
-  }
+  // שם: Firestore לא תומך ב-substring search.
+  // prefix query על שם כושל כשהמשתמש מקליד שם מלא (למשל "איתמר ע") כי
+  // "איתמר" < "איתמר ע" - לא נכנס לטווח. לכן תמיד נשתמש ב-full scan.
+  const allSnap = await db.collection('riders').limit(500).get();
+  allSnap.forEach(doc => {
+    const data = doc.data();
+    const fullName = `${data.firstName || ''} ${data.lastName || ''}`.toLowerCase();
+    if (
+      data.firstName?.toLowerCase().includes(lowerTerm) ||
+      data.lastName?.toLowerCase().includes(lowerTerm) ||
+      fullName.includes(lowerTerm)
+    ) {
+      addRider(doc);
+    }
+  });
 
   return riders.slice(0, limit);
 }
