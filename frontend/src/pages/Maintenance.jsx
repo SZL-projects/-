@@ -706,8 +706,8 @@ export default function Maintenance() {
                     <CompareArrows />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title="ניהול מוסכים">
-                  <IconButton onClick={() => setGarageManageOpen(true)} sx={{ border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+                <Tooltip title="מעבר לניהול מוסכים">
+                  <IconButton onClick={() => navigate('/garages')} sx={{ border: '1px solid #e2e8f0', borderRadius: '10px' }}>
                     <Store />
                   </IconButton>
                 </Tooltip>
@@ -765,7 +765,7 @@ export default function Maintenance() {
               <Button
                 variant="outlined"
                 startIcon={<Store />}
-                onClick={() => setGarageManageOpen(true)}
+                onClick={() => navigate('/garages')}
                 sx={{
                   borderRadius: '12px',
                   borderColor: '#e2e8f0',
@@ -778,7 +778,7 @@ export default function Maintenance() {
                   },
                 }}
               >
-                ניהול מוסכים
+                מוסכים
               </Button>
               <Button
                 variant="outlined"
