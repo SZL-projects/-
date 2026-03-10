@@ -85,14 +85,6 @@ async function handleGaragesRequest(req, res, db, user, url) {
     if (maintenanceType) q = q.where('maintenanceType', '==', maintenanceType);
     const maintenanceSnapshot = await q.get();
 
-    // DEBUG - remove after testing
-    const debugRecords = [];
-    maintenanceSnapshot.forEach(doc => {
-      const m = doc.data();
-      debugRecords.push({ id: doc.id, maintenanceType: m.maintenanceType, garageId: m.garageId, garageName: m.garageName, garage: m.garage });
-    });
-    console.log('DEBUG compare-prices records:', JSON.stringify(debugRecords));
-
     const garageStats = {};
     maintenanceSnapshot.forEach(doc => {
       const m = doc.data();
@@ -131,8 +123,7 @@ async function handleGaragesRequest(req, res, db, user, url) {
     return res.json({
       success: true,
       comparison,
-      maintenanceType: maintenanceType || 'all',
-      _debug: { totalRecords: maintenanceSnapshot.size, records: debugRecords }
+      maintenanceType: maintenanceType || 'all'
     });
   }
 
