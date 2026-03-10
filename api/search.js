@@ -165,9 +165,11 @@ async function searchRiders(db, term, limit) {
     const lowerSearch = term.toLowerCase();
     allSnap.forEach(doc => {
       const data = doc.data();
+      const fullName = `${data.firstName || ''} ${data.lastName || ''}`.toLowerCase();
       if (
         data.firstName?.toLowerCase().includes(lowerSearch) ||
-        data.lastName?.toLowerCase().includes(lowerSearch)
+        data.lastName?.toLowerCase().includes(lowerSearch) ||
+        fullName.includes(lowerSearch)
       ) {
         riders.push({ id: doc.id, ...data });
       }
