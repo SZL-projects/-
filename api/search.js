@@ -204,20 +204,29 @@ async function searchVehicles(db, term, limit) {
   return vehicles.slice(0, limit);
 }
 
-async function searchCollection(db, collectionName, fields, term, limit) {
+// fullNamePairs: זוגות [fieldFirst, fieldLast] לבדיקת שם מלא משולב.
+// נדרש כשהשם מפוצל לשני שדות (firstName + lastName) ולא שמור כשדה יחיד.
+async function searchCollection(db, collectionName, fields, term, limit, fullNamePairs = []) {
   const allSnap = await db.collection(collectionName).limit(200).get();
   const searchLower = term.toLowerCase();
   const results = [];
 
   allSnap.forEach(doc => {
     const data = doc.data();
-    const match = fields.some(field => {
+
+    const matchField = fields.some(field => {
       const value = field.includes('.')
         ? field.split('.').reduce((obj, key) => obj?.[key], data)
         : data[field];
       return value?.toLowerCase?.()?.includes(searchLower);
     });
-    if (match) {
+
+    const matchFullName = fullNamePairs.some(([f1, f2]) => {
+      const fullName = `${data[f1] || ''} ${data[f2] || ''}`.toLowerCase();
+      return fullName.includes(searchLower);
+    });
+
+    if (matchField || matchFullName) {
       results.push({ id: doc.id, ...data });
     }
   });
@@ -232,7 +241,7 @@ const SEARCH_FUNCTIONS = {
   tasks: (db, term, limit) => searchCollection(db, 'tasks', ['title', 'description', 'riderName', 'vehiclePlate'], term, limit),
   maintenance: (db, term, limit) => searchCollection(db, 'maintenance', ['maintenanceNumber', 'description', 'vehiclePlate', 'riderName', 'garage.name', 'notes'], term, limit),
   garages: (db, term, limit) => searchCollection(db, 'garages', ['name', 'city', 'contactPerson', 'phone'], term, limit),
-  users: (db, term, limit) => searchCollection(db, 'users', ['username', 'email', 'firstName', 'lastName'], term, limit),
+  users: (db, term, limit) => searchCollection(db, 'users', ['username', 'email', 'firstName', 'lastName'], term, limit, [['firstName', 'lastName']]),
   insurance_claims: (db, term, limit) => searchCollection(db, 'insurance_claims', ['claimNumber', 'externalClaimNumber', 'description', 'vehiclePlate', 'riderName'], term, limit),
 };
 

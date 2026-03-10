@@ -267,12 +267,14 @@ module.exports = async (req, res) => {
 
       if (search) {
         const searchLower = search.toLowerCase();
-        users = users.filter(u =>
-          u.username?.toLowerCase().includes(searchLower) ||
-          u.email?.toLowerCase().includes(searchLower) ||
-          u.firstName?.toLowerCase().includes(searchLower) ||
-          u.lastName?.toLowerCase().includes(searchLower)
-        );
+        users = users.filter(u => {
+          const fullName = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
+          return u.username?.toLowerCase().includes(searchLower) ||
+            u.email?.toLowerCase().includes(searchLower) ||
+            u.firstName?.toLowerCase().includes(searchLower) ||
+            u.lastName?.toLowerCase().includes(searchLower) ||
+            fullName.includes(searchLower);
+        });
       }
 
       const startIndex = (page - 1) * limit;
