@@ -289,11 +289,11 @@ class MaintenanceModel {
   }
 
   // קבלת טיפולים לפי מוסך (חיפוש לפי ID, ו-fallback לפי שם עבור רשומות ישנות)
+  // ללא orderBy כדי להימנע מצורך ב-composite index - מיון נעשה ב-JS
   async getByGarage(garageId, garageName = null, limit = 200) {
     try {
       const snapshot = await this.collection
         .where('garage.id', '==', garageId)
-        .orderBy('maintenanceDate', 'desc')
         .limit(limit)
         .get();
 
@@ -306,7 +306,6 @@ class MaintenanceModel {
       if (maintenances.length === 0 && garageName) {
         const nameSnapshot = await this.collection
           .where('garage.name', '==', garageName)
-          .orderBy('maintenanceDate', 'desc')
           .limit(limit)
           .get();
 
@@ -314,6 +313,13 @@ class MaintenanceModel {
           maintenances.push({ id: doc.id, ...doc.data() });
         });
       }
+
+      // מיון לפי תאריך יורד (ללא צורך ב-composite index)
+      maintenances.sort((a, b) => {
+        const tA = a.maintenanceDate?.toMillis ? a.maintenanceDate.toMillis() : new Date(a.maintenanceDate || 0).getTime();
+        const tB = b.maintenanceDate?.toMillis ? b.maintenanceDate.toMillis() : new Date(b.maintenanceDate || 0).getTime();
+        return tB - tA;
+      });
 
       return maintenances;
     } catch (error) {
