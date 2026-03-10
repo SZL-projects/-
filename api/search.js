@@ -144,10 +144,12 @@ async function searchRiders(db, term, limit) {
   const allSnap = await db.collection('riders').limit(500).get();
   allSnap.forEach(doc => {
     const data = doc.data();
-    const fullName = `${data.firstName || ''} ${data.lastName || ''}`.toLowerCase();
+    const fn = (data.firstName || '').trim().toLowerCase();
+    const ln = (data.lastName || '').trim().toLowerCase();
+    const fullName = `${fn} ${ln}`;
     if (
-      data.firstName?.toLowerCase().includes(lowerTerm) ||
-      data.lastName?.toLowerCase().includes(lowerTerm) ||
+      fn.includes(lowerTerm) ||
+      ln.includes(lowerTerm) ||
       fullName.includes(lowerTerm)
     ) {
       addRider(doc);
@@ -280,12 +282,13 @@ module.exports = async (req, res) => {
 
         // חיפוש
         const rawResults = await SEARCH_FUNCTIONS[config.key](db, searchTerm, limitPerType);
+        console.log(`[search] ${config.key}: found ${rawResults.length} results for "${searchTerm}"`);
         return {
           key: config.key,
           items: rawResults.slice(0, limitPerType).map(config.normalize),
         };
       } catch (err) {
-        // אם אין הרשאה או שגיאה אחרת - מדלגים
+        console.log(`[search] ${config.key}: skipped - ${err.message}`);
         return { key: config.key, items: [] };
       }
     });
