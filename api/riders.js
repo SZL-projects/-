@@ -818,12 +818,14 @@ module.exports = async (req, res) => {
       let riders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
       const searchLower = search.toLowerCase();
-      riders = riders.filter(rider =>
-        rider.firstName?.toLowerCase().includes(searchLower) ||
-        rider.lastName?.toLowerCase().includes(searchLower) ||
-        rider.idNumber?.includes(search) ||
-        rider.phone?.includes(search)
-      );
+      riders = riders.filter(rider => {
+        const fullName = `${rider.firstName || ''} ${rider.lastName || ''}`.toLowerCase();
+        return rider.firstName?.toLowerCase().includes(searchLower) ||
+          rider.lastName?.toLowerCase().includes(searchLower) ||
+          fullName.includes(searchLower) ||
+          rider.idNumber?.includes(search) ||
+          rider.phone?.includes(search);
+      });
 
       const startIndex = (pageNum - 1) * limitNum;
       const endIndex = pageNum * limitNum;
