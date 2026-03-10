@@ -81,54 +81,48 @@ async function handleGaragesRequest(req, res, db, user, url) {
 
     const { maintenanceType } = req.query;
 
-    const [garagesSnapshot, maintenanceSnapshot] = await Promise.all([
-      db.collection('garages').get(),
-      (() => {
-        let q = db.collection('maintenance').where('status', '==', 'completed');
-        if (maintenanceType) q = q.where('maintenanceType', '==', maintenanceType);
-        return q.get();
-      })()
-    ]);
+    let q = db.collection('maintenance');
+    if (maintenanceType) q = q.where('maintenanceType', '==', maintenanceType);
+    const maintenanceSnapshot = await q.get();
 
-    const garages = garagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-    // בניית מפה של טיפולים לפי garageId - שאילתה אחת במקום N שאילתות
-    const maintenanceByGarage = {};
+    const garageStats = {};
     maintenanceSnapshot.forEach(doc => {
       const m = doc.data();
-      if (!m.garageId) return;
-      if (!maintenanceByGarage[m.garageId]) maintenanceByGarage[m.garageId] = [];
-      maintenanceByGarage[m.garageId].push(m);
+      const garageKey = m.garage?.id || m.garage?.name || m.garageId;
+      const garageName = m.garage?.name || m.garageName;
+      if (!garageName) return;
+
+      if (!garageStats[garageKey]) {
+        garageStats[garageKey] = {
+          garageId: garageKey,
+          garageName,
+          count: 0,
+          totalCost: 0,
+          minCost: Infinity,
+          maxCost: 0,
+        };
+      }
+
+      const cost = m.costs?.totalCost || 0;
+      garageStats[garageKey].count++;
+      garageStats[garageKey].totalCost += cost;
+      garageStats[garageKey].minCost = Math.min(garageStats[garageKey].minCost, cost);
+      garageStats[garageKey].maxCost = Math.max(garageStats[garageKey].maxCost, cost);
     });
 
-    const garagesWithPrices = garages.map(garage => {
-      const maintenances = maintenanceByGarage[garage.id] || [];
-      const prices = maintenances
-        .filter(m => m.costs?.totalCost)
-        .map(m => m.costs.totalCost);
-
-      const avgPrice = prices.length > 0
-        ? prices.reduce((sum, p) => sum + p, 0) / prices.length
-        : null;
-
-      return {
-        id: garage.id,
-        name: garage.name,
-        city: garage.city,
-        totalMaintenances: maintenances.length,
-        averagePrice: avgPrice ? Math.round(avgPrice) : null,
-        minPrice: prices.length > 0 ? Math.min(...prices) : null,
-        maxPrice: prices.length > 0 ? Math.max(...prices) : null
-      };
-    });
-
-    const sortedGarages = garagesWithPrices
-      .filter(g => g.averagePrice !== null)
-      .sort((a, b) => a.averagePrice - b.averagePrice);
+    const comparison = Object.values(garageStats).map(stat => ({
+      garageId: stat.garageId,
+      garageName: stat.garageName,
+      count: stat.count,
+      totalCost: stat.totalCost,
+      averageCost: stat.count > 0 ? Math.round(stat.totalCost / stat.count) : 0,
+      minCost: stat.minCost === Infinity ? 0 : stat.minCost,
+      maxCost: stat.maxCost,
+    })).sort((a, b) => a.averageCost - b.averageCost);
 
     return res.json({
       success: true,
-      garages: sortedGarages,
+      comparison,
       maintenanceType: maintenanceType || 'all'
     });
   }
