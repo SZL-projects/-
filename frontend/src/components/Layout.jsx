@@ -41,6 +41,7 @@ import {
   Lock,
   Settings,
   AccountBalance,
+  Store,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import ChangePasswordDialog from './ChangePasswordDialog';
@@ -69,6 +70,7 @@ const managementMenuItems = [
   { text: 'בקרה חודשית', icon: <Build />, path: '/monthly-checks', permission: 'monthly_checks' },
   { text: 'תקלות', icon: <Warning />, path: '/faults', permission: 'faults' },
   { text: 'טיפולים', icon: <Build />, path: '/maintenance', permission: 'maintenance' },
+  { text: 'מוסכים', icon: <Store />, path: '/garages', permission: 'maintenance' },
   { text: 'תביעות ביטוח', icon: <Assignment />, path: '/insurance-claims', permission: 'insurance_claims' },
   { text: 'קופה', icon: <AccountBalance />, path: '/donations', permission: 'donations' },
   { text: 'הגדרות', icon: <Settings />, path: '/settings', permission: 'settings' },

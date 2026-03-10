@@ -192,12 +192,13 @@ export default function GarageDetails() {
       setLoading(true);
       setError('');
 
-      const [statsRes, maintRes] = await Promise.all([
-        garagesAPI.getStatistics(id).catch(() => ({ data: { garage: null, statistics: {} } })),
+      const [garageRes, statsRes, maintRes] = await Promise.all([
+        garagesAPI.getById(id).catch(() => ({ data: { garage: null } })),
+        garagesAPI.getStatistics(id).catch(() => ({ data: { statistics: {} } })),
         maintenanceAPI.getByGarage(id).catch(() => ({ data: { maintenances: [] } })),
       ]);
 
-      const garageData = statsRes.data?.garage || null;
+      const garageData = garageRes.data?.garage || statsRes.data?.garage || null;
       setGarage(garageData);
       setStatistics(statsRes.data?.statistics || {});
       setMaintenances(maintRes.data?.maintenances || []);
