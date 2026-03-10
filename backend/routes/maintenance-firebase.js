@@ -128,6 +128,27 @@ router.get('/rider/:riderId', async (req, res) => {
   }
 });
 
+// @route   GET /api/maintenance/garage/:garageId
+// @desc    קבלת טיפולים לפי מוסך
+// @access  Private
+router.get('/garage/:garageId', async (req, res) => {
+  try {
+    const { limit = 200 } = req.query;
+    const maintenances = await MaintenanceModel.getByGarage(req.params.garageId, parseInt(limit));
+
+    res.json({
+      success: true,
+      count: maintenances.length,
+      maintenances
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // @route   GET /api/maintenance/fault/:faultId
 // @desc    קבלת טיפולים לפי תקלה
 // @access  Private

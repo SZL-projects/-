@@ -38,6 +38,7 @@ class MaintenanceModel {
 
         // מוסך
         garage: {
+          id: maintenanceData.garage?.id || '',
           name: maintenanceData.garage?.name || '',
           phone: maintenanceData.garage?.phone || '',
           address: maintenanceData.garage?.address || '',
@@ -274,6 +275,26 @@ class MaintenanceModel {
     try {
       const snapshot = await this.collection
         .where('relatedFaultId', '==', faultId)
+        .get();
+
+      const maintenances = [];
+      snapshot.forEach(doc => {
+        maintenances.push({ id: doc.id, ...doc.data() });
+      });
+
+      return maintenances;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // קבלת טיפולים לפי מוסך
+  async getByGarage(garageId, limit = 200) {
+    try {
+      const snapshot = await this.collection
+        .where('garage.id', '==', garageId)
+        .orderBy('maintenanceDate', 'desc')
+        .limit(limit)
         .get();
 
       const maintenances = [];

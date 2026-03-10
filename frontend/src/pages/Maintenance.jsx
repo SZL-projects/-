@@ -64,11 +64,13 @@ import {
   ArrowUpward,
   ArrowDownward,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { maintenanceAPI, vehiclesAPI, ridersAPI, garagesAPI, maintenanceTypesAPI } from '../services/api';
 import MaintenanceDialog from '../components/MaintenanceDialog';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Maintenance() {
+  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
@@ -1164,7 +1166,18 @@ export default function Maintenance() {
                   <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
                     {getTypeChip(maintenance.maintenanceType)}
                     {maintenance.garage?.name && (
-                      <Chip size="small" label={maintenance.garage.name} sx={{ bgcolor: '#f1f5f9', color: '#64748b', fontWeight: 500, fontSize: '0.7rem' }} />
+                      <Chip
+                        size="small"
+                        label={maintenance.garage.name}
+                        onClick={maintenance.garage?.id ? (e) => { e.stopPropagation(); navigate(`/garages/${maintenance.garage.id}`); } : undefined}
+                        sx={{
+                          bgcolor: maintenance.garage?.id ? 'rgba(99,102,241,0.08)' : '#f1f5f9',
+                          color: maintenance.garage?.id ? '#6366f1' : '#64748b',
+                          fontWeight: 600,
+                          fontSize: '0.7rem',
+                          cursor: maintenance.garage?.id ? 'pointer' : 'default',
+                        }}
+                      />
                     )}
                   </Box>
 
@@ -1304,10 +1317,25 @@ export default function Maintenance() {
                         {maintenance.description || '-'}
                       </Typography>
                     </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ color: '#1e293b' }}>
-                        {maintenance.garage?.name || '-'}
-                      </Typography>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      {maintenance.garage?.id ? (
+                        <Typography
+                          variant="body2"
+                          onClick={() => navigate(`/garages/${maintenance.garage.id}`)}
+                          sx={{
+                            color: '#6366f1',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            '&:hover': { textDecoration: 'underline' },
+                          }}
+                        >
+                          {maintenance.garage.name}
+                        </Typography>
+                      ) : (
+                        <Typography variant="body2" sx={{ color: '#1e293b' }}>
+                          {maintenance.garage?.name || '-'}
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontWeight: 600, color: maintenance.costs?.totalCost > 0 ? '#1e293b' : '#64748b' }}>

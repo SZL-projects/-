@@ -160,7 +160,7 @@ export default function MaintenanceDialog({ open, onClose, maintenance, vehicles
         costs: {
           laborCost: maintenance.costs?.laborCost || 0,
           partsCost: maintenance.costs?.partsCost || 0,
-          otherCosts: maintenance.costs?.otherCost || 0,
+          otherCosts: maintenance.costs?.otherCosts || 0,
         },
         paidBy: maintenance.paidBy || 'unit',
         replacedParts: maintenance.replacedParts || [],

@@ -354,6 +354,9 @@ export const maintenanceAPI = {
   // קבלת טיפולים לפי תקלה
   getByFault: (faultId) => cachedGet(`/maintenance/fault/${faultId}`),
 
+  // קבלת טיפולים לפי מוסך
+  getByGarage: (garageId, limit = 200) => cachedGet(`/maintenance/garage/${garageId}`, { params: { limit } }),
+
   // סטטיסטיקות
   getStatistics: (vehicleId = null) => cachedGet('/maintenance/statistics', { params: { vehicleId } }),
 

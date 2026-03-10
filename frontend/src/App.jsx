@@ -34,6 +34,7 @@ const MyProfile = lazy(() => import('./pages/MyProfile'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Permissions = lazy(() => import('./pages/Permissions'));
 const Donations = lazy(() => import('./pages/Donations'));
+const GarageDetails = lazy(() => import('./pages/GarageDetails'));
 
 // Loading component לטעינה עצלה
 const PageLoader = () => (
@@ -433,6 +434,7 @@ function AppRoutes() {
           <Route path="faults" element={<PermissionRoute entity="faults" level="view"><Faults /></PermissionRoute>} />
           {/* טיפולים - דורש הרשאת צפייה */}
           <Route path="maintenance" element={<PermissionRoute entity="maintenance" level="view"><Maintenance /></PermissionRoute>} />
+          <Route path="garages/:id" element={<PermissionRoute entity="maintenance" level="view"><GarageDetails /></PermissionRoute>} />
           {/* תביעות ביטוח - דורש הרשאת צפייה */}
           <Route path="insurance-claims" element={<PermissionRoute entity="insurance_claims" level="view"><InsuranceClaims /></PermissionRoute>} />
           {/* תרומות - דורש הרשאת צפייה */}
