@@ -104,7 +104,7 @@ const ENTITY_CONFIGS = [
 ];
 
 // פונקציות חיפוש לכל ישות
-async function searchRiders(db, term, limit) {
+async function searchRiders(db, term, limit, selfRiderId = null) {
   const lowerTerm = term.toLowerCase();
   const riders = [];
   const seen = new Set();
@@ -115,6 +115,24 @@ async function searchRiders(db, term, limit) {
       riders.push({ id: doc.id, ...doc.data() });
     }
   };
+
+  // רוכב עם הרשאת self - יראה רק את עצמו
+  if (selfRiderId) {
+    const riderDoc = await db.collection('riders').doc(selfRiderId).get();
+    if (riderDoc.exists) {
+      const data = riderDoc.data();
+      const fn = (data.firstName || '').trim().toLowerCase();
+      const ln = (data.lastName || '').trim().toLowerCase();
+      const fullName = `${fn} ${ln}`;
+      if (
+        fn.includes(lowerTerm) || ln.includes(lowerTerm) || fullName.includes(lowerTerm) ||
+        (data.idNumber || '').includes(term) || (data.phone || '').includes(term)
+      ) {
+        riders.push({ id: riderDoc.id, ...data });
+      }
+    }
+    return riders;
+  }
 
   // ת"ז: prefix query עובד מצוין - מחרוזת מספרית עקבית
   if (/^\d/.test(term)) {
@@ -159,10 +177,31 @@ async function searchRiders(db, term, limit) {
   return riders.slice(0, limit);
 }
 
-async function searchVehicles(db, term, limit) {
+async function searchVehicles(db, term, limit, selfRiderId = null) {
   let vehicles = [];
   const upperSearch = term.toUpperCase();
   const strippedSearch = upperSearch.replace(/-/g, '');
+  const lowerSearch = term.toLowerCase();
+
+  // רוכב עם הרשאת self - יראה רק את הכלי המשויך אליו
+  if (selfRiderId) {
+    const allSnap = await db.collection('vehicles')
+      .where('assignedTo', '==', selfRiderId)
+      .limit(limit)
+      .get();
+    allSnap.forEach(doc => {
+      const data = doc.data();
+      if (
+        (data.licensePlate || '').toUpperCase().replace(/-/g, '').includes(strippedSearch) ||
+        (data.manufacturer || '').toLowerCase().includes(lowerSearch) ||
+        (data.model || '').toLowerCase().includes(lowerSearch) ||
+        (data.internalNumber || '').toLowerCase().includes(lowerSearch)
+      ) {
+        vehicles.push({ id: doc.id, ...data });
+      }
+    });
+    return vehicles;
+  }
 
   // חיפוש לפי מספר רישוי
   const plateSnap = await db.collection('vehicles')
@@ -189,7 +228,6 @@ async function searchVehicles(db, term, limit) {
   // חיפוש לפי יצרן/דגם ומספר רישוי מנורמל (ללא קווים)
   if (vehicles.length === 0) {
     const allSnap = await db.collection('vehicles').limit(100).get();
-    const lowerSearch = term.toLowerCase();
     allSnap.forEach(doc => {
       const data = doc.data();
       if (
@@ -208,8 +246,13 @@ async function searchVehicles(db, term, limit) {
 
 // fullNamePairs: זוגות [fieldFirst, fieldLast] לבדיקת שם מלא משולב.
 // נדרש כשהשם מפוצל לשני שדות (firstName + lastName) ולא שמור כשדה יחיד.
-async function searchCollection(db, collectionName, fields, term, limit, fullNamePairs = []) {
-  const allSnap = await db.collection(collectionName).limit(200).get();
+// selfRiderId: אם מוגדר, מסנן רק רשומות של אותו רוכב (לפי שדה riderId)
+async function searchCollection(db, collectionName, fields, term, limit, fullNamePairs = [], selfRiderId = null) {
+  let query = db.collection(collectionName);
+  if (selfRiderId) {
+    query = query.where('riderId', '==', selfRiderId);
+  }
+  const allSnap = await query.limit(selfRiderId ? limit : 200).get();
   const searchLower = term.toLowerCase();
   const results = [];
 
@@ -239,14 +282,14 @@ async function searchCollection(db, collectionName, fields, term, limit, fullNam
 }
 
 const SEARCH_FUNCTIONS = {
-  riders: (db, term, limit) => searchRiders(db, term, limit),
-  vehicles: (db, term, limit) => searchVehicles(db, term, limit),
-  faults: (db, term, limit) => searchCollection(db, 'faults', ['description', 'vehiclePlate', 'riderName', 'notes'], term, limit),
-  tasks: (db, term, limit) => searchCollection(db, 'tasks', ['title', 'description', 'riderName', 'vehiclePlate'], term, limit),
-  maintenance: (db, term, limit) => searchCollection(db, 'maintenance', ['maintenanceNumber', 'description', 'vehiclePlate', 'riderName', 'garage.name', 'notes'], term, limit),
+  riders: (db, term, limit, selfRiderId) => searchRiders(db, term, limit, selfRiderId),
+  vehicles: (db, term, limit, selfRiderId) => searchVehicles(db, term, limit, selfRiderId),
+  faults: (db, term, limit, selfRiderId) => searchCollection(db, 'faults', ['description', 'vehiclePlate', 'riderName', 'notes'], term, limit, [], selfRiderId),
+  tasks: (db, term, limit, selfRiderId) => searchCollection(db, 'tasks', ['title', 'description', 'riderName', 'vehiclePlate'], term, limit, [], selfRiderId),
+  maintenance: (db, term, limit, selfRiderId) => searchCollection(db, 'maintenance', ['maintenanceNumber', 'description', 'vehiclePlate', 'riderName', 'garage.name', 'notes'], term, limit, [], selfRiderId),
   garages: (db, term, limit) => searchCollection(db, 'garages', ['name', 'city', 'contactPerson', 'phone'], term, limit),
   users: (db, term, limit) => searchCollection(db, 'users', ['username', 'email', 'firstName', 'lastName'], term, limit, [['firstName', 'lastName']]),
-  insurance_claims: (db, term, limit) => searchCollection(db, 'insurance_claims', ['claimNumber', 'externalClaimNumber', 'description', 'vehiclePlate', 'riderName'], term, limit),
+  insurance_claims: (db, term, limit, selfRiderId) => searchCollection(db, 'insurance_claims', ['claimNumber', 'externalClaimNumber', 'description', 'vehiclePlate', 'riderName'], term, limit, [], selfRiderId),
 };
 
 module.exports = async (req, res) => {
@@ -280,10 +323,13 @@ module.exports = async (req, res) => {
     const searchPromises = ENTITY_CONFIGS.map(async (config) => {
       try {
         // בדיקת הרשאה
-        await checkPermission(user, db, config.permissionKey, 'view');
+        const permLevel = await checkPermission(user, db, config.permissionKey, 'view');
+
+        // אם הרשאת self - מסנן רק נתונים של הרוכב עצמו
+        const selfRiderId = permLevel === 'self' ? (user.riderId || null) : null;
 
         // חיפוש
-        const rawResults = await SEARCH_FUNCTIONS[config.key](db, searchTerm, limitPerType);
+        const rawResults = await SEARCH_FUNCTIONS[config.key](db, searchTerm, limitPerType, selfRiderId);
         return {
           key: config.key,
           items: rawResults.slice(0, limitPerType).map(config.normalize),
