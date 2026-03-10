@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -51,6 +52,8 @@ export default function Users() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { hasPermission } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const autoOpenDone = useRef(false);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -92,6 +95,19 @@ export default function Users() {
       setLoading(false);
     }
   };
+
+  // פתיחת דיאלוג עריכה אוטומטית כשמגיעים מחיפוש גלובלי עם userId
+  useEffect(() => {
+    if (autoOpenDone.current || loading || users.length === 0) return;
+    const userId = searchParams.get('userId');
+    if (!userId) return;
+    const user = users.find((u) => u.id === userId);
+    if (user) {
+      autoOpenDone.current = true;
+      setSearchParams({}, { replace: true });
+      handleOpenDialog(user);
+    }
+  }, [users, loading, searchParams]);
 
   const handleSearch = () => {
     loadUsers();

@@ -86,7 +86,7 @@ const ENTITY_CONFIGS = [
       type: 'users',
       title: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || '',
       subtitle: [user.email, user.role].filter(Boolean).join(' | '),
-      url: '/users',
+      url: `/settings/users?userId=${user.id}`,
     }),
   },
   {
