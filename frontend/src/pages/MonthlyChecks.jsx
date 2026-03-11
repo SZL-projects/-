@@ -5,9 +5,14 @@ import { useNavigate } from 'react-router-dom';
 const safeParseDate = (dateValue) => {
   if (!dateValue) return null;
 
-  // אם זה Firestore Timestamp
+  // אם זה Firestore Timestamp (Firebase client SDK)
   if (dateValue.toDate && typeof dateValue.toDate === 'function') {
     return dateValue.toDate();
+  }
+
+  // אם זה Firestore Timestamp מסודר כ-JSON דרך REST API: {_seconds, _nanoseconds}
+  if (typeof dateValue === 'object' && dateValue._seconds !== undefined) {
+    return new Date(dateValue._seconds * 1000);
   }
 
   // אם זה כבר Date object
