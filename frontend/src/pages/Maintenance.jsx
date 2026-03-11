@@ -1318,23 +1318,21 @@ export default function Maintenance() {
                       </Typography>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      {maintenance.garage?.id ? (
-                        <Typography
-                          variant="body2"
-                          onClick={() => navigate(`/garages/${maintenance.garage.id}`)}
-                          sx={{
-                            color: '#6366f1',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            '&:hover': { textDecoration: 'underline' },
-                          }}
-                        >
-                          {maintenance.garage.name}
-                        </Typography>
-                      ) : (
-                        <Typography variant="body2" sx={{ color: '#1e293b' }}>
-                          {maintenance.garage?.name || '-'}
-                        </Typography>
+                      {maintenance.garage?.name ? (() => {
+                        const garageId = maintenance.garage?.id || garages.find(g => g.name === maintenance.garage.name)?.id;
+                        return garageId ? (
+                          <Typography
+                            variant="body2"
+                            onClick={() => navigate(`/garages/${garageId}`)}
+                            sx={{ color: '#6366f1', fontWeight: 600, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                          >
+                            {maintenance.garage.name}
+                          </Typography>
+                        ) : (
+                          <Typography variant="body2" sx={{ color: '#1e293b' }}>{maintenance.garage.name}</Typography>
+                        );
+                      })() : (
+                        <Typography variant="body2" sx={{ color: '#94a3b8' }}>-</Typography>
                       )}
                     </TableCell>
                     <TableCell>

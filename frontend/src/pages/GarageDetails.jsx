@@ -370,7 +370,7 @@ export default function GarageDetails() {
               <Button
                 variant="outlined"
                 startIcon={<Edit />}
-                onClick={() => navigate('/maintenance')}
+                onClick={() => navigate('/garages')}
                 sx={{ borderRadius: '10px', borderColor: '#e2e8f0', color: '#475569' }}
               >
                 {isMobile ? 'ערוך' : 'ערוך מוסך'}

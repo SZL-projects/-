@@ -645,6 +645,45 @@ async function handleMaintenanceRequest(req, res, db, user, url, googleDriveServ
     });
   }
 
+  // GET /api/maintenance/garage/:garageId - טיפולים לפי מוסך (עם fallback לשם)
+  if (url.includes('/garage/') && req.method === 'GET') {
+    const match = url.match(/\/garage\/([^/?]+)/);
+    const garageId = match ? match[1] : null;
+
+    if (!garageId) {
+      return res.status(400).json({ success: false, message: 'מזהה מוסך חסר' });
+    }
+
+    const { limit = 200, garageName } = req.query;
+    const limitNum = Math.min(parseInt(limit), 500);
+
+    // חיפוש לפי garage.id (רשומות חדשות)
+    const garageSnapshot = await db.collection('maintenance')
+      .where('garage.id', '==', garageId)
+      .limit(limitNum)
+      .get();
+
+    let maintenances = garageSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // fallback - חיפוש לפי garage.name עבור רשומות ישנות ללא garage.id
+    if (maintenances.length === 0 && garageName) {
+      const nameSnapshot = await db.collection('maintenance')
+        .where('garage.name', '==', garageName)
+        .limit(limitNum)
+        .get();
+      maintenances = nameSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    // מיון לפי תאריך טיפול (ללא orderBy כדי להימנע מ-composite index)
+    maintenances.sort((a, b) => {
+      const tA = a.maintenanceDate?.seconds || a.maintenanceDate?._seconds || (a.maintenanceDate ? new Date(a.maintenanceDate).getTime() / 1000 : 0);
+      const tB = b.maintenanceDate?.seconds || b.maintenanceDate?._seconds || (b.maintenanceDate ? new Date(b.maintenanceDate).getTime() / 1000 : 0);
+      return tB - tA;
+    });
+
+    return res.json({ success: true, count: maintenances.length, maintenances });
+  }
+
   // GET /api/maintenance/fault/:faultId
   if (url.includes('/fault/') && req.method === 'GET') {
     const match = url.match(/\/fault\/([^/]+)/);
