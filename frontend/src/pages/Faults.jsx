@@ -47,7 +47,7 @@ import {
   Delete,
   Add,
 } from '@mui/icons-material';
-import { faultsAPI, ridersAPI, vehiclesAPI, tasksAPI } from '../services/api';
+import { faultsAPI, ridersAPI, vehiclesAPI, tasksAPI, maintenanceAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import FaultDialog from '../components/FaultDialog';
 
@@ -148,26 +148,46 @@ export default function Faults() {
     setEditDialogOpen(true);
   }, []);
 
+  const _createLinkedRecords = async (faultOnly, faultId, linkedTask, linkedMaintenance) => {
+    const vehicle = vehicles.find(v => (v.id || v._id) === faultOnly.vehicleId);
+    if (linkedTask) {
+      await tasksAPI.create({
+        title: linkedTask.title,
+        description: `משימה שנוצרה מתקלה: ${faultOnly.title || faultOnly.subCategory || ''}`,
+        assigneeId: linkedTask.assigneeId || null,
+        priority: linkedTask.priority,
+        dueDate: linkedTask.dueDate || null,
+        vehicleId: faultOnly.vehicleId || null,
+        vehiclePlate: vehicle?.licensePlate || null,
+        riderId: faultOnly.riderId || null,
+        faultId: faultId || null,
+        status: 'pending',
+        photos: linkedTask.includePhotos ? (faultOnly.photos || []) : [],
+      });
+    }
+    if (linkedMaintenance) {
+      await maintenanceAPI.create({
+        vehicleId: faultOnly.vehicleId || null,
+        vehiclePlate: vehicle?.licensePlate || '',
+        riderId: faultOnly.riderId || null,
+        maintenanceType: linkedMaintenance.maintenanceType,
+        description: linkedMaintenance.description,
+        status: linkedMaintenance.status,
+        maintenanceDate: new Date().toLocaleDateString('en-CA'),
+        relatedFaultId: faultId || null,
+        costs: { laborCost: 0, partsCost: 0, otherCosts: 0 },
+        replacedParts: [],
+        documents: [],
+      });
+    }
+  };
+
   const handleSaveFault = useCallback(async (faultData) => {
     try {
-      const { linkedTask, ...faultOnly } = faultData;
+      const { linkedTask, linkedMaintenance, ...faultOnly } = faultData;
       await faultsAPI.update(editingFault._id || editingFault.id, faultOnly);
-      if (linkedTask) {
-        const vehicle = vehicles.find(v => (v.id || v._id) === faultOnly.vehicleId);
-        const faultId = editingFault._id || editingFault.id;
-        await tasksAPI.create({
-          title: linkedTask.title,
-          description: `משימה שנוצרה מתקלה: ${faultOnly.title || faultOnly.subCategory || ''}`,
-          assigneeId: linkedTask.assigneeId || null,
-          priority: linkedTask.priority,
-          dueDate: linkedTask.dueDate || null,
-          vehicleId: faultOnly.vehicleId || null,
-          vehiclePlate: vehicle?.licensePlate || null,
-          riderId: faultOnly.riderId || null,
-          faultId: faultId || null,
-          status: 'pending',
-        });
-      }
+      const faultId = editingFault._id || editingFault.id;
+      await _createLinkedRecords(faultOnly, faultId, linkedTask, linkedMaintenance);
       setEditDialogOpen(false);
       setEditingFault(null);
       await loadData();
@@ -179,24 +199,10 @@ export default function Faults() {
 
   const handleCreateFault = useCallback(async (faultData) => {
     try {
-      const { linkedTask, ...faultOnly } = faultData;
+      const { linkedTask, linkedMaintenance, ...faultOnly } = faultData;
       const res = await faultsAPI.create(faultOnly);
       const newFaultId = res.data?.fault?.id || res.data?.fault?._id || res.data?.id;
-      if (linkedTask) {
-        const vehicle = vehicles.find(v => (v.id || v._id) === faultOnly.vehicleId);
-        await tasksAPI.create({
-          title: linkedTask.title,
-          description: `משימה שנוצרה מתקלה: ${faultOnly.title || faultOnly.subCategory || ''}`,
-          assigneeId: linkedTask.assigneeId || null,
-          priority: linkedTask.priority,
-          dueDate: linkedTask.dueDate || null,
-          vehicleId: faultOnly.vehicleId || null,
-          vehiclePlate: vehicle?.licensePlate || null,
-          riderId: faultOnly.riderId || null,
-          faultId: newFaultId || null,
-          status: 'pending',
-        });
-      }
+      await _createLinkedRecords(faultOnly, newFaultId, linkedTask, linkedMaintenance);
       setCreateDialogOpen(false);
       await loadData();
     } catch (err) {

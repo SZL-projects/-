@@ -154,6 +154,15 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
     assigneeId: '',
     priority: 'high',
     dueDate: '',
+    includePhotos: false,
+  });
+
+  // טיפול מקושר
+  const [createLinkedMaintenance, setCreateLinkedMaintenance] = useState(false);
+  const [linkedMaintenanceData, setLinkedMaintenanceData] = useState({
+    maintenanceType: 'repair',
+    description: '',
+    status: 'scheduled',
   });
 
   useEffect(() => {
@@ -204,7 +213,9 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
     }
     setErrors({});
     setCreateLinkedTask(false);
-    setLinkedTaskData({ title: '', assigneeId: '', priority: 'high', dueDate: '' });
+    setLinkedTaskData({ title: '', assigneeId: '', priority: 'high', dueDate: '', includePhotos: false });
+    setCreateLinkedMaintenance(false);
+    setLinkedMaintenanceData({ maintenanceType: 'repair', description: '', status: 'scheduled' });
   }, [fault, open]);
 
   const loadVehicles = async () => {
@@ -352,6 +363,14 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
           assigneeId: linkedTaskData.assigneeId || null,
           priority: linkedTaskData.priority,
           dueDate: linkedTaskData.dueDate || null,
+          includePhotos: linkedTaskData.includePhotos,
+        }
+      } : {}),
+      ...(createLinkedMaintenance ? {
+        linkedMaintenance: {
+          maintenanceType: linkedMaintenanceData.maintenanceType,
+          description: linkedMaintenanceData.description.trim() || formData.description.trim(),
+          status: linkedMaintenanceData.status,
         }
       } : {}),
     };
@@ -764,6 +783,108 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
                       value={linkedTaskData.dueDate}
                       onChange={(e) => setLinkedTaskData(prev => ({ ...prev, dueDate: e.target.value }))}
                       InputLabelProps={{ shrink: true }}
+                    />
+                  </Grid>
+                  {images.length > 0 && (
+                    <Grid item xs={12}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={linkedTaskData.includePhotos}
+                            onChange={(e) => setLinkedTaskData(prev => ({ ...prev, includePhotos: e.target.checked }))}
+                            size="small"
+                            sx={{ '&.Mui-checked': { color: '#6366f1' } }}
+                          />
+                        }
+                        label={
+                          <Typography variant="body2" color="#475569">
+                            צרף תמונות מהתקלה למשימה ({images.length})
+                          </Typography>
+                        }
+                      />
+                    </Grid>
+                  )}
+                </Grid>
+              </Box>
+            </Collapse>
+          </Grid>
+
+          {/* ── טיפול מקושר ── */}
+          <Grid item xs={12}>
+            <Divider sx={{ borderColor: '#e2e8f0' }} />
+          </Grid>
+          <Grid item xs={12}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+              <Build sx={{ color: '#f97316', fontSize: 20 }} />
+              <Typography variant="body1" fontWeight={700} color="#1e293b">
+                טיפול מקושר
+              </Typography>
+            </Box>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={createLinkedMaintenance}
+                  onChange={(e) => {
+                    setCreateLinkedMaintenance(e.target.checked);
+                    if (e.target.checked && !linkedMaintenanceData.description) {
+                      setLinkedMaintenanceData(prev => ({ ...prev, description: formData.description || '' }));
+                    }
+                  }}
+                  sx={{ '&.Mui-checked': { color: '#f97316' } }}
+                />
+              }
+              label={
+                <Typography variant="body2" color="#475569">
+                  צור טיפול מתוזמן מקושר לתקלה זו
+                </Typography>
+              }
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <Collapse in={createLinkedMaintenance}>
+              <Box sx={{ bgcolor: '#fff7ed', borderRadius: '12px', border: '1px solid #fed7aa', p: 2 }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>סוג טיפול</InputLabel>
+                      <Select
+                        value={linkedMaintenanceData.maintenanceType}
+                        onChange={(e) => setLinkedMaintenanceData(prev => ({ ...prev, maintenanceType: e.target.value }))}
+                        label="סוג טיפול"
+                      >
+                        <MenuItem value="repair">תיקון</MenuItem>
+                        <MenuItem value="routine">טיפול תקופתי</MenuItem>
+                        <MenuItem value="emergency">חירום</MenuItem>
+                        <MenuItem value="accident_repair">תיקון תאונה</MenuItem>
+                        <MenuItem value="recall">ריקול</MenuItem>
+                        <MenuItem value="other">אחר</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>סטטוס</InputLabel>
+                      <Select
+                        value={linkedMaintenanceData.status}
+                        onChange={(e) => setLinkedMaintenanceData(prev => ({ ...prev, status: e.target.value }))}
+                        label="סטטוס"
+                      >
+                        <MenuItem value="scheduled">מתוזמן</MenuItem>
+                        <MenuItem value="in_progress">בביצוע</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="תיאור הטיפול"
+                      multiline
+                      rows={2}
+                      size="small"
+                      value={linkedMaintenanceData.description}
+                      onChange={(e) => setLinkedMaintenanceData(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="תיאור הטיפול הנדרש..."
                     />
                   </Grid>
                 </Grid>

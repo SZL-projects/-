@@ -24,6 +24,7 @@ class TaskModel {
         assigneeId: taskData.assigneeId || null,
         assigneeName: taskData.assigneeName || null,
         faultId: taskData.faultId || null,
+        photos: taskData.photos || [],
         notes: taskData.notes || '',
         attachments: taskData.attachments || [],
         createdAt: new Date(),

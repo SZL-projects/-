@@ -30,6 +30,7 @@ import {
   Divider,
   useMediaQuery,
   useTheme,
+  Tooltip,
 } from '@mui/material';
 import {
   Search,
@@ -44,6 +45,19 @@ import {
 import { tasksAPI, authAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import TaskDialog from '../components/TaskDialog';
+
+function getPhotoSrc(photo) {
+  if (!photo) return '';
+  if (photo.fileId) return `/api/faults/photo-proxy?fileId=${photo.fileId}`;
+  const rawUrl = photo.url || photo.data || (typeof photo === 'string' ? photo : '');
+  if (!rawUrl) return '';
+  if (rawUrl.includes('/api/faults/photo-proxy')) return rawUrl;
+  const qIdMatch = rawUrl.match(/[?&]id=([^&]+)/);
+  if (qIdMatch) return `/api/faults/photo-proxy?fileId=${qIdMatch[1]}`;
+  const fileIdMatch = rawUrl.match(/\/file\/d\/([^/?]+)/);
+  if (fileIdMatch) return `/api/faults/photo-proxy?fileId=${fileIdMatch[1]}`;
+  return rawUrl;
+}
 
 export default function Tasks() {
   const navigate = useNavigate();
@@ -404,6 +418,33 @@ export default function Tasks() {
                     </Typography>
                   )}
 
+                  {task.photos?.length > 0 && (
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 0.5 }}>
+                      {task.photos.slice(0, 4).map((photo, i) => (
+                        <Tooltip key={i} title="לחץ להגדלה">
+                          <Box
+                            component="img"
+                            src={getPhotoSrc(photo)}
+                            alt={`תמונה ${i + 1}`}
+                            onClick={(e) => { e.stopPropagation(); window.open(getPhotoSrc(photo), '_blank'); }}
+                            sx={{
+                              width: 56, height: 56, objectFit: 'cover',
+                              borderRadius: '8px', border: '1.5px solid #e2e8f0',
+                              cursor: 'pointer',
+                              '&:hover': { opacity: 0.8, border: '1.5px solid #6366f1' },
+                              transition: 'all 0.15s',
+                            }}
+                          />
+                        </Tooltip>
+                      ))}
+                      {task.photos.length > 4 && (
+                        <Box sx={{ width: 56, height: 56, borderRadius: '8px', bgcolor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Typography variant="caption" color="#64748b">+{task.photos.length - 4}</Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  )}
+
                   {task.riderName && (
                     <Typography variant="body2" sx={{ color: '#64748b' }}>
                       רוכב: <Box component="span" sx={{ fontWeight: 600, color: '#1e293b' }}>{task.riderName}</Box>
@@ -496,9 +537,21 @@ export default function Tasks() {
                   }}
                 >
                   <TableCell>
-                    <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
-                      {task.title}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                        {task.title}
+                      </Typography>
+                      {task.photos?.length > 0 && (
+                        <Tooltip title={`${task.photos.length} תמונות`}>
+                          <Chip
+                            icon={<Flag sx={{ fontSize: '14px !important' }} />}
+                            label={task.photos.length}
+                            size="small"
+                            sx={{ bgcolor: 'rgba(99,102,241,0.1)', color: '#6366f1', height: 20, fontSize: '0.7rem', '& .MuiChip-icon': { color: '#6366f1' } }}
+                          />
+                        </Tooltip>
+                      )}
+                    </Box>
                   </TableCell>
                   <TableCell sx={{ color: '#64748b' }}>{task.riderName || '-'}</TableCell>
                   <TableCell sx={{ color: '#64748b' }}>{task.vehiclePlate || '-'}</TableCell>
