@@ -13,6 +13,7 @@ import {
   RadioGroup,
   FormControlLabel,
   Radio,
+  Checkbox,
   Autocomplete,
   useMediaQuery,
   useTheme,
@@ -24,6 +25,9 @@ import {
   Box,
   Chip,
   Tooltip,
+  Collapse,
+  Select,
+  InputLabel,
 } from '@mui/material';
 import {
   Close,
@@ -34,6 +38,7 @@ import {
   Build,
   PhotoCamera,
   Delete,
+  Assignment,
 } from '@mui/icons-material';
 import { vehiclesAPI, authAPI, faultsAPI } from '../services/api';
 
@@ -142,6 +147,15 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
   const [users, setUsers] = useState([]);
   const [errors, setErrors] = useState({});
 
+  // משימה מקושרת
+  const [createLinkedTask, setCreateLinkedTask] = useState(false);
+  const [linkedTaskData, setLinkedTaskData] = useState({
+    title: '',
+    assigneeId: '',
+    priority: 'high',
+    dueDate: '',
+  });
+
   useEffect(() => {
     if (open) {
       loadVehicles();
@@ -189,6 +203,8 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
       setImages([]);
     }
     setErrors({});
+    setCreateLinkedTask(false);
+    setLinkedTaskData({ title: '', assigneeId: '', priority: 'high', dueDate: '' });
   }, [fault, open]);
 
   const loadVehicles = async () => {
@@ -330,6 +346,14 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
       resolvedDate: formData.resolvedDate,
       notes: formData.notes,
       photos: images,
+      ...(createLinkedTask && linkedTaskData.title.trim() ? {
+        linkedTask: {
+          title: linkedTaskData.title.trim(),
+          assigneeId: linkedTaskData.assigneeId || null,
+          priority: linkedTaskData.priority,
+          dueDate: linkedTaskData.dueDate || null,
+        }
+      } : {}),
     };
 
     onSave(dataToSave);
@@ -648,6 +672,103 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
               value={formData.notes}
               onChange={handleChange('notes')}
             />
+          </Grid>
+
+          {/* ── משימה מקושרת ── */}
+          <Grid item xs={12}>
+            <Divider sx={{ borderColor: '#e2e8f0' }} />
+          </Grid>
+          <Grid item xs={12}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+              <Assignment sx={{ color: '#6366f1', fontSize: 20 }} />
+              <Typography variant="body1" fontWeight={700} color="#1e293b">
+                משימה מקושרת
+              </Typography>
+            </Box>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={createLinkedTask}
+                  onChange={(e) => {
+                    setCreateLinkedTask(e.target.checked);
+                    if (e.target.checked && !linkedTaskData.title) {
+                      const autoTitle = formData.subCategory === 'אחר'
+                        ? formData.customSubCategory
+                        : formData.subCategory;
+                      setLinkedTaskData(prev => ({ ...prev, title: autoTitle || '' }));
+                    }
+                  }}
+                  sx={{ '&.Mui-checked': { color: '#6366f1' } }}
+                />
+              }
+              label={
+                <Typography variant="body2" color="#475569">
+                  צור משימה חדשה מקושרת לתקלה זו
+                </Typography>
+              }
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <Collapse in={createLinkedTask}>
+              <Box sx={{ bgcolor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', p: 2 }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="כותרת המשימה"
+                      required
+                      value={linkedTaskData.title}
+                      onChange={(e) => setLinkedTaskData(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="תאר את המשימה הנדרשת..."
+                      size="small"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>שייך למשתמש</InputLabel>
+                      <Select
+                        value={linkedTaskData.assigneeId}
+                        onChange={(e) => setLinkedTaskData(prev => ({ ...prev, assigneeId: e.target.value }))}
+                        label="שייך למשתמש"
+                      >
+                        <MenuItem value="">ללא שיוך</MenuItem>
+                        {users.map(u => (
+                          <MenuItem key={u._id || u.id} value={u._id || u.id}>
+                            {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.username}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>עדיפות</InputLabel>
+                      <Select
+                        value={linkedTaskData.priority}
+                        onChange={(e) => setLinkedTaskData(prev => ({ ...prev, priority: e.target.value }))}
+                        label="עדיפות"
+                      >
+                        <MenuItem value="low">נמוך</MenuItem>
+                        <MenuItem value="medium">בינוני</MenuItem>
+                        <MenuItem value="high">גבוה</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={6} sm={3}>
+                    <TextField
+                      fullWidth
+                      label="תאריך יעד"
+                      type="date"
+                      size="small"
+                      value={linkedTaskData.dueDate}
+                      onChange={(e) => setLinkedTaskData(prev => ({ ...prev, dueDate: e.target.value }))}
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
+            </Collapse>
           </Grid>
         </Grid>
       </DialogContent>

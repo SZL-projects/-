@@ -47,7 +47,7 @@ import {
   Delete,
   Add,
 } from '@mui/icons-material';
-import { faultsAPI, ridersAPI, vehiclesAPI } from '../services/api';
+import { faultsAPI, ridersAPI, vehiclesAPI, tasksAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import FaultDialog from '../components/FaultDialog';
 
@@ -150,7 +150,24 @@ export default function Faults() {
 
   const handleSaveFault = useCallback(async (faultData) => {
     try {
-      await faultsAPI.update(editingFault._id || editingFault.id, faultData);
+      const { linkedTask, ...faultOnly } = faultData;
+      await faultsAPI.update(editingFault._id || editingFault.id, faultOnly);
+      if (linkedTask) {
+        const vehicle = vehicles.find(v => (v.id || v._id) === faultOnly.vehicleId);
+        const faultId = editingFault._id || editingFault.id;
+        await tasksAPI.create({
+          title: linkedTask.title,
+          description: `משימה שנוצרה מתקלה: ${faultOnly.title || faultOnly.subCategory || ''}`,
+          assigneeId: linkedTask.assigneeId || null,
+          priority: linkedTask.priority,
+          dueDate: linkedTask.dueDate || null,
+          vehicleId: faultOnly.vehicleId || null,
+          vehiclePlate: vehicle?.licensePlate || null,
+          riderId: faultOnly.riderId || null,
+          faultId: faultId || null,
+          status: 'pending',
+        });
+      }
       setEditDialogOpen(false);
       setEditingFault(null);
       await loadData();
@@ -158,18 +175,35 @@ export default function Faults() {
       console.error('Error saving fault:', err);
       setError('שגיאה בשמירת התקלה');
     }
-  }, [editingFault]);
+  }, [editingFault, vehicles]);
 
   const handleCreateFault = useCallback(async (faultData) => {
     try {
-      await faultsAPI.create(faultData);
+      const { linkedTask, ...faultOnly } = faultData;
+      const res = await faultsAPI.create(faultOnly);
+      const newFaultId = res.data?.fault?.id || res.data?.fault?._id || res.data?.id;
+      if (linkedTask) {
+        const vehicle = vehicles.find(v => (v.id || v._id) === faultOnly.vehicleId);
+        await tasksAPI.create({
+          title: linkedTask.title,
+          description: `משימה שנוצרה מתקלה: ${faultOnly.title || faultOnly.subCategory || ''}`,
+          assigneeId: linkedTask.assigneeId || null,
+          priority: linkedTask.priority,
+          dueDate: linkedTask.dueDate || null,
+          vehicleId: faultOnly.vehicleId || null,
+          vehiclePlate: vehicle?.licensePlate || null,
+          riderId: faultOnly.riderId || null,
+          faultId: newFaultId || null,
+          status: 'pending',
+        });
+      }
       setCreateDialogOpen(false);
       await loadData();
     } catch (err) {
       console.error('Error creating fault:', err);
       setError('שגיאה ביצירת התקלה');
     }
-  }, []);
+  }, [vehicles]);
 
   const handleDeleteClick = useCallback((fault) => {
     setFaultToDelete(fault);

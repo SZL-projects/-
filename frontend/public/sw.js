@@ -1,4 +1,4 @@
-const CACHE_NAME = 'motorcycle-crm-v3.25.0';
+const CACHE_NAME = 'motorcycle-crm-v3.25.1';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -46,10 +46,12 @@ self.addEventListener('fetch', (event) => {
         // Clone the response
         const responseToCache = response.clone();
 
-        caches.open(CACHE_NAME)
-          .then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+        if (response.status === 200 && response.type !== 'opaque') {
+          caches.open(CACHE_NAME)
+            .then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+        }
 
         return response;
       })
