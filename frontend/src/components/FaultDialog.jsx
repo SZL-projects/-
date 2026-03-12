@@ -40,7 +40,7 @@ import {
   Delete,
   Assignment,
 } from '@mui/icons-material';
-import { vehiclesAPI, authAPI, faultsAPI } from '../services/api';
+import { vehiclesAPI, authAPI, faultsAPI, maintenanceTypesAPI } from '../services/api';
 
 // המרת אובייקט תמונה ל-URL תקין דרך ה-proxy
 function getPhotoSrc(photo) {
@@ -160,15 +160,20 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
   // טיפול מקושר
   const [createLinkedMaintenance, setCreateLinkedMaintenance] = useState(false);
   const [linkedMaintenanceData, setLinkedMaintenanceData] = useState({
-    maintenanceType: 'repair',
+    maintenanceType: '',
+    maintenanceSubType: '',
     description: '',
     status: 'scheduled',
   });
+  const [maintenanceTypes, setMaintenanceTypes] = useState([]);
 
   useEffect(() => {
     if (open) {
       loadVehicles();
       loadUsers();
+      maintenanceTypesAPI.getAll()
+        .then(res => setMaintenanceTypes((res.data.types || []).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))))
+        .catch(() => {});
     }
   }, [open]);
 
@@ -215,7 +220,8 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
     setCreateLinkedTask(false);
     setLinkedTaskData({ title: '', assigneeId: '', priority: 'high', dueDate: '', includePhotos: false });
     setCreateLinkedMaintenance(false);
-    setLinkedMaintenanceData({ maintenanceType: 'repair', description: '', status: 'scheduled' });
+    setLinkedMaintenanceData({ maintenanceType: '', maintenanceSubType: '', description: '', status: 'scheduled' });
+
   }, [fault, open]);
 
   const loadVehicles = async () => {
@@ -369,6 +375,7 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
       ...(createLinkedMaintenance ? {
         linkedMaintenance: {
           maintenanceType: linkedMaintenanceData.maintenanceType,
+          maintenanceSubType: linkedMaintenanceData.maintenanceSubType || '',
           description: linkedMaintenanceData.description.trim() || formData.description.trim(),
           status: linkedMaintenanceData.status,
         }
@@ -844,50 +851,73 @@ export default function FaultDialog({ open, onClose, onSave, fault }) {
           <Grid item xs={12}>
             <Collapse in={createLinkedMaintenance}>
               <Box sx={{ bgcolor: '#fff7ed', borderRadius: '12px', border: '1px solid #fed7aa', p: 2 }}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth size="small">
-                      <InputLabel>סוג טיפול</InputLabel>
-                      <Select
-                        value={linkedMaintenanceData.maintenanceType}
-                        onChange={(e) => setLinkedMaintenanceData(prev => ({ ...prev, maintenanceType: e.target.value }))}
-                        label="סוג טיפול"
-                      >
-                        <MenuItem value="repair">תיקון</MenuItem>
-                        <MenuItem value="routine">טיפול תקופתי</MenuItem>
-                        <MenuItem value="emergency">חירום</MenuItem>
-                        <MenuItem value="accident_repair">תיקון תאונה</MenuItem>
-                        <MenuItem value="recall">ריקול</MenuItem>
-                        <MenuItem value="other">אחר</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth size="small">
-                      <InputLabel>סטטוס</InputLabel>
-                      <Select
-                        value={linkedMaintenanceData.status}
-                        onChange={(e) => setLinkedMaintenanceData(prev => ({ ...prev, status: e.target.value }))}
-                        label="סטטוס"
-                      >
-                        <MenuItem value="scheduled">מתוזמן</MenuItem>
-                        <MenuItem value="in_progress">בביצוע</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="תיאור הטיפול"
-                      multiline
-                      rows={2}
-                      size="small"
-                      value={linkedMaintenanceData.description}
-                      onChange={(e) => setLinkedMaintenanceData(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="תיאור הטיפול הנדרש..."
-                    />
-                  </Grid>
-                </Grid>
+                {(() => {
+                  const selectedType = maintenanceTypes.find(t => (t.value || t.key) === linkedMaintenanceData.maintenanceType);
+                  const subTypes = (selectedType?.subTypes || []).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+                  return (
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={subTypes.length > 0 ? 6 : 6}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel>סוג טיפול</InputLabel>
+                          <Select
+                            value={linkedMaintenanceData.maintenanceType}
+                            onChange={(e) => setLinkedMaintenanceData(prev => ({ ...prev, maintenanceType: e.target.value, maintenanceSubType: '' }))}
+                            label="סוג טיפול"
+                          >
+                            <MenuItem value=""><em>בחר סוג</em></MenuItem>
+                            {maintenanceTypes.map(t => (
+                              <MenuItem key={t.id || t.value} value={t.value || t.key}>
+                                {t.label}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      {subTypes.length > 0 && (
+                        <Grid item xs={12} sm={6}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel>תת-סוג</InputLabel>
+                            <Select
+                              value={linkedMaintenanceData.maintenanceSubType}
+                              onChange={(e) => setLinkedMaintenanceData(prev => ({ ...prev, maintenanceSubType: e.target.value }))}
+                              label="תת-סוג"
+                            >
+                              <MenuItem value=""><em>ללא תת-סוג</em></MenuItem>
+                              {subTypes.map(sub => (
+                                <MenuItem key={sub.id} value={sub.id}>{sub.label}</MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Grid>
+                      )}
+                      <Grid item xs={12} sm={6}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel>סטטוס</InputLabel>
+                          <Select
+                            value={linkedMaintenanceData.status}
+                            onChange={(e) => setLinkedMaintenanceData(prev => ({ ...prev, status: e.target.value }))}
+                            label="סטטוס"
+                          >
+                            <MenuItem value="scheduled">מתוזמן</MenuItem>
+                            <MenuItem value="in_progress">בביצוע</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <TextField
+                          fullWidth
+                          label="תיאור הטיפול"
+                          multiline
+                          rows={2}
+                          size="small"
+                          value={linkedMaintenanceData.description}
+                          onChange={(e) => setLinkedMaintenanceData(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="תיאור הטיפול הנדרש..."
+                        />
+                      </Grid>
+                    </Grid>
+                  );
+                })()}
               </Box>
             </Collapse>
           </Grid>

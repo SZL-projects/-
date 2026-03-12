@@ -171,6 +171,7 @@ export default function Faults() {
         vehiclePlate: vehicle?.licensePlate || '',
         riderId: faultOnly.riderId || null,
         maintenanceType: linkedMaintenance.maintenanceType,
+        maintenanceSubType: linkedMaintenance.maintenanceSubType || '',
         description: linkedMaintenance.description,
         status: linkedMaintenance.status,
         maintenanceDate: new Date().toLocaleDateString('en-CA'),
