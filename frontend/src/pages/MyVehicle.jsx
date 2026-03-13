@@ -114,10 +114,15 @@ export default function MyVehicle() {
         try {
           const ridersResponse = await ridersAPI.getAll();
           const allRiders = ridersResponse.data.riders || ridersResponse.data;
-          const matchedRider = allRiders.find(r =>
-            (r.username && r.username.toLowerCase() === user.username.toLowerCase()) ||
-            (`${r.firstName} ${r.lastName}`.toLowerCase() === `${user.firstName} ${user.lastName}`.toLowerCase())
-          );
+          const matchedRider = allRiders.find(r => {
+            if (r.username && user.username &&
+                r.username.toLowerCase() === user.username.toLowerCase()) return true;
+            const riderFullName = r.firstName && r.lastName
+              ? `${r.firstName} ${r.lastName}`.toLowerCase() : null;
+            const userFullName = user.firstName && user.lastName
+              ? `${user.firstName} ${user.lastName}`.toLowerCase() : null;
+            return riderFullName && userFullName && riderFullName === userFullName;
+          });
           if (matchedRider) {
             riderData = matchedRider;
             setRider(riderData);
@@ -130,10 +135,6 @@ export default function MyVehicle() {
         } catch (err) {
           console.error('Error searching for rider:', err);
         }
-      }
-
-      if (!vehicleId && user?.vehicleAccess && user.vehicleAccess.length > 0) {
-        vehicleId = user.vehicleAccess[0];
       }
 
       if (!vehicleId) {
