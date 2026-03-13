@@ -113,7 +113,11 @@ module.exports = async (req, res) => {
       const permLevel = await checkPermission(user, db, 'tasks', 'view');
 
       if (permLevel === 'self') {
-        query = query.where('assigneeId', '==', user.id);
+        if (riderId && riderId === user.id) {
+          // riderId כבר מסנן לנתונים האישיים - אין צורך בסינון נוסף
+        } else {
+          query = query.where('assigneeId', '==', user.id);
+        }
       }
 
       const snapshot = await query.limit(parseInt(limit)).get();

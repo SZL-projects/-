@@ -194,7 +194,7 @@ export default function MyVehicle() {
       }
 
       try {
-        const tasksResponse = await tasksAPI.getAll();
+        const tasksResponse = await tasksAPI.getAll({ riderId: user?.id });
         setMyTasks(tasksResponse.data.tasks || []);
       } catch (err) {
         console.error('Error loading tasks:', err);

@@ -61,7 +61,7 @@ function getPhotoSrc(photo) {
 
 export default function Tasks() {
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { hasPermission, getPermissionLevel } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [tasks, setTasks] = useState([]);
@@ -74,6 +74,13 @@ export default function Tasks() {
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [allUsers, setAllUsers] = useState([]);
+
+  // רוכבים (הרשאת self) לא אמורים לראות ניהול משימות - הפניה לעמוד האישי
+  useEffect(() => {
+    if (getPermissionLevel('tasks') === 'self') {
+      navigate('/my-vehicle', { replace: true });
+    }
+  }, []);
 
   useEffect(() => {
     loadTasks();
