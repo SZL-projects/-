@@ -72,6 +72,11 @@ module.exports = async (req, res) => {
       return handleDonationsRequest(req, res, db, user, url);
     }
 
+    // ==================== INCIDENTS ROUTES ====================
+    if (url.includes('/incidents')) {
+      return handleIncidentsRequest(req, res, db, user, url);
+    }
+
     // ==================== FAULTS ROUTES ====================
     return handleFaultsRequest(req, res, db, user, url);
 
@@ -890,6 +895,134 @@ async function handleInsuranceClaimsRequest(req, res, db, user, url) {
       message: 'תביעת ביטוח נוצרה בהצלחה',
       claim: { id: claimRef.id, ...claimDoc.data() }
     });
+  }
+
+  return res.status(405).json({ success: false, message: 'Method not allowed' });
+}
+
+// ==================== INCIDENTS HANDLER ====================
+async function handleIncidentsRequest(req, res, db, user, url) {
+  function isRiderOnly(u) {
+    const roles = Array.isArray(u.roles) ? u.roles : [u.role];
+    return roles.every(r => r === 'rider');
+  }
+
+  function extractIncidentId(u) {
+    const match = u.match(/\/incidents\/([^/?#\s]+)/);
+    return match ? match[1] : null;
+  }
+
+  async function generateIncidentNumber() {
+    const year = new Date().getFullYear();
+    const snapshot = await db.collection('incidents').orderBy('createdAt', 'desc').limit(1).get();
+    const lastNum = snapshot.empty ? 0 : (snapshot.docs[0].data().incidentNumber?.split('-')[2] || 0);
+    return `INC-${year}-${String(parseInt(lastNum) + 1).padStart(4, '0')}`;
+  }
+
+  const incidentId = extractIncidentId(url);
+
+  // POST /:id/upload-photo
+  if (url.endsWith('/upload-photo') && req.method === 'POST') {
+    const Busboy = require('busboy');
+    const { Readable } = require('stream');
+    const googleDriveService = require('./_services/googleDriveService');
+    googleDriveService.setFirestore(db);
+    await googleDriveService.initialize();
+
+    const doc = await db.collection('incidents').doc(incidentId).get();
+    if (!doc.exists) return res.status(404).json({ success: false, message: 'אירוע לא נמצא' });
+
+    return new Promise(async (resolve) => {
+      try {
+        const rawBody = await getRawBody(req, { length: req.headers['content-length'], limit: '11mb' });
+        const busboy = Busboy({ headers: req.headers });
+        let fileBuffer = null, fileName = '', mimeType = '';
+
+        busboy.on('file', (fieldname, file, info) => {
+          try { fileName = Buffer.from(info.filename, 'latin1').toString('utf8'); } catch { fileName = info.filename; }
+          mimeType = info.mimeType;
+          const chunks = [];
+          file.on('data', d => chunks.push(d));
+          file.on('end', () => { fileBuffer = Buffer.concat(chunks); });
+        });
+
+        busboy.on('finish', async () => {
+          if (!fileBuffer) { res.status(400).json({ success: false, message: 'לא הועלה קובץ' }); return resolve(); }
+          const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
+          if (!rootFolderId) { res.status(500).json({ success: false, message: 'Google Drive לא מחובר' }); return resolve(); }
+
+          const folder = await googleDriveService.findOrCreateFolder('אירועים', rootFolderId);
+          const fullFileName = `${doc.data().incidentNumber || incidentId}_${fileName}`;
+          const fileData = await googleDriveService.uploadFile(fullFileName, fileBuffer, folder.id, mimeType);
+
+          const photos = doc.data().photos || [];
+          photos.push({ fileId: fileData.id, name: fullFileName, url: fileData.webViewLink || '' });
+          await db.collection('incidents').doc(incidentId).update({ photos, updatedAt: new Date() });
+
+          res.json({ success: true, file: fileData });
+          resolve();
+        });
+
+        busboy.on('error', err => { res.status(500).json({ success: false, message: err.message }); resolve(); });
+        Readable.from(rawBody).pipe(busboy);
+      } catch (err) { res.status(500).json({ success: false, message: err.message }); resolve(); }
+    });
+  }
+
+  // GET / - רשימה
+  if (!incidentId && req.method === 'GET') {
+    let query = db.collection('incidents');
+    if (isRiderOnly(user)) query = query.where('createdBy', '==', user.id);
+    const snapshot = await query.orderBy('createdAt', 'desc').limit(200).get();
+    const incidents = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    return res.json({ success: true, count: incidents.length, incidents });
+  }
+
+  // GET /:id
+  if (incidentId && req.method === 'GET') {
+    const doc = await db.collection('incidents').doc(incidentId).get();
+    if (!doc.exists) return res.status(404).json({ success: false, message: 'אירוע לא נמצא' });
+    const incident = { id: doc.id, ...doc.data() };
+    if (isRiderOnly(user) && incident.createdBy !== user.id)
+      return res.status(403).json({ success: false, message: 'אין הרשאה' });
+    return res.json({ success: true, incident });
+  }
+
+  // POST / - יצירה
+  if (!incidentId && req.method === 'POST') {
+    const incidentNumber = await generateIncidentNumber();
+    const data = {
+      ...req.body,
+      incidentNumber,
+      status: 'new',
+      createdBy: user.id,
+      createdByName: `${user.firstName} ${user.lastName}`.trim(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const docRef = await db.collection('incidents').add(data);
+    return res.status(201).json({ success: true, incident: { id: docRef.id, ...data } });
+  }
+
+  // PUT /:id
+  if (incidentId && req.method === 'PUT') {
+    const docRef = db.collection('incidents').doc(incidentId);
+    const doc = await docRef.get();
+    if (!doc.exists) return res.status(404).json({ success: false, message: 'אירוע לא נמצא' });
+    if (isRiderOnly(user) && doc.data().createdBy !== user.id)
+      return res.status(403).json({ success: false, message: 'אין הרשאה' });
+    const updateData = { ...req.body, updatedAt: new Date(), updatedBy: user.id };
+    await docRef.update(updateData);
+    return res.json({ success: true, incident: { id: incidentId, ...doc.data(), ...updateData } });
+  }
+
+  // DELETE /:id
+  if (incidentId && req.method === 'DELETE') {
+    if (isRiderOnly(user)) return res.status(403).json({ success: false, message: 'אין הרשאה' });
+    const doc = await db.collection('incidents').doc(incidentId).get();
+    if (!doc.exists) return res.status(404).json({ success: false, message: 'אירוע לא נמצא' });
+    await db.collection('incidents').doc(incidentId).delete();
+    return res.json({ success: true, message: 'אירוע נמחק' });
   }
 
   return res.status(405).json({ success: false, message: 'Method not allowed' });

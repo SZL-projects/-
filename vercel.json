@@ -20,8 +20,8 @@
     { "source": "/api/donations/:path*", "destination": "/api/faults" },
     { "source": "/api/insurance-claims/:path*", "destination": "/api/faults" },
     { "source": "/api/notifications/:path*", "destination": "/api/reports" },
-    { "source": "/api/incidents/:path*", "destination": "/api/incidents" },
-    { "source": "/api/incidents", "destination": "/api/incidents" }
+    { "source": "/api/incidents/:path*", "destination": "/api/faults" },
+    { "source": "/api/incidents", "destination": "/api/faults" }
   ],
   "crons": [
     {
