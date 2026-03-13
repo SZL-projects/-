@@ -13,7 +13,7 @@ import {
   Visibility,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { incidentsAPI } from '../services/api';
+import { incidentsAPI, ridersAPI } from '../services/api';
 
 const SECTION_TITLES = [
   'סוג האירוע',
@@ -102,21 +102,52 @@ export default function IncidentReport() {
   const [selectedPhotos, setSelectedPhotos] = useState([]); // [{slot, label, file, preview}]
   const [myIncidents, setMyIncidents] = useState([]);
   const [listLoading, setListLoading] = useState(false);
+  const [riders, setRiders] = useState([]);
+  const [selectedRiderId, setSelectedRiderId] = useState('');
 
   // טעינת נתונים קיימים בעריכה
   useEffect(() => {
     if (editId) {
       loadIncident();
     } else if (!showList) {
-      // מילוי אוטומטי מפרופיל המשתמש (טופס חדש)
-      setFormData(prev => ({
-        ...prev,
-        riderFirstName: user?.firstName || '',
-        riderLastName: user?.lastName || '',
-        vehiclePlate: user?.vehiclePlate || '',
-      }));
+      if (isRider(user)) {
+        // רוכב — מילוי אוטומטי מהפרופיל
+        setFormData(prev => ({
+          ...prev,
+          riderFirstName: user?.firstName || '',
+          riderLastName: user?.lastName || '',
+          vehiclePlate: user?.vehiclePlate || '',
+        }));
+      } else {
+        // מנהל — טען רשימת רוכבים
+        loadRiders();
+      }
     }
   }, [editId]);
+
+  const loadRiders = async () => {
+    try {
+      const res = await ridersAPI.getAll();
+      setRiders(res.data?.riders || []);
+    } catch { /* silent */ }
+  };
+
+  const handleRiderSelect = (riderId) => {
+    setSelectedRiderId(riderId);
+    const rider = riders.find(r => r.id === riderId);
+    if (rider) {
+      setFormData(prev => ({
+        ...prev,
+        riderFirstName: rider.firstName || '',
+        riderLastName: rider.lastName || '',
+        riderIdNumber: rider.idNumber || '',
+        vehiclePlate: rider.vehiclePlate || rider.assignedVehiclePlate || '',
+        birthDate: rider.birthDate || '',
+        licenseIssueDate: rider.licenseIssueDate || '',
+        licenseExpiryDate: rider.licenseExpiryDate || '',
+      }));
+    }
+  };
 
   // טעינת רשימת אירועים של הרוכב
   useEffect(() => {
@@ -562,6 +593,29 @@ export default function IncidentReport() {
             <Grid item xs={12}>
               <SectionHeader icon={<Person />} title="פרטי הרוכב" color="#6366f1" />
             </Grid>
+
+            {/* בחירת רוכב למנהל */}
+            {!isRider(user) && riders.length > 0 && (
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>בחר רוכב (אופציונלי)</InputLabel>
+                  <Select
+                    value={selectedRiderId}
+                    onChange={e => handleRiderSelect(e.target.value)}
+                    label="בחר רוכב (אופציונלי)"
+                    sx={{ borderRadius: '12px' }}
+                  >
+                    <MenuItem value=""><em>— ללא בחירה —</em></MenuItem>
+                    {riders.map(r => (
+                      <MenuItem key={r.id} value={r.id}>
+                        {r.firstName} {r.lastName}
+                        {r.vehiclePlate ? ` · ${r.vehiclePlate}` : ''}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            )}
 
             <Grid item xs={12} sm={6}>
               <TextField
