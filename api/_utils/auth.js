@@ -104,7 +104,8 @@ async function getPermissions(db) {
   }
   try {
     const doc = await db.collection('permissions').doc('default').get();
-    permissionsCache = doc.exists ? doc.data().roles : DEFAULT_PERMISSIONS;
+    const rolesData = doc.exists ? doc.data().roles : null;
+    permissionsCache = rolesData || DEFAULT_PERMISSIONS;
     cacheTime = now;
     return permissionsCache;
   } catch (err) {
@@ -138,7 +139,7 @@ async function checkPermission(user, db, entity, requiredLevel) {
   // חישוב הרשאה גבוהה ביותר מכל התפקידים
   let highestLevel = 'none';
   for (const role of userRoles) {
-    const rolePerms = permissions[role];
+    const rolePerms = (permissions && permissions[role]) || DEFAULT_PERMISSIONS[role];
     if (rolePerms && rolePerms[entity]) {
       const roleLevel = rolePerms[entity];
       if (LEVEL_PRIORITY[roleLevel] > LEVEL_PRIORITY[highestLevel]) {
