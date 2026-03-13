@@ -4,11 +4,13 @@ import {
   Box, Paper, Typography, Grid, TextField, FormControl, InputLabel,
   Select, MenuItem, Button, Divider, IconButton, Alert, CircularProgress,
   RadioGroup, FormControlLabel, Radio, FormLabel, Chip, Card, CardContent,
-  useMediaQuery, useTheme, Stepper, Step, StepLabel, LinearProgress,
+  useMediaQuery, useTheme, Stepper, Step, StepLabel, LinearProgress, Stack,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
 } from '@mui/material';
 import {
   Add, ReportProblem, ArrowBack, ArrowForward, Send, Close,
   Person, DirectionsCar, Place, Gavel, PhotoCamera, People, Delete,
+  Visibility,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { incidentsAPI } from '../services/api';
@@ -73,12 +75,22 @@ const defaultForm = {
   notes: '',
 };
 
+function isRider(user) {
+  const roles = Array.isArray(user?.roles) ? user.roles : [user?.role];
+  return roles.length > 0 && roles.every(r => r === 'rider');
+}
+
 export default function IncidentReport() {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id } = useParams(); // undefined = list/new, 'new' = new form, or doc id = edit
   const { user } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // רוכב ללא id → מצב רשימה
+  const showList = !id && isRider(user);
+  const isNewForm = id === 'new';
+  const editId = id && id !== 'new' ? id : null;
 
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState(defaultForm);
@@ -88,13 +100,15 @@ export default function IncidentReport() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [selectedPhotos, setSelectedPhotos] = useState([]); // [{slot, label, file, preview}]
+  const [myIncidents, setMyIncidents] = useState([]);
+  const [listLoading, setListLoading] = useState(false);
 
   // טעינת נתונים קיימים בעריכה
   useEffect(() => {
-    if (id) {
+    if (editId) {
       loadIncident();
-    } else {
-      // מילוי אוטומטי מפרופיל המשתמש
+    } else if (!showList) {
+      // מילוי אוטומטי מפרופיל המשתמש (טופס חדש)
       setFormData(prev => ({
         ...prev,
         riderFirstName: user?.firstName || '',
@@ -102,12 +116,32 @@ export default function IncidentReport() {
         vehiclePlate: user?.vehiclePlate || '',
       }));
     }
-  }, [id]);
+  }, [editId]);
+
+  // טעינת רשימת אירועים של הרוכב
+  useEffect(() => {
+    if (showList) {
+      loadMyIncidents();
+    }
+  }, [showList]);
+
+  const loadMyIncidents = async () => {
+    try {
+      setListLoading(true);
+      const res = await incidentsAPI.getAll();
+      // מסנן אירועים מוסתרים
+      setMyIncidents((res.data.incidents || []).filter(i => !i.hiddenFromRider));
+    } catch {
+      setError('שגיאה בטעינת הדיווחים');
+    } finally {
+      setListLoading(false);
+    }
+  };
 
   const loadIncident = async () => {
     try {
       setLoading(true);
-      const res = await incidentsAPI.getById(id);
+      const res = await incidentsAPI.getById(editId);
       const inc = res.data.incident;
       setFormData({
         ...defaultForm,
@@ -242,11 +276,11 @@ export default function IncidentReport() {
       setError('');
       setUploadProgress('');
 
-      let incidentId = id;
+      let incidentId = editId;
 
       // שמירת הנתונים
-      if (id) {
-        await incidentsAPI.update(id, formData);
+      if (editId) {
+        await incidentsAPI.update(editId, formData);
       } else {
         const res = await incidentsAPI.create(formData);
         incidentId = res.data.incident.id;
@@ -265,8 +299,8 @@ export default function IncidentReport() {
         setUploadProgress('');
       }
 
-      setSuccess(id ? 'הדיווח עודכן בהצלחה!' : 'הדיווח נשלח בהצלחה!');
-      if (!id) setTimeout(() => navigate('/incident-report'), 2500);
+      setSuccess(editId ? 'הדיווח עודכן בהצלחה!' : 'הדיווח נשלח בהצלחה!');
+      if (!editId) setTimeout(() => navigate('/incident-report'), 2500);
     } catch (err) {
       setError(err.response?.data?.message || 'שגיאה בשמירה');
       setUploadProgress('');
@@ -274,6 +308,131 @@ export default function IncidentReport() {
       setSaving(false);
     }
   };
+
+  // ===== מצב רשימה לרוכב =====
+  if (showList) {
+    return (
+      <Box dir="rtl" sx={{ p: isMobile ? 2 : 3, maxWidth: 900, mx: 'auto' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{
+              width: 52, height: 52, borderRadius: '14px',
+              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(239,68,68,0.3)', flexShrink: 0,
+            }}>
+              <ReportProblem sx={{ color: '#fff', fontSize: 26 }} />
+            </Box>
+            <Box>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: '#1e293b' }}>הדיווחים שלי</Typography>
+              <Typography variant="body2" sx={{ color: '#64748b' }}>אירועים שדיווחת</Typography>
+            </Box>
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => navigate('/incident-report/new')}
+            sx={{
+              borderRadius: '10px', fontWeight: 600,
+              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              '&:hover': { background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)' },
+            }}
+          >
+            דווח אירוע חדש
+          </Button>
+        </Box>
+
+        {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+
+        {listLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
+        ) : myIncidents.length === 0 ? (
+          <Paper sx={{ p: 4, borderRadius: '16px', textAlign: 'center' }}>
+            <ReportProblem sx={{ fontSize: 48, color: '#cbd5e1', mb: 1 }} />
+            <Typography variant="body1" sx={{ color: '#94a3b8' }}>אין דיווחים עדיין</Typography>
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={() => navigate('/incident-report/new')}
+              sx={{ mt: 2, borderRadius: '10px', background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' }}
+            >
+              דווח אירוע ראשון
+            </Button>
+          </Paper>
+        ) : isMobile ? (
+          <Stack spacing={1.5}>
+            {myIncidents.map(inc => (
+              <Card key={inc.id} sx={{ borderRadius: '14px' }}>
+                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#ef4444', fontFamily: 'monospace' }}>
+                        {inc.incidentNumber}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#475569' }}>{inc.eventType}</Typography>
+                      <Typography variant="caption" sx={{ color: '#94a3b8' }}>{inc.incidentDate} • {inc.city}</Typography>
+                    </Box>
+                    <Button
+                      size="small"
+                      startIcon={<Visibility />}
+                      onClick={() => navigate(`/incident-report/${inc.id}`)}
+                      sx={{ borderRadius: '8px', color: '#6366f1' }}
+                    >
+                      צפה
+                    </Button>
+                  </Box>
+                </CardContent>
+              </Card>
+            ))}
+          </Stack>
+        ) : (
+          <TableContainer component={Paper} sx={{ borderRadius: '16px' }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>מספר אירוע</TableCell>
+                  <TableCell>תאריך</TableCell>
+                  <TableCell>סוג אירוע</TableCell>
+                  <TableCell>עיר</TableCell>
+                  <TableCell>סטטוס</TableCell>
+                  <TableCell align="center">פעולות</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {myIncidents.map(inc => (
+                  <TableRow key={inc.id} sx={{ '&:hover': { bgcolor: '#f8fafc' } }}>
+                    <TableCell sx={{ fontWeight: 700, color: '#ef4444', fontFamily: 'monospace' }}>
+                      {inc.incidentNumber}
+                    </TableCell>
+                    <TableCell>{inc.incidentDate || '-'}</TableCell>
+                    <TableCell>{inc.eventType || '-'}</TableCell>
+                    <TableCell>{inc.city || '-'}</TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={inc.status === 'new' ? 'חדש' : inc.status === 'in_progress' ? 'בטיפול' : inc.status || 'חדש'}
+                        sx={{ bgcolor: 'rgba(59,130,246,0.1)', color: '#3b82f6', fontWeight: 600, fontSize: '0.75rem' }}
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <Button
+                        size="small"
+                        startIcon={<Visibility />}
+                        onClick={() => navigate(`/incident-report/${inc.id}`)}
+                        sx={{ borderRadius: '8px', color: '#6366f1' }}
+                      >
+                        צפה / ערוך
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Box>
+    );
+  }
 
   if (loading) {
     return (
@@ -301,7 +460,7 @@ export default function IncidentReport() {
             טופס דיווח אירוע
           </Typography>
           <Typography variant="body2" sx={{ color: '#64748b' }}>
-            {id ? 'עריכת דיווח קיים' : 'דיווח תאונה / אירוע - אופנוע ידידים'}
+            {editId ? 'עריכת דיווח קיים' : 'דיווח תאונה / אירוע - אופנוע ידידים'}
           </Typography>
         </Box>
       </Box>
@@ -992,7 +1151,7 @@ export default function IncidentReport() {
         {/* כפתורי ניווט */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3, pt: 2, borderTop: '1px solid #e2e8f0' }}>
           <Button
-            onClick={step === 0 ? () => navigate(-1) : prevStep}
+            onClick={step === 0 ? () => navigate(isRider(user) ? '/incident-report' : -1) : prevStep}
             startIcon={<ArrowForward />}
             sx={{ color: '#64748b', fontWeight: 600, borderRadius: '10px', px: 3 }}
           >

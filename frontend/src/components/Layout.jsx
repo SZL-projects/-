@@ -74,7 +74,7 @@ const managementMenuItems = [
   { text: 'טיפולים', icon: <Build />, path: '/maintenance', permission: 'maintenance' },
   { text: 'מוסכים', icon: <Store />, path: '/garages', permission: 'maintenance' },
   { text: 'תביעות ביטוח', icon: <Assignment />, path: '/insurance-claims', permission: 'insurance_claims' },
-  { text: 'דיווח אירועים', icon: <CarCrash />, path: '/incident-report', permission: 'insurance_claims' },
+  { text: 'דיווח אירועים', icon: <CarCrash />, path: '/incidents', permission: 'insurance_claims' },
   { text: 'קופה', icon: <AccountBalance />, path: '/donations', permission: 'donations' },
   { text: 'הגדרות', icon: <Settings />, path: '/settings', permission: 'settings' },
 ];
