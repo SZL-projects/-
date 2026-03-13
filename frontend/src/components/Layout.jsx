@@ -42,6 +42,7 @@ import {
   Settings,
   AccountBalance,
   Store,
+  CarCrash,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import ChangePasswordDialog from './ChangePasswordDialog';
@@ -57,6 +58,7 @@ const drawerWidthClosed = 72;
 const riderMenuItems = [
   { text: 'הכלי שלי', icon: <TwoWheeler />, path: '/my-vehicle' },
   { text: 'התקלות שלי', icon: <Warning />, path: '/my-faults' },
+  { text: 'דיווח אירוע', icon: <CarCrash />, path: '/incident-report' },
   { text: 'הפרופיל שלי', icon: <Person />, path: '/my-profile' },
 ];
 
@@ -72,6 +74,7 @@ const managementMenuItems = [
   { text: 'טיפולים', icon: <Build />, path: '/maintenance', permission: 'maintenance' },
   { text: 'מוסכים', icon: <Store />, path: '/garages', permission: 'maintenance' },
   { text: 'תביעות ביטוח', icon: <Assignment />, path: '/insurance-claims', permission: 'insurance_claims' },
+  { text: 'דיווח אירועים', icon: <CarCrash />, path: '/incident-report', permission: 'insurance_claims' },
   { text: 'קופה', icon: <AccountBalance />, path: '/donations', permission: 'donations' },
   { text: 'הגדרות', icon: <Settings />, path: '/settings', permission: 'settings' },
 ];

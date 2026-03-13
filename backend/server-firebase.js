@@ -75,6 +75,7 @@ app.use('/api/audit-logs', require('./routes/audit-log-firebase'));
 app.use('/api/donations', require('./routes/donations-firebase'));
 app.use('/api/notifications', require('./routes/notifications-firebase'));
 app.use('/api/maintenance-types', require('./routes/maintenance-types-firebase'));
+app.use('/api/incidents', require('./routes/incidents-firebase'));
 
 // נתיבים להרצה ידנית של משימות (למנהלי על בלבד - דורש אימות)
 if (process.env.NODE_ENV !== 'production') {

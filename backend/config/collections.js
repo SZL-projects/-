@@ -13,7 +13,8 @@ const COLLECTIONS = {
   AUDIT_LOGS: 'audit_logs',
   PERMISSIONS: 'permissions',
   DONATIONS: 'donations',
-  MAINTENANCE_TYPES: 'maintenanceTypes'
+  MAINTENANCE_TYPES: 'maintenanceTypes',
+  INCIDENTS: 'incidents'
 };
 
 module.exports = COLLECTIONS;

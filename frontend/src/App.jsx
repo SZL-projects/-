@@ -36,6 +36,7 @@ const Permissions = lazy(() => import('./pages/Permissions'));
 const Donations = lazy(() => import('./pages/Donations'));
 const GarageDetails = lazy(() => import('./pages/GarageDetails'));
 const Garages = lazy(() => import('./pages/Garages'));
+const IncidentReport = lazy(() => import('./pages/IncidentReport'));
 
 // Loading component לטעינה עצלה
 const PageLoader = () => (
@@ -456,6 +457,8 @@ function AppRoutes() {
           <Route path="form-builder" element={<Navigate to="/settings/form-builder" replace />} />
           {/* דפי self-access - נגישים לכל משתמש מחובר */}
           <Route path="fault-report" element={<FaultReport />} />
+          <Route path="incident-report" element={<IncidentReport />} />
+          <Route path="incident-report/:id" element={<IncidentReport />} />
           <Route path="monthly-check-form" element={<MonthlyCheckForm />} />
           <Route path="my-vehicle" element={<MyVehicle />} />
           <Route path="my-faults" element={<MyFaults />} />

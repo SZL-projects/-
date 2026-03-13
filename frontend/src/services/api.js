@@ -587,4 +587,31 @@ export const searchAPI = {
   search: (query, limit = 5) => api.get('/search', { params: { q: query, limit } }),
 };
 
+// Incidents API - דיווחי אירועים
+export const incidentsAPI = {
+  getAll: (params) => cachedGet('/incidents', { params }),
+  getById: (id) => api.get(`/incidents/${id}`),
+  create: (data) => {
+    invalidateCache('/incidents');
+    return api.post('/incidents', data);
+  },
+  update: (id, data) => {
+    invalidateCache('/incidents');
+    return api.put(`/incidents/${id}`, data);
+  },
+  delete: (id) => {
+    invalidateCache('/incidents');
+    return api.delete(`/incidents/${id}`);
+  },
+  uploadPhoto: (incidentId, formData) => {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    return axios.post(`${API_URL}/incidents/${incidentId}/upload-photo`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  },
+};
+
 export default api;
