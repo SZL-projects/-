@@ -2,17 +2,17 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box, Paper, Typography, Grid, Chip, Button, CircularProgress,
-  Alert, TextField, Select, MenuItem, FormControl, InputLabel,
-  RadioGroup, FormControlLabel, Radio, IconButton, Divider,
+  Alert, Divider, TextField, Select, MenuItem, FormControl,
+  InputLabel, RadioGroup, FormControlLabel, Radio, IconButton,
 } from '@mui/material';
 import { ArrowBack, Edit, Save, Cancel, ReportProblem, Add, Delete } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { incidentsAPI } from '../services/api';
 
 const STATUS_MAP = {
-  new: { label: 'חדש', bgcolor: 'rgba(59,130,246,0.12)', color: '#1d4ed8' },
-  in_progress: { label: 'בטיפול', bgcolor: 'rgba(245,158,11,0.12)', color: '#b45309' },
-  closed: { label: 'סגור', bgcolor: 'rgba(16,185,129,0.12)', color: '#065f46' },
+  new: { label: 'חדש', bgcolor: 'rgba(59,130,246,0.1)', color: '#1d4ed8' },
+  in_progress: { label: 'בטיפול', bgcolor: 'rgba(245,158,11,0.1)', color: '#b45309' },
+  closed: { label: 'סגור', bgcolor: 'rgba(16,185,129,0.1)', color: '#065f46' },
 };
 
 const EMPTY_WITNESS = { idNumber: '', firstName: '', lastName: '', phone: '', relation: '' };
@@ -23,25 +23,21 @@ function isAdmin(user) {
   return roles.some(r => r !== 'rider');
 }
 
-// בלוק שדה — תווית + ערך
 function F({ label, value, wide }) {
   if (!value && value !== 0) return null;
   return (
-    <Grid item xs={12} sm={wide ? 12 : 6} md={wide ? 12 : 4}>
-      <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.4 }}>
-        {label}
-      </Typography>
-      <Typography sx={{ fontSize: '0.95rem', fontWeight: 600, color: '#0f172a', lineHeight: 1.5, whiteSpace: wide ? 'pre-wrap' : 'normal' }}>
+    <Grid item xs={12} sm={wide ? 12 : 6}>
+      <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mb: 0.4 }}>{label}</Typography>
+      <Typography sx={{ fontWeight: 600, color: '#1e293b', lineHeight: 1.6, whiteSpace: wide ? 'pre-wrap' : 'normal' }}>
         {value}
       </Typography>
     </Grid>
   );
 }
 
-// שדה עריכה
-function EF({ label, name, value, onChange, multiline, rows, select, options, xs = 6, sm = 4 }) {
+function EF({ label, name, value, onChange, multiline, rows, select, options, full }) {
   if (select) return (
-    <Grid item xs={xs} sm={sm}>
+    <Grid item xs={12} sm={full ? 12 : 6}>
       <FormControl fullWidth size="small">
         <InputLabel>{label}</InputLabel>
         <Select name={name} value={value || ''} onChange={onChange} label={label}>
@@ -51,7 +47,7 @@ function EF({ label, name, value, onChange, multiline, rows, select, options, xs
     </Grid>
   );
   return (
-    <Grid item xs={multiline ? 12 : xs} sm={multiline ? 12 : sm}>
+    <Grid item xs={12} sm={multiline || full ? 12 : 6}>
       <TextField fullWidth size="small" label={label} name={name}
         value={value || ''} onChange={onChange}
         multiline={multiline} rows={multiline ? (rows || 3) : undefined} />
@@ -59,19 +55,11 @@ function EF({ label, name, value, onChange, multiline, rows, select, options, xs
   );
 }
 
-// כותרת סקשן עם קו צבעוני משמאל
-function Section({ title, accent = '#ef4444', children }) {
+function Section({ title, children }) {
   return (
-    <Box sx={{ mb: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-        <Box sx={{ width: 4, height: 24, borderRadius: 4, bgcolor: accent, flexShrink: 0 }} />
-        <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-          {title}
-        </Typography>
-      </Box>
-      <Grid container spacing={2.5}>
-        {children}
-      </Grid>
+    <Box sx={{ mb: 0 }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#ef4444', mb: 2 }}>{title}</Typography>
+      <Grid container spacing={2.5}>{children}</Grid>
     </Box>
   );
 }
@@ -108,14 +96,11 @@ export default function IncidentView() {
       witnesses: incident.witnesses?.length ? incident.witnesses : [{ ...EMPTY_WITNESS }],
       involvedVehicles: incident.involvedVehicles?.length ? incident.involvedVehicles : [{ ...EMPTY_VEHICLE }],
     });
-    setEditMode(true);
-    setError('');
+    setEditMode(true); setError('');
   };
 
   const cancelEdit = () => { setEditMode(false); setEditData(null); setError(''); };
-
   const handleChange = e => setEditData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-
   const handleArr = (arr, i, field, val) => setEditData(prev => {
     const next = [...prev[arr]]; next[i] = { ...next[i], [field]: val };
     return { ...prev, [arr]: next };
@@ -135,7 +120,7 @@ export default function IncidentView() {
 
   if (loading) return (
     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-      <CircularProgress sx={{ color: '#ef4444' }} />
+      <CircularProgress sx={{ color: '#6366f1' }} />
     </Box>
   );
 
@@ -150,89 +135,79 @@ export default function IncidentView() {
   const d = editMode ? editData : incident;
 
   return (
-    <Box dir="rtl">
-      {/* ===== HEADER ===== */}
-      <Paper elevation={0} sx={{
-        p: { xs: 2, sm: 3 }, mb: 3, borderRadius: '20px',
-        background: 'linear-gradient(135deg, #fff5f5 0%, #fff 60%)',
-        border: '1px solid #fecaca',
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Button startIcon={<ArrowBack />} onClick={() => navigate(-1)}
-              sx={{ borderRadius: '10px', color: '#64748b', fontWeight: 600, '&:hover': { bgcolor: '#f8fafc' }, minWidth: 'auto', px: 1.5 }}>
-              חזרה
-            </Button>
-            <Box sx={{
-              width: 52, height: 52, borderRadius: '14px', flexShrink: 0,
-              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 6px 20px rgba(239,68,68,0.25)',
-            }}>
-              <ReportProblem sx={{ fontSize: 26, color: '#fff' }} />
-            </Box>
-            <Box>
-              <Typography sx={{ fontWeight: 800, fontSize: { xs: '1.3rem', sm: '1.6rem' }, color: '#0f172a', fontFamily: 'monospace', letterSpacing: '-0.02em' }}>
-                {incident.incidentNumber}
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
-                <Chip label={status.label} size="small"
-                  sx={{ bgcolor: status.bgcolor, color: status.color, fontWeight: 700, fontSize: '0.75rem', height: 22 }} />
-                {incident.incidentDate && (
-                  <Typography sx={{ fontSize: '0.8rem', color: '#64748b' }}>• {incident.incidentDate}</Typography>
-                )}
-                {incident.riderFirstName && (
-                  <Typography sx={{ fontSize: '0.8rem', color: '#64748b' }}>• {incident.riderFirstName} {incident.riderLastName}</Typography>
-                )}
-                {incident.hiddenFromRider && canEdit && (
-                  <Chip label="מוסתר מרוכב" size="small"
-                    sx={{ bgcolor: 'rgba(239,68,68,0.1)', color: '#ef4444', fontWeight: 700, fontSize: '0.7rem', height: 20 }} />
-                )}
-              </Box>
-            </Box>
-          </Box>
+    <Box dir="rtl" sx={{ animation: 'fadeIn 0.3s ease-out' }}>
 
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            {editMode ? <>
-              <Button variant="outlined" startIcon={<Cancel />} onClick={cancelEdit}
-                sx={{ borderRadius: '10px', fontWeight: 600, color: '#64748b', borderColor: '#e2e8f0', '&:hover': { bgcolor: '#f8fafc' } }}>
-                ביטול
-              </Button>
-              <Button variant="contained" startIcon={saving ? <CircularProgress size={14} color="inherit" /> : <Save />}
-                onClick={handleSave} disabled={saving}
-                sx={{ borderRadius: '10px', fontWeight: 700, px: 3,
-                  background: 'linear-gradient(135deg, #10b981, #059669)',
-                  boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
-                  '&:hover': { background: 'linear-gradient(135deg, #059669, #047857)' } }}>
-                שמור
-              </Button>
-            </> : canEdit && (
-              <Button variant="contained" startIcon={<Edit />} onClick={startEdit}
-                sx={{ borderRadius: '10px', fontWeight: 700, px: 3,
-                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                  boxShadow: '0 4px 12px rgba(239,68,68,0.3)',
-                  '&:hover': { background: 'linear-gradient(135deg, #dc2626, #b91c1c)', transform: 'translateY(-1px)' },
-                  transition: 'all 0.15s' }}>
-                עריכה
-              </Button>
-            )}
+      {/* Header — same style as VehicleDetails/RiderDetail */}
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'stretch', md: 'center' }, gap: 2, mb: 3 }}>
+        <Button startIcon={<ArrowBack />} onClick={() => navigate(-1)}
+          sx={{ borderRadius: '12px', fontWeight: 600, color: '#64748b', '&:hover': { bgcolor: '#f8fafc' }, alignSelf: { xs: 'flex-start', md: 'center' } }}>
+          חזרה
+        </Button>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+          <Box sx={{
+            width: 56, height: 56, borderRadius: '16px', flexShrink: 0,
+            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 8px 24px rgba(239,68,68,0.3)',
+          }}>
+            <ReportProblem sx={{ fontSize: 28, color: '#fff' }} />
+          </Box>
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: '#1e293b', fontSize: { xs: '1.4rem', sm: '2rem' }, fontFamily: 'monospace' }}>
+              {incident.incidentNumber}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 0.25 }}>
+              <Chip label={status.label} size="small"
+                sx={{ bgcolor: status.bgcolor, color: status.color, fontWeight: 600, fontSize: '0.8rem' }} />
+              {incident.incidentDate && <Typography variant="body2" sx={{ color: '#64748b' }}>• {incident.incidentDate}</Typography>}
+              {(incident.riderFirstName || incident.riderLastName) &&
+                <Typography variant="body2" sx={{ color: '#64748b' }}>• {incident.riderFirstName} {incident.riderLastName}</Typography>}
+              {incident.hiddenFromRider && canEdit &&
+                <Chip label="מוסתר מרוכב" size="small" sx={{ bgcolor: 'rgba(239,68,68,0.1)', color: '#ef4444', fontWeight: 600, fontSize: '0.75rem' }} />}
+            </Box>
           </Box>
         </Box>
-      </Paper>
+
+        {editMode ? (
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button variant="outlined" startIcon={<Cancel />} onClick={cancelEdit}
+              sx={{ borderRadius: '12px', fontWeight: 600, color: '#64748b', borderColor: '#e2e8f0' }}>
+              ביטול
+            </Button>
+            <Button variant="contained" startIcon={saving ? <CircularProgress size={14} color="inherit" /> : <Save />}
+              onClick={handleSave} disabled={saving}
+              sx={{ borderRadius: '12px', px: 3, fontWeight: 600,
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                boxShadow: '0 4px 15px rgba(16,185,129,0.3)',
+                '&:hover': { background: 'linear-gradient(135deg, #059669 0%, #047857 100%)' } }}>
+              שמור
+            </Button>
+          </Box>
+        ) : canEdit && (
+          <Button variant="contained" startIcon={<Edit />} onClick={startEdit}
+            sx={{ borderRadius: '12px', px: 3, py: 1.5, fontWeight: 600,
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              boxShadow: '0 4px 15px rgba(99,102,241,0.3)',
+              '&:hover': { background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', transform: 'translateY(-1px)' },
+              transition: 'all 0.2s ease-in-out' }}>
+            עריכה
+          </Button>
+        )}
+      </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }} onClose={() => setError('')}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 2, borderRadius: '12px' }}>{success}</Alert>}
 
-      {/* ===== BODY ===== */}
-      <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+      {/* Content — same Paper style as VehicleDetails */}
+      <Paper sx={{ p: 3, borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
 
-        {/* סוג האירוע */}
-        <Section title="פרטי האירוע" accent="#ef4444">
+        <Section title="פרטי האירוע">
           {editMode ? <>
-            <EF label="סוג אירוע" name="eventType" value={d.eventType} onChange={handleChange} xs={12} sm={6}
+            <EF label="סוג אירוע" name="eventType" value={d.eventType} onChange={handleChange} full
               select options={['תאונת דרכים עם מעורבות רכב נוסף','תאונת דרכים ללא מעורבות רכב נוסף','נפילה מהאופנוע','נזק לאופנוע ללא תאונה','אחר']} />
             <Grid item xs={12} sm={6}>
-              <Typography sx={{ fontSize: '0.78rem', color: '#64748b', mb: 0.5 }}>מי לדעתך אשם?</Typography>
+              <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mb: 0.5 }}>מי אשם?</Typography>
               <RadioGroup row name="fault" value={d.fault || ''} onChange={handleChange}>
                 <FormControlLabel value="אני" control={<Radio size="small" />} label="אני" />
                 <FormControlLabel value="צד ג'" control={<Radio size="small" />} label="צד ג'" />
@@ -240,7 +215,7 @@ export default function IncidentView() {
             </Grid>
             <EF label="תאריך" name="incidentDate" value={d.incidentDate} onChange={handleChange} />
             <EF label="שעה" name="incidentTime" value={d.incidentTime} onChange={handleChange} />
-            <EF label="כתובת" name="address" value={d.address} onChange={handleChange} xs={12} sm={6} />
+            <EF label="כתובת" name="address" value={d.address} onChange={handleChange} />
             <EF label="עיר" name="city" value={d.city} onChange={handleChange} />
             <EF label="סוג נסיעה" name="drivingType" value={d.drivingType} onChange={handleChange}
               select options={['נסיעה לצורכי עבודה','נסיעה פרטית','נסיעה לצורכי ארגון','אחר']} />
@@ -253,7 +228,7 @@ export default function IncidentView() {
               <EF label="מספר תיק" name="policeCaseNumber" value={d.policeCaseNumber} onChange={handleChange} />
             </>}
           </> : <>
-            <F label="סוג אירוע" value={d.eventType} />
+            <F label="סוג אירוע" value={d.eventType} wide />
             <F label="אחריות" value={d.fault} />
             <F label="תאריך" value={d.incidentDate} />
             <F label="שעה" value={d.incidentTime} />
@@ -264,15 +239,14 @@ export default function IncidentView() {
             <F label="מעורבות משטרה" value={d.policeInvolved} />
             {d.policeInvolved === 'כן' && <>
               <F label="תחנת משטרה" value={d.policeStation} />
-              <F label="מספר תיק" value={d.policeCaseNumber} />
+              <F label="מספר תיק משטרה" value={d.policeCaseNumber} />
             </>}
           </>}
         </Section>
 
-        <Divider sx={{ my: 3, borderColor: '#f1f5f9' }} />
+        <Divider sx={{ my: 3 }} />
 
-        {/* פרטי הרוכב */}
-        <Section title="פרטי הרוכב" accent="#6366f1">
+        <Section title="פרטי הרוכב">
           {editMode ? <>
             <EF label="שם פרטי" name="riderFirstName" value={d.riderFirstName} onChange={handleChange} />
             <EF label="שם משפחה" name="riderLastName" value={d.riderLastName} onChange={handleChange} />
@@ -294,10 +268,9 @@ export default function IncidentView() {
           </>}
         </Section>
 
-        <Divider sx={{ my: 3, borderColor: '#f1f5f9' }} />
+        <Divider sx={{ my: 3 }} />
 
-        {/* תיאור */}
-        <Section title="תיאור האירוע" accent="#f59e0b">
+        <Section title="תיאור האירוע">
           {editMode ? <>
             <EF label="תיאור" name="description" value={d.description} onChange={handleChange} multiline rows={4} />
             <EF label="תרשים" name="diagram" value={d.diagram} onChange={handleChange} multiline rows={2} />
@@ -308,31 +281,28 @@ export default function IncidentView() {
             <F label="תרשים" value={d.diagram} wide />
             <F label="סימון כביש שלנו" value={d.roadSign} />
             <F label="סימון כביש צד ג׳" value={d.thirdPartyRoadSign} />
-            {!d.description && !d.diagram && !d.roadSign && !d.thirdPartyRoadSign && (
-              <Grid item xs={12}><Typography sx={{ color: '#94a3b8', fontSize: '0.9rem' }}>אין תיאור</Typography></Grid>
-            )}
+            {!d.description && !d.diagram && !d.roadSign && !d.thirdPartyRoadSign &&
+              <Grid item xs={12}><Typography variant="body2" sx={{ color: '#94a3b8' }}>אין תיאור</Typography></Grid>}
           </>}
         </Section>
 
-        <Divider sx={{ my: 3, borderColor: '#f1f5f9' }} />
+        <Divider sx={{ my: 3 }} />
 
-        {/* עדים */}
-        <Section title="עדים" accent="#8b5cf6">
+        <Section title="עדים">
           {editMode ? <>
             {d.witnesses.map((w, i) => (
               <Grid item xs={12} key={i}>
-                <Box sx={{ p: 2, border: '1px solid #e2e8f0', borderRadius: '14px', bgcolor: '#fafafa' }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                    <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e293b' }}>עד {i + 1}</Typography>
-                    {d.witnesses.length > 1 && (
+                <Box sx={{ p: 2, border: '1px solid #e2e8f0', borderRadius: '12px', bgcolor: '#f8fafc' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1e293b' }}>עד {i + 1}</Typography>
+                    {d.witnesses.length > 1 &&
                       <IconButton size="small" onClick={() => setEditData(p => ({ ...p, witnesses: p.witnesses.filter((_, j) => j !== i) }))}>
                         <Delete fontSize="small" sx={{ color: '#ef4444' }} />
-                      </IconButton>
-                    )}
+                      </IconButton>}
                   </Box>
                   <Grid container spacing={1.5}>
                     {[['שם פרטי','firstName'],['שם משפחה','lastName'],['ת"ז','idNumber'],['טלפון','phone'],['קשר','relation']].map(([lbl, fld]) => (
-                      <Grid item xs={6} sm={4} key={fld}>
+                      <Grid item xs={12} sm={6} key={fld}>
                         <TextField fullWidth size="small" label={lbl} value={w[fld] || ''}
                           onChange={e => handleArr('witnesses', i, fld, e.target.value)} />
                       </Grid>
@@ -349,41 +319,37 @@ export default function IncidentView() {
             d.witnesses?.some(w => w.firstName || w.lastName || w.idNumber)
               ? d.witnesses.filter(w => w.firstName || w.lastName || w.idNumber).map((w, i) => (
                 <Grid item xs={12} sm={6} key={i}>
-                  <Box sx={{ p: 2, border: '1px solid #ede9fe', borderRadius: '14px', bgcolor: '#faf5ff' }}>
-                    <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: '#5b21b6', mb: 1 }}>
+                  <Box sx={{ p: 2, border: '1px solid #e2e8f0', borderRadius: '12px', bgcolor: '#f8fafc' }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1e293b', mb: 1 }}>
                       {`${w.firstName || ''} ${w.lastName || ''}`.trim() || `עד ${i + 1}`}
                     </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      {w.idNumber && <Typography sx={{ fontSize: '0.82rem', color: '#475569' }}>ת"ז: <strong>{w.idNumber}</strong></Typography>}
-                      {w.phone && <Typography sx={{ fontSize: '0.82rem', color: '#475569' }}>טל: <strong>{w.phone}</strong></Typography>}
-                      {w.relation && <Typography sx={{ fontSize: '0.82rem', color: '#475569' }}>קשר: <strong>{w.relation}</strong></Typography>}
-                    </Box>
+                    {w.idNumber && <Typography variant="body2" sx={{ color: '#475569' }}>ת"ז: <strong>{w.idNumber}</strong></Typography>}
+                    {w.phone && <Typography variant="body2" sx={{ color: '#475569' }}>טל׳: <strong>{w.phone}</strong></Typography>}
+                    {w.relation && <Typography variant="body2" sx={{ color: '#475569' }}>קשר: <strong>{w.relation}</strong></Typography>}
                   </Box>
                 </Grid>
               ))
-              : <Grid item xs={12}><Typography sx={{ color: '#94a3b8', fontSize: '0.9rem' }}>אין עדים</Typography></Grid>
+              : <Grid item xs={12}><Typography variant="body2" sx={{ color: '#94a3b8' }}>אין עדים</Typography></Grid>
           )}
         </Section>
 
-        <Divider sx={{ my: 3, borderColor: '#f1f5f9' }} />
+        <Divider sx={{ my: 3 }} />
 
-        {/* רכבים */}
-        <Section title="רכבים ונפגעים" accent="#f97316">
+        <Section title="רכבים ונפגעים">
           {editMode ? <>
             {d.involvedVehicles.map((v, i) => (
               <Grid item xs={12} sm={6} key={i}>
-                <Box sx={{ p: 2, border: '1px solid #e2e8f0', borderRadius: '14px', bgcolor: '#fafafa' }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                    <Typography sx={{ fontWeight: 700, fontSize: '0.85rem' }}>רכב {i + 1}</Typography>
-                    {d.involvedVehicles.length > 1 && (
+                <Box sx={{ p: 2, border: '1px solid #e2e8f0', borderRadius: '12px', bgcolor: '#f8fafc' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>רכב {i + 1}</Typography>
+                    {d.involvedVehicles.length > 1 &&
                       <IconButton size="small" onClick={() => setEditData(p => ({ ...p, involvedVehicles: p.involvedVehicles.filter((_, j) => j !== i) }))}>
                         <Delete fontSize="small" sx={{ color: '#ef4444' }} />
-                      </IconButton>
-                    )}
+                      </IconButton>}
                   </Box>
                   <Grid container spacing={1.5}>
                     {[['סוג','type'],['דגם','model'],['לוחית','plate']].map(([lbl, fld]) => (
-                      <Grid item xs={4} key={fld}>
+                      <Grid item xs={12} sm={4} key={fld}>
                         <TextField fullWidth size="small" label={lbl} value={v[fld] || ''}
                           onChange={e => handleArr('involvedVehicles', i, fld, e.target.value)} />
                       </Grid>
@@ -396,7 +362,7 @@ export default function IncidentView() {
               <Button size="small" startIcon={<Add />} onClick={() => setEditData(p => ({ ...p, involvedVehicles: [...p.involvedVehicles, { ...EMPTY_VEHICLE }] }))}
                 sx={{ color: '#6366f1', fontWeight: 600 }}>הוסף רכב</Button>
             </Grid>
-            <Grid item xs={12}><Divider sx={{ borderColor: '#e2e8f0' }} /></Grid>
+            <Grid item xs={12}><Divider /></Grid>
             <EF label="פציעות" name="hasInjuries" value={d.hasInjuries} onChange={handleChange} select options={['לא','כן']} />
             {d.hasInjuries === 'כן' && <>
               <EF label="פצועי צד ג׳" name="thirdPartyInjuredCount" value={d.thirdPartyInjuredCount} onChange={handleChange} />
@@ -405,20 +371,17 @@ export default function IncidentView() {
           </> : <>
             {d.involvedVehicles?.filter(v => v.type || v.model || v.plate).map((v, i) => (
               <Grid item xs={12} sm={6} key={i}>
-                <Box sx={{ p: 2, border: '1px solid #ffedd5', borderRadius: '14px', bgcolor: '#fff7ed' }}>
-                  <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: '#c2410c', mb: 1 }}>רכב {i + 1}</Typography>
-                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                    {v.type && <Typography sx={{ fontSize: '0.82rem', color: '#475569' }}>סוג: <strong>{v.type}</strong></Typography>}
-                    {v.model && <Typography sx={{ fontSize: '0.82rem', color: '#475569' }}>דגם: <strong>{v.model}</strong></Typography>}
-                    {v.plate && <Typography sx={{ fontSize: '0.82rem', color: '#475569' }}>לוחית: <strong>{v.plate}</strong></Typography>}
-                  </Box>
+                <Box sx={{ p: 2, border: '1px solid #e2e8f0', borderRadius: '12px', bgcolor: '#f8fafc' }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1e293b', mb: 1 }}>רכב {i + 1}</Typography>
+                  {v.type && <Typography variant="body2" sx={{ color: '#475569' }}>סוג: <strong>{v.type}</strong></Typography>}
+                  {v.model && <Typography variant="body2" sx={{ color: '#475569' }}>דגם: <strong>{v.model}</strong></Typography>}
+                  {v.plate && <Typography variant="body2" sx={{ color: '#475569' }}>לוחית: <strong>{v.plate}</strong></Typography>}
                 </Box>
               </Grid>
             ))}
-            {!d.involvedVehicles?.some(v => v.type || v.model || v.plate) && (
-              <Grid item xs={12}><Typography sx={{ color: '#94a3b8', fontSize: '0.9rem' }}>אין רכבים מעורבים</Typography></Grid>
-            )}
-            <Grid item xs={12}><Divider sx={{ borderColor: '#f1f5f9' }} /></Grid>
+            {!d.involvedVehicles?.some(v => v.type || v.model || v.plate) &&
+              <Grid item xs={12}><Typography variant="body2" sx={{ color: '#94a3b8' }}>אין רכבים מעורבים</Typography></Grid>}
+            <Grid item xs={12}><Divider /></Grid>
             <F label="פציעות" value={d.hasInjuries} />
             {d.hasInjuries === 'כן' && <>
               <F label="פצועי צד ג׳" value={d.thirdPartyInjuredCount} />
@@ -427,19 +390,17 @@ export default function IncidentView() {
           </>}
         </Section>
 
-        {/* תמונות */}
         {incident.photos?.length > 0 && <>
-          <Divider sx={{ my: 3, borderColor: '#f1f5f9' }} />
-          <Section title={`תמונות (${incident.photos.length})`} accent="#0ea5e9">
+          <Divider sx={{ my: 3 }} />
+          <Section title={`תמונות (${incident.photos.length})`}>
             {incident.photos.map((photo, i) => (
-              <Grid item xs={12} sm={6} md={4} key={i}>
+              <Grid item xs={12} sm={6} key={i}>
                 <Box component="a" href={photo.url} target="_blank" rel="noopener noreferrer"
                   sx={{
-                    display: 'flex', alignItems: 'center', gap: 1,
-                    p: 1.5, borderRadius: '10px', border: '1px solid #bae6fd',
-                    bgcolor: '#f0f9ff', textDecoration: 'none',
-                    color: '#0369a1', fontWeight: 600, fontSize: '0.82rem',
-                    '&:hover': { bgcolor: '#e0f2fe', borderColor: '#0369a1' },
+                    display: 'flex', alignItems: 'center', gap: 1, p: 1.5,
+                    borderRadius: '10px', border: '1px solid #e2e8f0', bgcolor: '#f8fafc',
+                    textDecoration: 'none', color: '#6366f1', fontWeight: 600, fontSize: '0.85rem',
+                    '&:hover': { bgcolor: 'rgba(99,102,241,0.06)', borderColor: '#6366f1' },
                     transition: 'all 0.15s',
                   }}>
                   📎 {photo.name?.replace(/^[^_]+_/, '') || `תמונה ${i + 1}`}
@@ -449,17 +410,15 @@ export default function IncidentView() {
           </Section>
         </>}
 
-        <Divider sx={{ my: 3, borderColor: '#f1f5f9' }} />
+        <Divider sx={{ my: 3 }} />
 
-        {/* סטטוס והערות */}
-        <Section title="סטטוס והערות" accent="#10b981">
+        <Section title="סטטוס והערות">
           {editMode ? <>
             <EF label="סטטוס" name="status" value={d.status} onChange={handleChange}
               select options={[{ value:'new',label:'חדש' },{ value:'in_progress',label:'בטיפול' },{ value:'closed',label:'סגור' }]} />
-            <EF label="הערות" name="notes" value={d.notes} onChange={handleChange} multiline rows={3} />
             {canEdit && (
               <Grid item xs={12} sm={6}>
-                <Typography sx={{ fontSize: '0.78rem', color: '#64748b', mb: 0.5 }}>גלוי לרוכב</Typography>
+                <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mb: 0.5 }}>גלוי לרוכב</Typography>
                 <RadioGroup row name="hiddenFromRider" value={d.hiddenFromRider ? 'hidden' : 'visible'}
                   onChange={e => setEditData(p => ({ ...p, hiddenFromRider: e.target.value === 'hidden' }))}>
                   <FormControlLabel value="visible" control={<Radio size="small" />} label="גלוי" />
@@ -467,6 +426,7 @@ export default function IncidentView() {
                 </RadioGroup>
               </Grid>
             )}
+            <EF label="הערות" name="notes" value={d.notes} onChange={handleChange} multiline rows={3} />
           </> : <>
             <F label="סטטוס" value={STATUS_MAP[d.status]?.label || d.status} />
             {canEdit && <F label="גלוי לרוכב" value={d.hiddenFromRider ? 'מוסתר' : 'גלוי'} />}
