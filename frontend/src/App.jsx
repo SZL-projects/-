@@ -38,6 +38,7 @@ const GarageDetails = lazy(() => import('./pages/GarageDetails'));
 const Garages = lazy(() => import('./pages/Garages'));
 const IncidentReport = lazy(() => import('./pages/IncidentReport'));
 const Incidents = lazy(() => import('./pages/Incidents'));
+const IncidentView = lazy(() => import('./pages/IncidentView'));
 
 // Loading component לטעינה עצלה
 const PageLoader = () => (
@@ -460,6 +461,7 @@ function AppRoutes() {
           <Route path="fault-report" element={<FaultReport />} />
           <Route path="incident-report" element={<IncidentReport />} />
           <Route path="incident-report/:id" element={<IncidentReport />} />
+          <Route path="incident-view/:id" element={<IncidentView />} />
           <Route path="incidents" element={<PermissionRoute entity="insurance_claims" level="view"><Incidents /></PermissionRoute>} />
           <Route path="monthly-check-form" element={<MonthlyCheckForm />} />
           <Route path="my-vehicle" element={<MyVehicle />} />

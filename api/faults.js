@@ -1001,6 +1001,32 @@ async function handleIncidentsRequest(req, res, db, user, url) {
       updatedAt: new Date(),
     };
     const docRef = await db.collection('incidents').add(data);
+
+    // שליחת מייל התראה למערכת (fire-and-forget)
+    try {
+      const { sendEmail } = require('./_utils/emailService');
+      const systemEmail = process.env.FROM_EMAIL;
+      if (systemEmail) {
+        await sendEmail({
+          email: systemEmail,
+          subject: `דיווח אירוע חדש: ${incidentNumber}`,
+          html: `<div dir="rtl" style="font-family:Arial,sans-serif;font-size:14px;">
+            <h2 style="color:#ef4444;">דיווח אירוע חדש התקבל</h2>
+            <p><strong>מספר אירוע:</strong> ${incidentNumber}</p>
+            <p><strong>דיווח ע"י:</strong> ${data.createdByName}</p>
+            <p><strong>סוג אירוע:</strong> ${data.eventType || '-'}</p>
+            <p><strong>תאריך אירוע:</strong> ${data.incidentDate || '-'}</p>
+            <p><strong>עיר:</strong> ${data.city || '-'}</p>
+            <p><strong>רוכב:</strong> ${data.riderFirstName || ''} ${data.riderLastName || ''}</p>
+            <hr/>
+            <p style="color:#64748b;font-size:12px;">נשלח אוטומטית ממערכת צי לוג ידידים</p>
+          </div>`,
+        });
+      }
+    } catch (emailErr) {
+      console.error('שגיאה בשליחת מייל אירוע:', emailErr.message);
+    }
+
     return res.status(201).json({ success: true, incident: { id: docRef.id, ...data } });
   }
 

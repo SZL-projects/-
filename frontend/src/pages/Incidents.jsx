@@ -7,7 +7,7 @@ import {
   Card, CardContent, Stack,
 } from '@mui/material';
 import {
-  Search, Visibility, ReportProblem, VisibilityOff, Add,
+  Search, Visibility, ReportProblem, VisibilityOff, Add, Edit,
 } from '@mui/icons-material';
 import { incidentsAPI } from '../services/api';
 
@@ -159,9 +159,14 @@ export default function Incidents() {
                   {inc.eventType} • {inc.incidentDate}
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                  <Tooltip title="צפה / ערוך">
-                    <IconButton size="small" onClick={() => navigate(`/incident-report/${inc.id}`)}>
+                  <Tooltip title="צפייה">
+                    <IconButton size="small" onClick={() => navigate(`/incident-view/${inc.id}`)}>
                       <Visibility fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="עריכה">
+                    <IconButton size="small" onClick={() => navigate(`/incident-report/${inc.id}`)}>
+                      <Edit fontSize="small" />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title={inc.hiddenFromRider ? 'הצג לרוכב' : 'הסתר מרוכב'}>

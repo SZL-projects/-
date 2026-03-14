@@ -302,6 +302,7 @@ export default function IncidentReport() {
 
   const handleSubmit = async () => {
     if (!validateStep()) return;
+    if (saving) return; // מניעת שמירה כפולה
     try {
       setSaving(true);
       setError('');
@@ -330,8 +331,12 @@ export default function IncidentReport() {
         setUploadProgress('');
       }
 
-      setSuccess(editId ? 'הדיווח עודכן בהצלחה!' : 'הדיווח נשלח בהצלחה!');
-      if (!editId) setTimeout(() => navigate('/incident-report'), 2500);
+      // ניווט מיידי — מניעת פתיחת דיווחים מרובים
+      if (!editId) {
+        navigate('/incident-report');
+      } else {
+        setSuccess('הדיווח עודכן בהצלחה!');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'שגיאה בשמירה');
       setUploadProgress('');
@@ -406,7 +411,7 @@ export default function IncidentReport() {
                     <Button
                       size="small"
                       startIcon={<Visibility />}
-                      onClick={() => navigate(`/incident-report/${inc.id}`)}
+                      onClick={() => navigate(`/incident-view/${inc.id}`)}
                       sx={{ borderRadius: '8px', color: '#6366f1' }}
                     >
                       צפה
@@ -449,10 +454,10 @@ export default function IncidentReport() {
                       <Button
                         size="small"
                         startIcon={<Visibility />}
-                        onClick={() => navigate(`/incident-report/${inc.id}`)}
+                        onClick={() => navigate(`/incident-view/${inc.id}`)}
                         sx={{ borderRadius: '8px', color: '#6366f1' }}
                       >
-                        צפה / ערוך
+                        צפה
                       </Button>
                     </TableCell>
                   </TableRow>
