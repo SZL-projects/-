@@ -460,7 +460,7 @@ function AppRoutes() {
           {/* דפי self-access - נגישים לכל משתמש מחובר */}
           <Route path="fault-report" element={<FaultReport />} />
           <Route path="incident-report" element={<IncidentReport />} />
-          <Route path="incident-report/:id" element={<IncidentReport />} />
+          <Route path="incident-report/new" element={<IncidentReport />} />
           <Route path="incident-view/:id" element={<IncidentView />} />
           <Route path="incidents" element={<PermissionRoute entity="insurance_claims" level="view"><Incidents /></PermissionRoute>} />
           <Route path="monthly-check-form" element={<MonthlyCheckForm />} />
