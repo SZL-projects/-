@@ -144,7 +144,11 @@ export default function Incidents() {
       {isMobile ? (
         <Stack spacing={1.5}>
           {filtered.map(inc => (
-            <Card key={inc.id} sx={{ borderRadius: '14px', opacity: inc.hiddenFromRider ? 0.6 : 1 }}>
+            <Card
+              key={inc.id}
+              onClick={() => navigate(`/incident-view/${inc.id}`)}
+              sx={{ borderRadius: '14px', opacity: inc.hiddenFromRider ? 0.6 : 1, cursor: 'pointer', '&:hover': { boxShadow: '0 4px 16px rgba(0,0,0,0.1)' } }}
+            >
               <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                   <Box>
@@ -158,12 +162,7 @@ export default function Incidents() {
                 <Typography variant="body2" sx={{ color: '#475569', mb: 1 }}>
                   {inc.eventType} • {inc.incidentDate}
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                  <Tooltip title="צפייה">
-                    <IconButton size="small" onClick={() => navigate(`/incident-view/${inc.id}`)}>
-                      <Visibility fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
                   <Tooltip title="עריכה">
                     <IconButton size="small" onClick={() => navigate(`/incident-report/${inc.id}`)}>
                       <Edit fontSize="small" />
@@ -212,7 +211,12 @@ export default function Incidents() {
               ) : filtered.map(inc => (
                 <TableRow
                   key={inc.id}
-                  sx={{ opacity: inc.hiddenFromRider ? 0.55 : 1, '&:hover': { bgcolor: '#f8fafc' } }}
+                  onClick={() => navigate(`/incident-view/${inc.id}`)}
+                  sx={{
+                    opacity: inc.hiddenFromRider ? 0.55 : 1,
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: '#f8fafc' },
+                  }}
                 >
                   <TableCell sx={{ fontWeight: 600, color: '#ef4444', fontFamily: 'monospace' }}>
                     {inc.incidentNumber}
@@ -233,11 +237,11 @@ export default function Incidents() {
                       }}
                     />
                   </TableCell>
-                  <TableCell align="center">
+                  <TableCell align="center" onClick={e => e.stopPropagation()}>
                     <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                      <Tooltip title="צפה / ערוך">
+                      <Tooltip title="עריכה">
                         <IconButton size="small" onClick={() => navigate(`/incident-report/${inc.id}`)}>
-                          <Visibility fontSize="small" />
+                          <Edit fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title={inc.hiddenFromRider ? 'הצג לרוכב' : 'הסתר מרוכב'}>
